@@ -4,21 +4,21 @@
  * Module dependencies.
  */
 
-var request = require('request').defaults({jar: true, strictSSL: false});
-var util = require('util');
+let request = require('request').defaults({jar: true, strictSSL: false});
+let util = require('util');
 
 
 /**
  * Luna utility functions
  */
 
-var sessionJar = request.jar();
+let sessionJar = request.jar();
 
 function lunaPost(url) {
     //console.info(url);
 
     //    followAllRedirects: true,
-    var options  = {
+    let options  = {
         jar: sessionJar,
         headers: {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
@@ -35,7 +35,7 @@ function lunaPut(url) {
     //console.info(url);
 
     //    followAllRedirects: true,
-    var options  = {
+    let options  = {
         jar: sessionJar,
         headers: {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
@@ -52,7 +52,7 @@ function lunaGet(url) {
     //console.info(url);
 
     //    followAllRedirects: true,
-    var options  = {
+    let options  = {
         jar: sessionJar,
         headers: {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
@@ -84,11 +84,11 @@ function lunaGet(url) {
 function getLunaToken(callback) {
 
     console.info("... retrieving luna session cookies");
-    var url = "https://control.akamai.com/EdgeAuth/login.jsp";
+    let url = "https://control.akamai.com/EdgeAuth/login.jsp";
     lunaGet(url)
         .on('response', function(response) {
 
-            var body = '';
+            let body = '';
             response.on('data', function(d) {
                 body += d;
             });
@@ -98,11 +98,11 @@ function getLunaToken(callback) {
                     process.exit(1);
                 }
 
-                var matches = body.match(/name=["']?TARGET_URL["']?.*value=["']?([A-Za-z0-9]+).*/);
+                let matches = body.match(/name=["']?TARGET_URL["']?.*value=["']?([A-Za-z0-9]+).*/);
                 if (matches) {
                     callback(matches[1]);
                 } else {
-                    console.error('ERROR: cannot find <input name="TARGET_URL" .. > in the login form');
+                    console.error('ERROR: cannot find <input name="TARGET_URL" value="" > in the login form');
                 }
             });
         }).on('error', function(e) {
@@ -121,7 +121,7 @@ function getLunaToken(callback) {
  */
 function getLunaSession(username, password, targeturl, callback) {
 
-    var postData = {
+    let postData = {
         'TARGET_URL' : targeturl,
         'username': username,
         'password': password,
@@ -129,7 +129,7 @@ function getLunaSession(username, password, targeturl, callback) {
     };
 
     console.info("... logging into luna {user: %s}", username);
-    var url = "https://control.akamai.com/EdgeAuth/asyncUserLogin";
+    let url = "https://control.akamai.com/EdgeAuth/asyncUserLogin";
     lunaPost(url)
         .form(postData)
         .on('response', function(response) {
@@ -177,27 +177,27 @@ function loginLuna(username, password, callback) {
  */
 function getAPIGroup(callback) {
     console.info("... retrieving default contract group id");
-    var url = "https://control.akamai.com/ui/services/nav/megamenu/currentUser/grp.json"
+    let url = "https://control.akamai.com/ui/services/nav/megamenu/currentUser/grp.json";
     lunaGet(url)
         .on('response', function(response) {
-            var body = '';
+            let body = '';
             response.on('data', function(d) {
                 body += d;
             });
             response.on('end', function() {
                 //TODO: check auth
                 //console.info(body);
-                var matches = body.match(/\/apiprov\/\?tab=CONFIGURE&type=context&gid=['"]?(\d+)\D/);
+                let matches = body.match(/\/apiprov\/\?tab=CONFIGURE&type=context&gid=['"]?(\d+)\D/);
 
                 if (matches) {
-                    var groupID = matches[1];
+                    let groupID = matches[1];
                     callback(groupID);
                 }
                 else {
-                    log.error("ERROR: cannot find the API Management control in the megamenu")
+                    console.error("ERROR: cannot find the API Management control in the megamenu");
                 }
 
-                //var parsed = JSON.parse(body);
+                //let parsed = JSON.parse(body);
                 //something like the jpath below. Faster/more convenient to use a regex...
                 //parsed.tabs[.name==="Configure"].columns[.mainMenuItems[.name==="Organization"]].mainMenuItems[.name==="Organization"].subMenuItems[.name==="Manage APIs"].url
 
@@ -220,18 +220,18 @@ function getAPINavTree(groupId, callback) {
         return;
     }
     console.info("... retrieving API nav tree {contract group id: %s}", groupId);
-    var url = util.format("https://control.akamai.com/apiprov/api/v1/ui/navtree/%s?sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D&node=root", groupId);
+    let url = util.format("https://control.akamai.com/apiprov/api/v1/ui/navtree/%s?sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D&node=root", groupId);
     lunaGet(url)
         .on('response', function(response) {
             //TODO: check auth failure
 
-            var body = '';
+            let body = '';
             response.on('data', function(d) {
                 body += d;
             });
             response.on('end', function() {
                 // console.info(body);
-                var parsed = JSON.parse(body);
+                let parsed = JSON.parse(body);
                 callback(groupId, parsed);
                 // console.info(parsed);
             });
@@ -240,11 +240,11 @@ function getAPINavTree(groupId, callback) {
     });
 }
 
-var _LUNA_API_SERVICE_PROVIDER = "Luna APIs";
-var _CSI_API_SERVICE_PROVIDER = "CSI";
-var _IM_API_SERVICE_PROVIDER = "Image Manager";
-var _CCU_API_SERVICE_PROVIDER = "CCU APIs";
-var _GTM_API_SERVICE_PROVIDER = "dns";
+const _LUNA_API_SERVICE_PROVIDER = "Luna APIs";
+const _CSI_API_SERVICE_PROVIDER = "CSI";
+const _IM_API_SERVICE_PROVIDER = "Image Manager";
+const _CCU_API_SERVICE_PROVIDER = "CCU APIs";
+const _GTM_API_SERVICE_PROVIDER = "dns";
 
 // create collection
 // POST /apiprov/api/v1/client_collections?_dc=1470588955467
@@ -256,15 +256,15 @@ function getAPICollection(clientData, callback) {
         clientData.groupId = groupId;
         clientData.navTree = navTree;
 
-        var serviceNode = navTree.find(function(val) {return val && val.name && val.name === clientData.serviceProviderName});
+        let serviceNode = navTree.find(function(val) {return val && val.name && val.name === clientData.serviceProviderName});
         clientData.serviceProvider = serviceNode;
-        var serviceID = serviceNode.id;
+        let serviceID = serviceNode.id;
         // console.info("Found ServiceNode:");
         // console.info(serviceNode);
-        var childNode = serviceNode.children.find(function(val) {return val && val.name && val.name === clientData.collectionName});
+        let childNode = serviceNode.children.find(function(val) {return val && val.name && val.name === clientData.collectionName});
         if (!childNode) {
 
-            postData = {
+            let postData = {
                 "name": clientData.collectionName,
                 "description":clientData.collectionDescription || "",
                 "groupId":groupId,
@@ -273,13 +273,13 @@ function getAPICollection(clientData, callback) {
              }; //I have no idea what a clientRoleId is
 
             console.info("... creating new app collection {name: '%s', service provider id: %s}", clientData.collectionName, serviceID);
-            var url = util.format("https://control.akamai.com/apiprov/api/v1/client_collections?_dc=%d", Date.now());
+            let url = util.format("https://control.akamai.com/apiprov/api/v1/client_collections?_dc=%d", Date.now());
             lunaPost(url)
                 .json(postData)
                 .on('response', function(response) {
                     //TODO: check auth failure
 
-                    var body = '';
+                    let body = '';
                     response.on('data', function(d) {
                         body += d;
                     });
@@ -311,22 +311,22 @@ function getAPICollection(clientData, callback) {
 //      {"createdDate":"2016-07-27T04:53:13Z","modifiedDate":"2016-07-27T04:53:13Z","createdBy":"colinb","modifiedBy":"colinb","clientId":183768,"clientCollectionId":104587,"name":"test1","description":"desc1","externalId":"rycq5essciodz7y2","deleted":false}
 function getClient(clientData, callback) {
     getAPICollection(clientData, function(clientData) {
-        var clientNode = clientData.collectionNode.children.find(function(val) {return val && val.name && val.name === clientData.clientName});
+        let clientNode = clientData.collectionNode.children.find(function(val) {return val && val.name && val.name === clientData.clientName});
         if (!clientNode) {
-            postData = {
+            let postData = {
                 "name": clientData.clientName,
                 "description":clientData.clientDescription || "",
                 "clientCollectionId":clientData.collectionNode.id
             };
 
             console.info("... creating new client app {name: '%s', collection id: %s}", clientData.clientName, clientData.collectionNode.id);
-            var url = util.format("https://control.akamai.com/apiprov/api/v1/clients?_dc=%d", Date.now());
+            let url = util.format("https://control.akamai.com/apiprov/api/v1/clients?_dc=%d", Date.now());
             lunaPost(url)
                 .json(postData)
                 .on('response', function(response) {
                     //TODO: check auth failure
 
-                    var body = '';
+                    let body = '';
                     response.on('data', function(d) {
                         body += d;
                     });
@@ -355,14 +355,14 @@ function getClient(clientData, callback) {
 // POST /apiprov/api/v1/clients/187568/credentials
 //      {"createdDate":"2016-08-08T01:36:05Z","modifiedDate":"2016-08-08T01:36:05Z","createdBy":"advocate2","modifiedBy":"advocate2","clientCredentialId":194201,"clientId":187568,"clientToken":"akab-2useeknlmvzj4e3c-h3pb5dwfp4ms5sqx","status":"active","secret":"fsEFrx6TJgTERN/ednYAiRLhlFa3UsA64Hspr6+bPkI="}
 function createClientCredentials(clientData, callback) {
-    var clientId = clientData.clientNode.id;
+    let clientId = clientData.clientNode.id;
     console.info("... creating new app credentials {client id: %s}", clientId);
-    var url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%d/credentials", clientId);
+    let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%d/credentials", clientId);
     lunaPost(url)
         .on('response', function(response) {
             //TODO: check auth failure
 
-            var body = '';
+            let body = '';
             response.on('data', function(d) {
                 body += d;
             });
@@ -370,7 +370,7 @@ function createClientCredentials(clientData, callback) {
                 //TODO: check response
                 //TODO: validate response
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    var clientCreds = JSON.parse(body);
+                    let clientCreds = JSON.parse(body);
                     //console.info(clientCreds);
                     callback(clientCreds);
                 } else {
@@ -387,14 +387,14 @@ function createClientCredentials(clientData, callback) {
 
 function getClientCredentials(clientData, callback) {
     getClient(clientData, function (clientData) {
-        var clientId = clientData.clientNode.id;
+        let clientId = clientData.clientNode.id;
         console.info("... retrieving app credentials {client id: %s}", clientId);
-        var url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/credentials?_dc=%d", clientId, Date.now());
+        let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/credentials?_dc=%d", clientId, Date.now());
         lunaGet(url)
             .on('response', function(response) {
                 //TODO: check auth failure
 
-                var body = '';
+                let body = '';
                 response.on('data', function(d) {
                     body += d;
                 });
@@ -402,7 +402,7 @@ function getClientCredentials(clientData, callback) {
                     //TODO: check response
                     //TODO: validate response
                     if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                        var clientCreds = JSON.parse(body);
+                        let clientCreds = JSON.parse(body);
                         //console.info(clientCreds);
                         clientCreds = clientCreds.filter(function(val) {return val && val.status && val.status === 'active'});
                         if (!clientCreds || clientCreds.length < 1) {
@@ -428,12 +428,12 @@ function getClientCredentials(clientData, callback) {
 function getServiceProviderServices(groupId, serviceProviderId, callback) {
     console.info("... retrieving service provide details {service id: %s}", serviceProviderId);
 
-    var url = util.format("https://control.akamai.com/apiprov/api/v1/service_providers/%s/services?_dc=%d&page=1&start=0&limit=9999&sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D&group_id=%s", serviceProviderId, Date.now(), groupId);
+    let url = util.format("https://control.akamai.com/apiprov/api/v1/service_providers/%s/services?_dc=%d&page=1&start=0&limit=9999&sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D&group_id=%s", serviceProviderId, Date.now(), groupId);
     lunaGet(url)
         .on('response', function(response) {
             //TODO: check auth failure
 
-            var body = '';
+            let body = '';
             response.on('data', function(d) {
                 body += d;
             });
@@ -442,7 +442,7 @@ function getServiceProviderServices(groupId, serviceProviderId, callback) {
                 //TODO: validate response
                 //console.info(body);
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    var services = JSON.parse(body);
+                    let services = JSON.parse(body);
                     callback(services);
                 } else {
                     console.error('ERROR: cannot get Service Provider Services');
@@ -458,12 +458,12 @@ function getServiceProviderServices(groupId, serviceProviderId, callback) {
 
 function getServiceGrantModel(groupId, grantModelId, callback) {
     console.info("... retrieving grant model {grant model id: %s}", grantModelId);
-    var url = util.format("https://control.akamai.com/apiprov/api/v1/grant_models/%s?_dc=%d&id=%s&group_id=%s", grantModelId, Date.now(), grantModelId, groupId);
+    let url = util.format("https://control.akamai.com/apiprov/api/v1/grant_models/%s?_dc=%d&id=%s&group_id=%s", grantModelId, Date.now(), grantModelId, groupId);
     lunaGet(url)
         .on('response', function(response) {
             //TODO: check auth failure
 
-            var body = '';
+            let body = '';
             response.on('data', function(d) {
                 body += d;
             });
@@ -472,7 +472,7 @@ function getServiceGrantModel(groupId, grantModelId, callback) {
                 //TODO: validate response
                 //console.info(body);
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    var grants = JSON.parse(body);
+                    let grants = JSON.parse(body);
                     callback(grants);
                 } else {
                     console.error('ERROR: cannot get GrantModel');
@@ -494,15 +494,15 @@ function createClientAuthorizations(clientData, callback) {
     // Step 1: get the service provider serviecs detail which gives us a link to the grant models
     getServiceProviderServices(clientData.groupId, clientData.serviceProvider.id, function(serviceProviderDetails) {
         //find the active service provider details
-        serviceProviderDetails = serviceProviderDetails.find(function(val) {return val && val.active && val.active == true});
+        serviceProviderDetails = serviceProviderDetails.filter(function(val) {return val && val.active && val.active == true});
 
-        if (serviceProviderDetails) {
-            var grandModelId = serviceProviderDetails.grantModelId;
+        if (serviceProviderDetails && serviceProviderDetails.length > 1) {
+            let grandModelId = serviceProviderDetails[0].grantModelId;
             // Step 2: Get the grant Model. this tells us which services are available and which params are needed. This
             // is really overly complicated and the naming is misleading because there really aren't 'roles' just a bunch
             // of service endpoints. And there are many!
             getServiceGrantModel(clientData.groupId, grandModelId, function(grantDetails) {
-                var postData = {
+                let postData = {
                     "clientId": 0,
                     "name": clientData.authorizationName || clientData.grantScopes || "Grant All",
                     "description": clientData.authorizationDescription || "",
@@ -510,22 +510,25 @@ function createClientAuthorizations(clientData, callback) {
                     "params": clientData.authorizationParams || [],
                     "services": clientData.authorizationServices || [],
                     "annotations": []
-                }
+                };
 
                 if (postData.services.length < 1) {
                     // we use READ-WRITE as a grantScope to mean all the grants. Otherwise we set it to just the names that
                     // match the grant scope (eg: READ-ONLY). There isn't a convenient way to scope this to just a few
                     // grants. This would have to be done manually
 //                    postData.services = grantDetails.grantScopes
-                    postData.services = serviceProviderDetails.grantScopes
-                        .filter(function(val) {return clientData.grantScopes === "READ-WRITE" || val.name === clientData.grantScopes})
-                        .map(function(val) {return {'serviceId': val.serviceId, 'serviceScope': val.name}});
+                    postData.services = [].concat(...serviceProviderDetails
+                        .map(function(val) {return val.grantScopes
+                            .filter(function(val) {return clientData.grantScopes === "READ-WRITE" || val.name === clientData.grantScopes})
+                            .map(function(val) {return {'serviceId': val.serviceId, 'serviceScope': val.name}}
+                            )}
+                        ));
                 }
                 if (postData.params.length < 1) {
                     postData.params = grantDetails.grantModelParams
                         .filter(function(val) {return val.required == true})
                         .map(function(val) {
-                            var paramValue = [""];
+                            let paramValue = [""];
                             if (val.paramValues && val.paramValues.length > 0) {
                                 paramValue = [val.paramValues[0].value];
                             }
@@ -537,15 +540,15 @@ function createClientAuthorizations(clientData, callback) {
                 }
 
                 //console.info(JSON.stringify(postData));
-                var clientId = clientData.clientNode.id;
+                let clientId = clientData.clientNode.id;
                 console.info("... creating new auth for {client id: %s}", clientId);
-                var url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations?_dc=%d", clientId, Date.now());
+                let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations?_dc=%d", clientId, Date.now());
                 lunaPost(url)
                     .json(postData)
                     .on('response', function(response) {
                         //TODO: check auth failure
 
-                        var body = '';
+                        let body = '';
                         response.on('data', function(d) {
                             body += d;
                         });
@@ -554,7 +557,7 @@ function createClientAuthorizations(clientData, callback) {
                             //TODO: validate response
                             //console.info(body);
                             if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                                var auths = JSON.parse(body);
+                                let auths = JSON.parse(body);
                                 activateAuthorization(auths.clientId, auths.clientAuthorizationId, function() {
                                     callback(auths);
                                 });
@@ -567,26 +570,26 @@ function createClientAuthorizations(clientData, callback) {
                 });
             });
         }
-    })
+    });
 }
 
 // PUT https://control.akamai.com/apiprov/api/v1/clients/187568/client_authorizations/167891?_dc=1470629849548
 //      {"status":"active","clientAuthorizationId":167891}
 //      {"createdDate":"2016-08-08T04:17:26Z","modifiedDate":"2016-08-08T04:17:29Z","createdBy":"advocate2","modifiedBy":"advocate2","clientAuthorizationId":167891,"clientId":187568,"name":"All","description":"Desc","accessToken":"akab-gdbctbm5q4giu4ck-tntnrnpt7tzbdpl5","status":"active","testStatus":"in_progress","lastTestDate":null,"activeVersionId":null,"params":[{"grantObjectParamId":330891,"clientAuthorizationId":167891,"paramType":1,"paramName":"luna-user","paramValueDataType":"string","paramValue":"advocate2","paramCategory":"decorations","paramValues":["advocate2"]}],"services":[{"clientAuthServiceId":410854,"clientId":187568,"serviceId":10,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Alerts"},{"clientAuthServiceId":410855,"clientId":187568,"serviceId":10,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Alerts"},{"clientAuthServiceId":410856,"clientId":187568,"serviceId":1905,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Billing Center"},{"clientAuthServiceId":410857,"clientId":187568,"serviceId":1905,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Billing Center"},{"clientAuthServiceId":410858,"clientId":187568,"serviceId":4,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Billing Center Legacy"},{"clientAuthServiceId":410859,"clientId":187568,"serviceId":4,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Billing Center Legacy"},{"clientAuthServiceId":410860,"clientId":187568,"serviceId":2005,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"CPS"},{"clientAuthServiceId":410861,"clientId":187568,"serviceId":2005,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"CPS"},{"clientAuthServiceId":410862,"clientId":187568,"serviceId":5,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Case Management"},{"clientAuthServiceId":410863,"clientId":187568,"serviceId":5,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Case Management"},{"clientAuthServiceId":410864,"clientId":187568,"serviceId":1106,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Cloudlets Policy Manager"},{"clientAuthServiceId":410865,"clientId":187568,"serviceId":1,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"DNS—Zone Record Management"},{"clientAuthServiceId":410866,"clientId":187568,"serviceId":1,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"DNS—Zone Record Management"},{"clientAuthServiceId":410867,"clientId":187568,"serviceId":3,"clientAuthorizationId":167891,"serviceScope":"READ","serviceName":"DNS—Zone Traffic Reporting"},{"clientAuthServiceId":410868,"clientId":187568,"serviceId":105,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Diagnostic Tools"},{"clientAuthServiceId":410869,"clientId":187568,"serviceId":105,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Diagnostic Tools"},{"clientAuthServiceId":410870,"clientId":187568,"serviceId":405,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Edge Redirector"},{"clientAuthServiceId":410871,"clientId":187568,"serviceId":405,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Edge Redirector"},{"clientAuthServiceId":410872,"clientId":187568,"serviceId":11,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Event Center"},{"clientAuthServiceId":410873,"clientId":187568,"serviceId":11,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Event Center"},{"clientAuthServiceId":410874,"clientId":187568,"serviceId":1105,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Forward Rewrite Rules"},{"clientAuthServiceId":410875,"clientId":187568,"serviceId":1105,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Forward Rewrite Rules"},{"clientAuthServiceId":410876,"clientId":187568,"serviceId":1405,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Front End Optimization"},{"clientAuthServiceId":410877,"clientId":187568,"serviceId":1405,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Front End Optimization"},{"clientAuthServiceId":410878,"clientId":187568,"serviceId":161,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"IP/Geo Access Rules"},{"clientAuthServiceId":410879,"clientId":187568,"serviceId":161,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"IP/Geo Access Rules"},{"clientAuthServiceId":410880,"clientId":187568,"serviceId":1705,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Invoicing"},{"clientAuthServiceId":410881,"clientId":187568,"serviceId":1705,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Invoicing"},{"clientAuthServiceId":410882,"clientId":187568,"serviceId":162,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Log Delivery Service"},{"clientAuthServiceId":410883,"clientId":187568,"serviceId":162,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Log Delivery Service"},{"clientAuthServiceId":410884,"clientId":187568,"serviceId":61,"clientAuthorizationId":167891,"serviceScope":"READ","serviceName":"Luna Authentication Test"},{"clientAuthServiceId":410885,"clientId":187568,"serviceId":142,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Media Analytics API"},{"clientAuthServiceId":410886,"clientId":187568,"serviceId":164,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Media Reports"},{"clientAuthServiceId":410887,"clientId":187568,"serviceId":205,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Media Streaming"},{"clientAuthServiceId":410888,"clientId":187568,"serviceId":2,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Network Lists"},{"clientAuthServiceId":410889,"clientId":187568,"serviceId":2,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Network Lists"},{"clientAuthServiceId":410890,"clientId":187568,"serviceId":144,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Prolexic Analytics API"},{"clientAuthServiceId":410891,"clientId":187568,"serviceId":146,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Property Manager"},{"clientAuthServiceId":410892,"clientId":187568,"serviceId":146,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Property Manager"},{"clientAuthServiceId":410893,"clientId":187568,"serviceId":2505,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"SLA API"},{"clientAuthServiceId":410894,"clientId":187568,"serviceId":2505,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"SLA API"},{"clientAuthServiceId":410895,"clientId":187568,"serviceId":141,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"SPS requests"},{"clientAuthServiceId":410896,"clientId":187568,"serviceId":141,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"SPS requests"},{"clientAuthServiceId":410897,"clientId":187568,"serviceId":123,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"SaaS Registration"},{"clientAuthServiceId":410898,"clientId":187568,"serviceId":123,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"SaaS Registration"},{"clientAuthServiceId":410899,"clientId":187568,"serviceId":206,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"SecureHD Policy Editor"},{"clientAuthServiceId":411750,"clientId":187568,"serviceId":145,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Security Monitor API"},{"clientAuthServiceId":411751,"clientId":187568,"serviceId":905,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Siteshield API"},{"clientAuthServiceId":411752,"clientId":187568,"serviceId":905,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Siteshield API"},{"clientAuthServiceId":411753,"clientId":187568,"serviceId":406,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Traffic Management Configurations"},{"clientAuthServiceId":411754,"clientId":187568,"serviceId":406,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Traffic Management Configurations"},{"clientAuthServiceId":411755,"clientId":187568,"serviceId":207,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"User Admin"},{"clientAuthServiceId":411756,"clientId":187568,"serviceId":207,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"User Admin"},{"clientAuthServiceId":411757,"clientId":187568,"serviceId":101,"clientAuthorizationId":167891,"serviceScope":"READ-ONLY","serviceName":"Visitor Prioritization"},{"clientAuthServiceId":411758,"clientId":187568,"serviceId":101,"clientAuthorizationId":167891,"serviceScope":"READ-WRITE","serviceName":"Visitor Prioritization"}],"annotations":[],"fullUrl":"https://akab-drp2fxzq5c76sm5f-h7jx7drgassvxplz.luna.akamaiapis.net/"}
 function activateAuthorization(clientId, clientAuthorizationId, callback) {
-    var postData = {
+    let postData = {
         "status":"active",
         "clientAuthorizationId":clientAuthorizationId
-    }
+    };
 
     console.info("... activating {auth id: %s}", clientAuthorizationId);
-    var url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations/%s?_dc=%d", clientId, clientAuthorizationId, Date.now());
+    let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations/%s?_dc=%d", clientId, clientAuthorizationId, Date.now());
     lunaPut(url)
         .json(postData)
         .on('response', function(response) {
             //TODO: check auth failure
 
-            var body = '';
+            let body = '';
             response.on('data', function(d) {
                 body += d;
             });
@@ -595,7 +598,7 @@ function activateAuthorization(clientId, clientAuthorizationId, callback) {
                 //TODO: validate response
                 //console.info(body);
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    var auths = JSON.parse(body);
+                    let auths = JSON.parse(body);
                     callback(auths);
                 } else {
                     console.error('ERROR: cannot activate Authorization');
@@ -610,14 +613,14 @@ function activateAuthorization(clientId, clientAuthorizationId, callback) {
 // GET https://control.akamai.com/apiprov/api/v1/clients/187568/client_authorizations?_dc=1470619997753&page=1&start=0&limit=9999&sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D
 //      [{"createdDate":"2015-06-08T02:28:50Z","modifiedDate":"2015-10-28T02:37:53Z","createdBy":"colinb","modifiedBy":"colinb","clientAuthorizationId":67501,"clientId":67451,"name":"AllAuth","description":null,"accessToken":"akab-dzwyltniasx2s2fw-7ah4yypbk7bcii65","status":"active","testStatus":"active","lastTestDate":"2015-10-28T02:37:53Z","activeVersionId":5}]
 function getClientAuthorizations(clientData, callback) {
-    var clientId = clientData.clientNode.id;
-    console.info("... retrieving auths for {client id: %s}", clientId);
-    var url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations?_dc=%d", clientId, Date.now());
+    let clientId = clientData.clientNode.id;
+    console.info("... retrieving authorization list {client id: %s}", clientId);
+    let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations?_dc=%d", clientId, Date.now());
     lunaGet(url)
         .on('response', function(response) {
             //TODO: check auth failure
 
-            var body = '';
+            let body = '';
             response.on('data', function(d) {
                 body += d;
             });
@@ -625,7 +628,8 @@ function getClientAuthorizations(clientData, callback) {
                 //TODO: check response
                 //TODO: validate response
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    var auths = JSON.parse(body);
+                    let auths = JSON.parse(body);
+                    let authDetails = [];
                     //console.info(clientCreds);
                     auths = auths.filter(function(val) {return val && val.status && val.status === 'active'});
                     if (!auths || auths.length < 1) {
@@ -634,8 +638,11 @@ function getClientAuthorizations(clientData, callback) {
                             callback(clientData);
                         })
                     } else {
-                        clientData.authorizations = auths;
-                        callback(clientData);
+                        Promise.all(auths.map(v => new Promise((resolve, reject) => getAuthorizationDetails(v.clientId, v.clientAuthorizationId, resolve))))
+                            .then(detailedAuths => {
+                                clientData.authorizations = detailedAuths;
+                                callback(clientData);
+                            });
                     }
                 }
             });
@@ -644,19 +651,46 @@ function getClientAuthorizations(clientData, callback) {
     });
 }
 
-var args = process.argv.slice(2);
+// GET https://control.akamai.com/apiprov/api/v1/clients/188573/client_authorizations/171768?_dc=1470662414284
+//      {"createdDate":"2016-08-08T13:18:11Z","modifiedDate":"2016-08-08T13:20:14Z","createdBy":"advocate2","modifiedBy":"colinb","clientAuthorizationId":171768,"clientId":188573,"name":"READ-WRITE","description":null,"accessToken":"akab-qf5mjwmnno3sx7t7-4p6e5q6s5uznypxn","status":"active","testStatus":"in_progress","lastTestDate":null,"activeVersionId":null,"params":[{"grantObjectParamId":332898,"clientAuthorizationId":171768,"paramType":1,"paramName":"luna-user","paramValueDataType":"string","paramValue":"advocate2","paramCategory":"decorations","paramValues":["advocate2"]}],"services":[{"clientAuthServiceId":409046,"clientId":188573,"serviceId":105,"clientAuthorizationId":171768,"serviceScope":"READ-ONLY","serviceName":"Diagnostic Tools"},{"clientAuthServiceId":409047,"clientId":188573,"serviceId":105,"clientAuthorizationId":171768,"serviceScope":"READ-WRITE","serviceName":"Diagnostic Tools"}],"annotations":[],"fullUrl":"https://akab-qqomtivthgovm2de-mbthrrmz4aqtihdo.luna.akamaiapis.net/"}
+function getAuthorizationDetails(clientId, authorizationId, callback)
+{
+    console.info("... retrieving auth details {auth id: %s}", authorizationId);
+    let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations/%s?_dc=%d", clientId, authorizationId, Date.now());
+    lunaGet(url)
+        .on('response', function(response) {
+            //TODO: check auth failure
+
+            let body = '';
+            response.on('data', function(d) {
+                body += d;
+            });
+            response.on('end', function() {
+                //TODO: check response
+                //TODO: validate response
+                if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
+                    let auth = JSON.parse(body);
+                    callback(auth);
+                }
+            });
+        }).on('error', function(e) {
+        console.error('ERROR problem with request: ' + e.message);
+    });
+}
+
+let args = process.argv.slice(2);
 loginLuna(args[0], args[1], function() {
-    var clientData = {
+    let clientData = {
         'serviceProviderName': _LUNA_API_SERVICE_PROVIDER,
-        'collectionName': 'cbtestcoll5',
-        'clientName': 'cbtestapp5',
+        'collectionName': 'cbtestcoll2',
+        'clientName': 'cbtestapp2',
         'grantScopes': 'READ-WRITE'
-    }
+    };
     getClientCredentials(clientData, function(clientData) {
         getClientAuthorizations(clientData, function (clientData) {
             // console.info(clientData.credentials);
             // console.info(clientData.authorizations);
-            var counter = 0;
+            let counter = 0;
             clientData.credentials.forEach(function(cred) {
                 clientData.authorizations.forEach(function(auth) {
                     console.log("[luna-%s%s]", clientData.clientName, counter > 1 ? counter : '');
