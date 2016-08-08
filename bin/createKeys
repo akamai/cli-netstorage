@@ -15,7 +15,7 @@ var util = require('util');
 var sessionJar = request.jar();
 
 function lunaPost(url) {
-    console.log(url);
+    //console.info(url);
 
     //    followAllRedirects: true,
     var options  = {
@@ -32,7 +32,7 @@ function lunaPost(url) {
 }
 
 function lunaPut(url) {
-    console.log(url);
+    //console.info(url);
 
     //    followAllRedirects: true,
     var options  = {
@@ -49,7 +49,7 @@ function lunaPut(url) {
 }
 
 function lunaGet(url) {
-    console.log(url);
+    //console.info(url);
 
     //    followAllRedirects: true,
     var options  = {
@@ -83,9 +83,10 @@ function lunaGet(url) {
  */
 function getLunaToken(callback) {
 
-    lunaGet("https://control.akamai.com/EdgeAuth/login.jsp")
+    console.info("... retrieving luna session cookies");
+    var url = "https://control.akamai.com/EdgeAuth/login.jsp";
+    lunaGet(url)
         .on('response', function(response) {
-            console.log(response.statusCode);
 
             var body = '';
             response.on('data', function(d) {
@@ -127,15 +128,14 @@ function getLunaSession(username, password, targeturl, callback) {
         'login' : 'Log In'
     };
 
-    console.info("Credentials u/p/k: %s / %s / %s", username, password, targeturl);
-
+    console.info("... logging into luna {user: %s}", username);
     var url = "https://control.akamai.com/EdgeAuth/asyncUserLogin";
     lunaPost(url)
         .form(postData)
         .on('response', function(response) {
             response.on('end', function() {
-                console.info(response.statusCode);
-                console.info(response.headers['location']);
+                //console.info(response.statusCode);
+                //console.info(response.headers['location']);
                 //console.info(sessionJar);
 
                 if (response.statusCode != 302 || response.headers['location'] !== 'https://control.akamai.com/homeng/view/main') {
@@ -158,6 +158,7 @@ function getLunaSession(username, password, targeturl, callback) {
  * @param callback
  */
 function loginLuna(username, password, callback) {
+    console.info("[Luna Login]");
     getLunaToken(function(targeturl) {
        getLunaSession(username, password, targeturl, callback);
     });
@@ -175,6 +176,7 @@ function loginLuna(username, password, callback) {
  * @param callback
  */
 function getAPIGroup(callback) {
+    console.info("... retrieving default contract group id");
     var url = "https://control.akamai.com/ui/services/nav/megamenu/currentUser/grp.json"
     lunaGet(url)
         .on('response', function(response) {
@@ -184,7 +186,7 @@ function getAPIGroup(callback) {
             });
             response.on('end', function() {
                 //TODO: check auth
-                //console.log(body);
+                //console.info(body);
                 var matches = body.match(/\/apiprov\/\?tab=CONFIGURE&type=context&gid=['"]?(\d+)\D/);
 
                 if (matches) {
@@ -217,6 +219,7 @@ function getAPINavTree(groupId, callback) {
         getAPIGroup(function (newGroupID) { getAPINavTree(newGroupID, callback);});
         return;
     }
+    console.info("... retrieving API nav tree {contract group id: %s}", groupId);
     var url = util.format("https://control.akamai.com/apiprov/api/v1/ui/navtree/%s?sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D&node=root", groupId);
     lunaGet(url)
         .on('response', function(response) {
@@ -227,10 +230,10 @@ function getAPINavTree(groupId, callback) {
                 body += d;
             });
             response.on('end', function() {
-                // console.log(body);
+                // console.info(body);
                 var parsed = JSON.parse(body);
                 callback(groupId, parsed);
-                // console.log(parsed);
+                // console.info(parsed);
             });
         }).on('error', function(e) {
         console.error('problem with request: ' + e.message);
@@ -248,6 +251,7 @@ var _GTM_API_SERVICE_PROVIDER = "dns";
 //      {"name":"testcollection2","description":"","groupId":64867,"serviceProviderId":2,"clientRoleId":1}
 //      {"createdDate":"2016-08-07T16:55:46Z","modifiedDate":"2016-08-07T16:55:46Z","createdBy":"colinb","modifiedBy":"colinb","clientCollectionId":173826,"groupId":64867,"serviceConsumerToken":"akab-yo4ekaksygh4zl3d-2tueyummutrsyluu","clientRoleId":1,"serviceProviderId":2,"name":"testcollection2","description":"","deleted":false}
 function getAPICollection(clientData, callback) {
+    console.info("[API Management]");
     getAPINavTree(function(groupId, navTree) {
         clientData.groupId = groupId;
         clientData.navTree = navTree;
@@ -268,6 +272,7 @@ function getAPICollection(clientData, callback) {
                 "clientRoleId":1
              }; //I have no idea what a clientRoleId is
 
+            console.info("... creating new app collection {name: '%s', service provider id: %s}", clientData.collectionName, serviceID);
             var url = util.format("https://control.akamai.com/apiprov/api/v1/client_collections?_dc=%d", Date.now());
             lunaPost(url)
                 .json(postData)
@@ -281,14 +286,14 @@ function getAPICollection(clientData, callback) {
                     response.on('end', function() {
                         //TODO: check response
 
-                        //console.log(body);
+                        //console.info(body);
                         childNode = JSON.parse(body);
                         //shim the response
                         childNode.id = childNode.clientCollectionId;
                         childNode.children = [];
                         clientData.collectionNode = childNode;
                         callback(clientData);
-                        // console.log(clientData);
+                        // console.info(clientData);
                     });
                 }).on('error', function(e) {
                 console.error('ERROR problem with request: ' + e.message);
@@ -314,6 +319,7 @@ function getClient(clientData, callback) {
                 "clientCollectionId":clientData.collectionNode.id
             };
 
+            console.info("... creating new client app {name: '%s', collection id: %s}", clientData.clientName, clientData.collectionNode.id);
             var url = util.format("https://control.akamai.com/apiprov/api/v1/clients?_dc=%d", Date.now());
             lunaPost(url)
                 .json(postData)
@@ -328,13 +334,13 @@ function getClient(clientData, callback) {
                         //TODO: check response
                         //TODO: validate response
 
-                        //console.log(body);
+                        //console.info(body);
                         clientNode = JSON.parse(body);
                         //shim the response
                         clientNode.id = clientNode.clientId;
                         clientData.clientNode = clientNode;
                         callback(clientData);
-                        // console.log(clientData);
+                        // console.info(clientData);
                     });
                 }).on('error', function(e) {
                 console.error('ERROR problem with request: ' + e.message);
@@ -350,6 +356,7 @@ function getClient(clientData, callback) {
 //      {"createdDate":"2016-08-08T01:36:05Z","modifiedDate":"2016-08-08T01:36:05Z","createdBy":"advocate2","modifiedBy":"advocate2","clientCredentialId":194201,"clientId":187568,"clientToken":"akab-2useeknlmvzj4e3c-h3pb5dwfp4ms5sqx","status":"active","secret":"fsEFrx6TJgTERN/ednYAiRLhlFa3UsA64Hspr6+bPkI="}
 function createClientCredentials(clientData, callback) {
     var clientId = clientData.clientNode.id;
+    console.info("... creating new app credentials {client id: %s}", clientId);
     var url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%d/credentials", clientId);
     lunaPost(url)
         .on('response', function(response) {
@@ -364,9 +371,8 @@ function createClientCredentials(clientData, callback) {
                 //TODO: validate response
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                     var clientCreds = JSON.parse(body);
-                    //console.log(clientCreds);
-                    clientData.credentials = [clientCreds];
-                    callback(clientData);
+                    //console.info(clientCreds);
+                    callback(clientCreds);
                 } else {
                     console.error('ERROR: could not create credentials')
                 }
@@ -382,6 +388,7 @@ function createClientCredentials(clientData, callback) {
 function getClientCredentials(clientData, callback) {
     getClient(clientData, function (clientData) {
         var clientId = clientData.clientNode.id;
+        console.info("... retrieving app credentials {client id: %s}", clientId);
         var url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/credentials?_dc=%d", clientId, Date.now());
         lunaGet(url)
             .on('response', function(response) {
@@ -396,7 +403,7 @@ function getClientCredentials(clientData, callback) {
                     //TODO: validate response
                     if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                         var clientCreds = JSON.parse(body);
-                        //console.log(clientCreds);
+                        //console.info(clientCreds);
                         clientCreds = clientCreds.filter(function(val) {return val && val.status && val.status === 'active'});
                         if (!clientCreds || clientCreds.length < 1) {
                             createClientCredentials(clientData, function(newData) {
@@ -419,6 +426,8 @@ function getClientCredentials(clientData, callback) {
 // GET /apiprov/api/v1/service_providers/2/services?_dc=1469595263636&page=1&start=0&limit=9999&sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D&group_id=64867
 //      [{"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"auto-import","modifiedBy":"auto-import","serviceId":122,"serviceProviderId":2,"name":"CCU APIs","description":"Content control utility APIs","endPoint":"/ccu","owner":"CCU","documentationUrl":"https://developer.akamai.com/","active":true,"grantModelId":3,"engProds":[{"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"ccare2","modifiedBy":"ccare2","serviceId":122,"engProdId":"EDGECONTROL"},{"createdDate":"2015-06-25T02:58:17Z","modifiedDate":"2015-06-25T02:58:17Z","createdBy":"sthaladu","modifiedBy":"sthaladu","serviceId":122,"engProdId":"WholesaleDelivery::WholesaleDelivery"}],"marketingProds":["All Products"],"grantModel":null,"grantScopes":[{"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"auto-import","modifiedBy":"auto-import","grantModelId":3,"name":"READ-ONLY","serviceId":122,"guid":"a3e90462-30ff-4354-b94a-a44a98da1c50","description":"READ-ONLY","documentationUrl":"/","allowedRateLimit":10,"permission":null},{"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"auto-import","modifiedBy":"auto-import","grantModelId":3,"name":"READ-WRITE","serviceId":122,"guid":"ece7fac1-fad4-444d-aee4-3f74fc6e35f2","description":"READ-WRITE","documentationUrl":"/","allowedRateLimit":10,"permission":null}],"grantModelName":"CCU APIs Grant model","grantModelDescription":"Grant model for CCU APIs"}]
 function getServiceProviderServices(groupId, serviceProviderId, callback) {
+    console.info("... retrieving service provide details {service id: %s}", serviceProviderId);
+
     var url = util.format("https://control.akamai.com/apiprov/api/v1/service_providers/%s/services?_dc=%d&page=1&start=0&limit=9999&sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D&group_id=%s", serviceProviderId, Date.now(), groupId);
     lunaGet(url)
         .on('response', function(response) {
@@ -431,7 +440,7 @@ function getServiceProviderServices(groupId, serviceProviderId, callback) {
             response.on('end', function() {
                 //TODO: check response
                 //TODO: validate response
-                //console.log(body);
+                //console.info(body);
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                     var services = JSON.parse(body);
                     callback(services);
@@ -448,6 +457,7 @@ function getServiceProviderServices(groupId, serviceProviderId, callback) {
 //      {"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"auto-import","modifiedBy":"auto-import","grantModelId":3,"grantRoleId":1,"jsonSchema":"content_policy {\n      global {\n        name: \"STATUS\"\n        value: \"$status\"\n      }\n      global {\n        name: \"SEQUENCE\"\n        value: \"$sequence\"\n      }\n\n      taxonomy {\n        name: \"default\"\n        category {\n          name: \"queues\"\n          condition {\n            type: REQUEST_URL_PATH_COMPONENT\n            param {\n              value: \"ccu\"\n            }\n          }\n          condition {\n            type: REQUEST_URL_PATH_COMPONENT\n            param {\n              value: \"v2\"\n            }\n          }\n          condition {\n            type: REQUEST_URL_PATH_COMPONENT\n            param {\n              value: \"queues\"\n            }\n          }\n          condition {\n            type: REQUEST_URL_FILENAME\n            param {\n    #set ($qlist_value = '' )\n    #foreach ($queue_name in $grant.validations.ccu_queue)\n    #if (\"$qlist_value\" != \"\")\n       #set ($qlist_value = $qlist_value + ' ')\n    #end\n       #set ($qlist_value = $qlist_value + $queue_name)\n    #end\n              value: \"$qlist_value\"\n              recursive: true\n            }\n            negated: true\n          }\n        }\n      }\n\n      policy {\n        name: \"SCOPE-AUTHORIZATION\"\n\n    #foreach ($scope in $grant.scopes)\n        rule {\n          selector: \"\"\n          result {\n            name: \"SCOPE\"\n            value: \"$scope\"\n          }\n          result {\n            name: \"CONSTRAINTS\"\n            value: \"\"\n          }\n        }\n    #end\n      }\n\n      policy {\n        name: \"REQUEST-VALIDATION\"\n\n        rule {\n          selector: \"//default/queues\"\n          result {\n            name: \"VALIDATOR_NAME\"\n            value: \"QUEUE_NAME: the queue name is invalid or not authorized to access the named queue.\"\n          }\n        }\n      }\n\n      policy {\n        name: \"RATE-LIMITING\"\n\n        rule {\n          selector: \"\"\n          result {\n            name: \"LIMIT\"\n            value: \"$grant.validations.rate_limit\"\n          }\n        }\n      }\n\n      policy {\n        name: \"REQUEST-DECORATION\"\n\n        rule {\n          selector: \"\"\n          result {\n            name: \"OPERATION\"\n            value: \"add\"\n          }\n          result {\n            name: \"HEADER_NAME\"\n            value: \"X-CPCODE-LIST-ID\"\n          }\n          result {\n            name: \"HEADER_VALUE\"\n            value: \"$grant.decorations.cpcode_list_id\"\n          }\n        }\n        rule {\n          selector: \"\"\n          result {\n            name: \"OPERATION\"\n            value: \"add\"\n          }\n          result {\n            name: \"HEADER_NAME\"\n            value: \"Syscomm-CCU-Purge-By-Code\"\n          }\n          result {\n            name: \"HEADER_VALUE\"\n            value: \"$grant.decorations.purge_by_cpcode\"\n          }\n        }\n      }\n\n      policy {\n        name: \"RESPONSE-DECORATION\"\n      }\n\n      policy {\n        name: \"ANNOTATION\"\n\n    #foreach ($annotation in $grant.annotations)\n        rule {\n          selector: \"\"\n          result {\n            name: \"NAME\"\n            value: \"$annotation.name\"\n          }\n          result {\n            name: \"VALUE\"\n            value: \"$annotation.value\"\n          }\n        }\n    #end\n      }\n    }","grantScopes":[{"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"auto-import","modifiedBy":"auto-import","grantModelId":3,"name":"READ-ONLY","serviceId":122,"guid":"a3e90462-30ff-4354-b94a-a44a98da1c50","description":"READ-ONLY","documentationUrl":"/","allowedRateLimit":10,"permission":null},{"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"auto-import","modifiedBy":"auto-import","grantModelId":3,"name":"READ-WRITE","serviceId":122,"guid":"ece7fac1-fad4-444d-aee4-3f74fc6e35f2","description":"READ-WRITE","documentationUrl":"/","allowedRateLimit":10,"permission":null}],"grantModelName":"CCU APIs Grant model","grantModelDescription":"Grant model for CCU APIs","grantRole":{"createdDate":"2013-09-26T03:00:20Z","modifiedDate":"2013-09-26T03:00:20Z","createdBy":"auto-import","modifiedBy":"auto-import","grantRoleId":1,"externalRoleId":1,"name":"direct-customer","description":"General Open Platform Role"},"grantModelParams":[{"grantModelId":3,"paramType":6,"externalPpsId":1,"paramName":"purge_by_cpcode","description":"Allow purge by cpcode","paramDataType":"boolean","paramCategory":"decorations","paramOrder":1,"required":true,"multiValue":false,"freeTextValueAllowed":false,"grantParamType":{"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"auto-import","modifiedBy":"auto-import","paramTypeId":6,"name":"purge_by_cpcode","description":"boolean field, true allows cpcode purge","className":"purge_by_cpcode"},"paramValues":[]},{"grantModelId":3,"paramType":7,"externalPpsId":1,"paramName":"ccu_queue","description":"Queue name for CCU","paramDataType":"string","paramCategory":"validations","paramOrder":1,"required":true,"multiValue":true,"freeTextValueAllowed":false,"grantParamType":{"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"auto-import","modifiedBy":"auto-import","paramTypeId":7,"name":"ccu_queue","description":"Queue name for CCU","className":"ccu_queue"},"paramValues":[{"name":"default","value":"default"},{"name":"emergency","value":"emergency"}]},{"grantModelId":3,"paramType":8,"externalPpsId":1,"paramName":"purge_cpcodes","description":"CP codes allowed for purge","paramDataType":"number","paramCategory":"decorations","paramOrder":8,"required":true,"multiValue":true,"freeTextValueAllowed":false,"grantParamType":{"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"auto-import","modifiedBy":"auto-import","paramTypeId":8,"name":"purge_cpcodes","description":"cpcode list","className":"purge_cpcodes"},"paramValues":[{"name":"All","value":"-1"},{"name":"geekgonenomad.com(427518)","value":"427518"},{"name":"Davey Shafik (daveyshafik.com)(409449)","value":"409449"},{"name":"NoOne (DSD)(409448)","value":"409448"},{"name":"Colin Bendell (www.bendell.ca)(384447)","value":"384447"},{"name":"www.LUNADEVESC-2434-2.com(453928)","value":"453928"},{"name":"Yoav Weiss (www.yoav.ws)(389478)","value":"389478"},{"name":"www.lunadevesc2511.com(453935)","value":"453935"},{"name":"Tim Kadlec (timkadlec.com)(383577)","value":"383577"},{"name":"Kirsten Hunter (cloudmonitor.princesspolymath.com)(383576)","value":"383576"},{"name":"Stream Packaging test(453464)","value":"453464"},{"name":"Image Purge(486109)","value":"486109"},{"name":"DevRel 2(383569)","value":"383569"},{"name":"Davey Shafik (netstorage)(383568)","value":"383568"},{"name":"DevRel 4(383571)","value":"383571"},{"name":"DevRel 3(383570)","value":"383570"},{"name":"DevRel 6(383573)","value":"383573"},{"name":"DevRel 5(383572)","value":"383572"},{"name":"NoOne (DD)(383575)","value":"383575"},{"name":"DevRel 7(383574)","value":"383574"},{"name":"Stuart Winter (Slackware.com)(262242)","value":"262242"},{"name":"Dave Lewis (www.liquidmatrix.org)(386542)","value":"386542"},{"name":"Mark Nottingham (mnot.net)(386543)","value":"386543"},{"name":"Stuart Winter (biscuit-VPWaitingRoom)(387384)","value":"387384"},{"name":"Guy Podjarny (www.guypod.com)(386541)","value":"386541"},{"name":"stuartwinter-netstorage(387385)","value":"387385"},{"name":"NS(456185)","value":"456185"},{"name":"Kirsten Hunter (princesspolymath.com)(384473)","value":"384473"},{"name":"wpostats.com(426079)","value":"426079"},{"name":"Stuart Winter (www.biscuit.org.uk)(386968)","value":"386968"},{"name":"www.bendell.ca (New IM)(463557)","value":"463557"},{"name":"www.colinbendell.com(452336)","value":"452336"},{"name":"www.bendell.ca (Origin IM)(463556)","value":"463556"},{"name":"www.liquidmatrix.org(452272)","value":"452272"},{"name":"MediaAnalyticsBillingCPCode(392763)","value":"392763"},{"name":"test.com(449161)","value":"449161"}]},{"grantModelId":3,"paramType":9,"externalPpsId":1,"paramName":"rate_limit","description":"Rate limit","paramDataType":"number","paramCategory":"validations","paramOrder":9,"required":false,"multiValue":false,"freeTextValueAllowed":false,"grantParamType":{"createdDate":"2014-08-21T03:04:56Z","modifiedDate":"2014-08-21T03:04:56Z","createdBy":"auto-import","modifiedBy":"auto-import","paramTypeId":9,"name":"rate_limit","description":"Rate limit","className":"rate_limit"},"paramValues":[{"name":"1","value":"1"},{"name":"2","value":"2"},{"name":"3","value":"3"},{"name":"4","value":"4"},{"name":"5","value":"5"},{"name":"6","value":"6"},{"name":"7","value":"7"},{"name":"8","value":"8"},{"name":"9","value":"9"},{"name":"10","value":"10"}]}]}
 
 function getServiceGrantModel(groupId, grantModelId, callback) {
+    console.info("... retrieving grant model {grant model id: %s}", grantModelId);
     var url = util.format("https://control.akamai.com/apiprov/api/v1/grant_models/%s?_dc=%d&id=%s&group_id=%s", grantModelId, Date.now(), grantModelId, groupId);
     lunaGet(url)
         .on('response', function(response) {
@@ -460,7 +470,7 @@ function getServiceGrantModel(groupId, grantModelId, callback) {
             response.on('end', function() {
                 //TODO: check response
                 //TODO: validate response
-                //console.log(body);
+                //console.info(body);
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                     var grants = JSON.parse(body);
                     callback(grants);
@@ -526,8 +536,9 @@ function createClientAuthorizations(clientData, callback) {
                         });
                 }
 
-                console.log(JSON.stringify(postData));
+                //console.info(JSON.stringify(postData));
                 var clientId = clientData.clientNode.id;
+                console.info("... creating new auth for {client id: %s}", clientId);
                 var url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations?_dc=%d", clientId, Date.now());
                 lunaPost(url)
                     .json(postData)
@@ -541,11 +552,12 @@ function createClientAuthorizations(clientData, callback) {
                         response.on('end', function() {
                             //TODO: check response
                             //TODO: validate response
-                            //console.log(body);
+                            //console.info(body);
                             if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                                 var auths = JSON.parse(body);
-                                activateAuthorization(auths.clientId, auths.clientAuthorizationId, function() {});
-                                callback(auths);
+                                activateAuthorization(auths.clientId, auths.clientAuthorizationId, function() {
+                                    callback(auths);
+                                });
                             } else {
                                 console.error('ERROR: cannot create Authorization');
                             }
@@ -567,6 +579,7 @@ function activateAuthorization(clientId, clientAuthorizationId, callback) {
         "clientAuthorizationId":clientAuthorizationId
     }
 
+    console.info("... activating {auth id: %s}", clientAuthorizationId);
     var url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations/%s?_dc=%d", clientId, clientAuthorizationId, Date.now());
     lunaPut(url)
         .json(postData)
@@ -580,9 +593,7 @@ function activateAuthorization(clientId, clientAuthorizationId, callback) {
             response.on('end', function() {
                 //TODO: check response
                 //TODO: validate response
-                //console.log(body);
-                console.log(response.statusCode);
-                console.log(response.body);
+                //console.info(body);
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                     var auths = JSON.parse(body);
                     callback(auths);
@@ -598,9 +609,9 @@ function activateAuthorization(clientId, clientAuthorizationId, callback) {
 
 // GET https://control.akamai.com/apiprov/api/v1/clients/187568/client_authorizations?_dc=1470619997753&page=1&start=0&limit=9999&sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D
 //      [{"createdDate":"2015-06-08T02:28:50Z","modifiedDate":"2015-10-28T02:37:53Z","createdBy":"colinb","modifiedBy":"colinb","clientAuthorizationId":67501,"clientId":67451,"name":"AllAuth","description":null,"accessToken":"akab-dzwyltniasx2s2fw-7ah4yypbk7bcii65","status":"active","testStatus":"active","lastTestDate":"2015-10-28T02:37:53Z","activeVersionId":5}]
-
 function getClientAuthorizations(clientData, callback) {
     var clientId = clientData.clientNode.id;
+    console.info("... retrieving auths for {client id: %s}", clientId);
     var url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations?_dc=%d", clientId, Date.now());
     lunaGet(url)
         .on('response', function(response) {
@@ -615,7 +626,7 @@ function getClientAuthorizations(clientData, callback) {
                 //TODO: validate response
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                     var auths = JSON.parse(body);
-                    //console.log(clientCreds);
+                    //console.info(clientCreds);
                     auths = auths.filter(function(val) {return val && val.status && val.status === 'active'});
                     if (!auths || auths.length < 1) {
                         createClientAuthorizations(clientData, function(newData) {
@@ -633,19 +644,30 @@ function getClientAuthorizations(clientData, callback) {
     });
 }
 
-
 var args = process.argv.slice(2);
 loginLuna(args[0], args[1], function() {
     var clientData = {
         'serviceProviderName': _LUNA_API_SERVICE_PROVIDER,
-        'collectionName': 'cbtestcoll',
-        'clientName': 'cbtestapp',
+        'collectionName': 'cbtestcoll5',
+        'clientName': 'cbtestapp5',
         'grantScopes': 'READ-WRITE'
     }
-    getClientCredentials(clientData, function(node) {
-        console.log(node.credentials);
-        getClientAuthorizations(clientData, function (node) {
-            console.log(node.authorizations);
+    getClientCredentials(clientData, function(clientData) {
+        getClientAuthorizations(clientData, function (clientData) {
+            // console.info(clientData.credentials);
+            // console.info(clientData.authorizations);
+            var counter = 0;
+            clientData.credentials.forEach(function(cred) {
+                clientData.authorizations.forEach(function(auth) {
+                    console.log("[luna-%s%s]", clientData.clientName, counter > 1 ? counter : '');
+                    console.log("client_secret = %s", cred.secret);
+                    console.log("host = %s", auth.fullUrl);
+                    console.log("access_token = %s", auth.accessToken);
+                    console.log("client_token = %s", cred.clientToken);
+                    console.log("max_body = 131072")
+                })
+            })
+
         });
     });
 });
