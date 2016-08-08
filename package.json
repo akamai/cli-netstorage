@@ -1,0 +1,11 @@
+{
+  "name": "AkaBootstrap",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/createKeys"
+  },
+  "dependencies": {
+    "request": "~2.74.0"
+  }
+}
