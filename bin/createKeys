@@ -14,57 +14,44 @@ let util = require('util');
 
 let sessionJar = request.jar();
 
-function lunaPost(url) {
-    //console.info(url);
+function extend(target) {
+    let sources = [].slice.call(arguments, 1);
+    sources.forEach(function (source) {
+        for (let prop in source) {
+            target[prop] = source[prop];
+        }
+    });
+    return target;
+}
+
+function lunaRequest(method, url, options, callback) {
+    if (typeof(options) == 'function') {
+        callback = options;
+        options = {};
+    }
 
     //    followAllRedirects: true,
-    let options  = {
+    options = extend({}, options, {
+        method: method,
+        uri: url,
         jar: sessionJar,
+        gzip: true,
         headers: {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
             'Referer': 'https://control.akamai.com/EdgeAuth/logindirect.jsp',
             'Origin': 'https://control.akamai.com',
             'Accept': '*/*'
         }
-    };
-    return request.post(url, options);
+    });
 
-}
-
-function lunaPut(url) {
-    //console.info(url);
-
-    //    followAllRedirects: true,
-    let options  = {
-        jar: sessionJar,
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
-            'Referer': 'https://control.akamai.com/EdgeAuth/logindirect.jsp',
-            'Origin': 'https://control.akamai.com',
-            'Accept': '*/*'
+    return request(options, function(error, response, body) {
+        if (error) {
+            Promise.reject(Error('problem with request: ' + e.message));
+        } else {
+            callback(response, body);
         }
-    };
-    return request.put(url, options);
-
+    });
 }
-
-function lunaGet(url) {
-    //console.info(url);
-
-    //    followAllRedirects: true,
-    let options  = {
-        jar: sessionJar,
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
-            'Referer': 'https://control.akamai.com/EdgeAuth/logindirect.jsp',
-            'Origin': 'https://control.akamai.com',
-            'Accept': '*/*'
-        }
-    };
-    return request.get(url, options);
-}
-
-
 
 // curl 'https://control.akamai.com/EdgeAuth/asyncUserLogin'
 // -H 'Origin: https://control.akamai.com' -H 'Accept-Encoding: gzip, deflate, br'
@@ -81,33 +68,24 @@ function lunaGet(url) {
  * product by the need to create an intermediate page for login.
  * @param callback
  */
-function getLunaToken(callback) {
-
+function getLunaToken() {
     console.info("... retrieving luna session cookies");
     let url = "https://control.akamai.com/EdgeAuth/login.jsp";
-    lunaGet(url)
-        .on('response', function(response) {
-
-            let body = '';
-            response.on('data', function(d) {
-                body += d;
-            });
-            response.on('end', function() {
-                if (response.statusCode != 200) {
-                    console.error('ERROR: cannot contact https://control.akamai.com');
-                    process.exit(1);
-                }
-
+    let p = new Promise((resolve, reject) => lunaRequest('GET', url,
+        function(response, body) {
+            if (response.statusCode != 200) {
+                reject(Error('cannot contact https://control.akamai.com'));
+            } else {
                 let matches = body.match(/name=["']?TARGET_URL["']?.*value=["']?([A-Za-z0-9]+).*/);
-                if (matches) {
-                    callback(matches[1]);
+                if (!matches) {
+                    reject(Error('cannot find <input name="TARGET_URL" value="" > in the login form'));
                 } else {
-                    console.error('ERROR: cannot find <input name="TARGET_URL" value="" > in the login form');
+                    resolve(matches[1]);
                 }
-            });
-        }).on('error', function(e) {
-            console.error('ERROR: problem with request: ' + e.message);
-        });
+            }
+        }
+    ));
+    return p;
 }
 
 /**
@@ -119,8 +97,7 @@ function getLunaToken(callback) {
  * @param targeturl
  * @param callback
  */
-function getLunaSession(username, password, targeturl, callback) {
-
+function getLunaSession(username, password, targeturl) {
     let postData = {
         'TARGET_URL' : targeturl,
         'username': username,
@@ -130,25 +107,17 @@ function getLunaSession(username, password, targeturl, callback) {
 
     console.info("... logging into luna {user: %s}", username);
     let url = "https://control.akamai.com/EdgeAuth/asyncUserLogin";
-    lunaPost(url)
-        .form(postData)
-        .on('response', function(response) {
-            response.on('end', function() {
-                //console.info(response.statusCode);
-                //console.info(response.headers['location']);
-                //console.info(sessionJar);
-
+    let p = new Promise((resolve, reject) =>
+        lunaRequest('POST', url,
+            function(response, body) {
                 if (response.statusCode != 302 || response.headers['location'] !== 'https://control.akamai.com/homeng/view/main') {
-                    console.error('ERROR: login failure!');
-                    process.exit(1);
+                    reject(Error('login failure!'));
+                } else {
+                    resolve();
                 }
-                callback();
-
-            });
-        })
-        .on('error', function(e) {
-            console.error('ERROR: problem with request: ' + e.message);
-        });
+            }
+        ).form(postData));
+    return p;
 }
 
 /**
@@ -159,8 +128,12 @@ function getLunaSession(username, password, targeturl, callback) {
  */
 function loginLuna(username, password, callback) {
     console.info("[Luna Login]");
-    getLunaToken(function(targeturl) {
-       getLunaSession(username, password, targeturl, callback);
+    getLunaToken()
+    .then((targeturl) => getLunaSession(username, password, targeturl))
+    .then(() => callback())
+    .catch((error) => {
+        console.error("ERROR: ", error)
+        process.exit(1);
     });
 }
 
@@ -175,36 +148,29 @@ function loginLuna(username, password, callback) {
  *
  * @param callback
  */
-function getAPIGroup(callback) {
+function getAPIGroup() {
     console.info("... retrieving default contract group id");
     let url = "https://control.akamai.com/ui/services/nav/megamenu/currentUser/grp.json";
-    lunaGet(url)
-        .on('response', function(response) {
-            let body = '';
-            response.on('data', function(d) {
-                body += d;
-            });
-            response.on('end', function() {
+    let p = new Promise((resolve, reject) =>
+        lunaRequest('GET', url,
+            function(response, body) {
                 //TODO: check auth
                 //console.info(body);
                 let matches = body.match(/\/apiprov\/\?tab=CONFIGURE&type=context&gid=['"]?(\d+)\D/);
-
-                if (matches) {
-                    let groupID = matches[1];
-                    callback(groupID);
-                }
-                else {
-                    console.error("ERROR: cannot find the API Management control in the megamenu");
-                }
-
                 //let parsed = JSON.parse(body);
                 //something like the jpath below. Faster/more convenient to use a regex...
                 //parsed.tabs[.name==="Configure"].columns[.mainMenuItems[.name==="Organization"]].mainMenuItems[.name==="Organization"].subMenuItems[.name==="Manage APIs"].url
 
-            });
-        }).on('error', function(e) {
-        console.error('ERROR problem with request: ' + e.message);
-    });
+                if (matches) {
+                    let groupID = matches[1];
+                    resolve(groupID);
+                }
+                else {
+                    reject(Error("ERROR: cannot find the API Management control in the megamenu"));
+                }
+            }
+        ));
+    return p;
 }
 
 // navtree
@@ -216,28 +182,20 @@ function getAPINavTree(groupId, callback) {
         groupId = false;
     }
     if (!groupId) {
-        getAPIGroup(function (newGroupID) { getAPINavTree(newGroupID, callback);});
+        getAPIGroup()
+        .then((newGroupID) => getAPINavTree(newGroupID, callback));
         return;
     }
     console.info("... retrieving API nav tree {contract group id: %s}", groupId);
     let url = util.format("https://control.akamai.com/apiprov/api/v1/ui/navtree/%s?sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D&node=root", groupId);
-    lunaGet(url)
-        .on('response', function(response) {
-            //TODO: check auth failure
+    lunaRequest('GET', url,
+        function(response, body) {
+            // console.info(body);
+            let parsed = JSON.parse(body);
+            callback(groupId, parsed);
+            // console.info(parsed);
+        });
 
-            let body = '';
-            response.on('data', function(d) {
-                body += d;
-            });
-            response.on('end', function() {
-                // console.info(body);
-                let parsed = JSON.parse(body);
-                callback(groupId, parsed);
-                // console.info(parsed);
-            });
-        }).on('error', function(e) {
-        console.error('problem with request: ' + e.message);
-    });
 }
 
 const _LUNA_API_SERVICE_PROVIDER = "Luna APIs";
@@ -274,30 +232,20 @@ function getAPICollection(clientData, callback) {
 
             console.info("... creating new app collection {name: '%s', service provider id: %s}", clientData.collectionName, serviceID);
             let url = util.format("https://control.akamai.com/apiprov/api/v1/client_collections?_dc=%d", Date.now());
-            lunaPost(url)
-                .json(postData)
-                .on('response', function(response) {
-                    //TODO: check auth failure
+            lunaRequest('POST', url,
+                function(response, body) {
+                    //TODO: check response
 
-                    let body = '';
-                    response.on('data', function(d) {
-                        body += d;
-                    });
-                    response.on('end', function() {
-                        //TODO: check response
-
-                        //console.info(body);
-                        childNode = JSON.parse(body);
-                        //shim the response
-                        childNode.id = childNode.clientCollectionId;
-                        childNode.children = [];
-                        clientData.collectionNode = childNode;
-                        callback(clientData);
-                        // console.info(clientData);
-                    });
-                }).on('error', function(e) {
-                console.error('ERROR problem with request: ' + e.message);
-            });
+                    // console.info(body);
+                    // childNode = JSON.parse(body);
+                    //shim the response
+                    body.id = body.clientCollectionId;
+                    body.children = [];
+                    clientData.collectionNode = body;
+                    callback(clientData);
+                    // console.info(clientData);
+                })
+                .json(postData);
         } else {
             clientData.collectionNode = childNode;
             callback(clientData);
@@ -321,30 +269,16 @@ function getClient(clientData, callback) {
 
             console.info("... creating new client app {name: '%s', collection id: %s}", clientData.clientName, clientData.collectionNode.id);
             let url = util.format("https://control.akamai.com/apiprov/api/v1/clients?_dc=%d", Date.now());
-            lunaPost(url)
-                .json(postData)
-                .on('response', function(response) {
-                    //TODO: check auth failure
-
-                    let body = '';
-                    response.on('data', function(d) {
-                        body += d;
-                    });
-                    response.on('end', function() {
-                        //TODO: check response
-                        //TODO: validate response
-
-                        //console.info(body);
-                        clientNode = JSON.parse(body);
-                        //shim the response
-                        clientNode.id = clientNode.clientId;
-                        clientData.clientNode = clientNode;
-                        callback(clientData);
-                        // console.info(clientData);
-                    });
-                }).on('error', function(e) {
-                console.error('ERROR problem with request: ' + e.message);
-            });
+            lunaRequest('POST', url,
+                function(response, body) {
+                    //clientNode = JSON.parse(body);
+                    //shim the response
+                    body.id = body.clientId;
+                    clientData.clientNode = body;
+                    callback(clientData);
+                    // console.info(clientData);
+                }
+            ).json(postData);
         } else {
             clientData.clientNode = clientNode;
             callback(clientData);
@@ -358,28 +292,17 @@ function createClientCredentials(clientData, callback) {
     let clientId = clientData.clientNode.id;
     console.info("... creating new app credentials {client id: %s}", clientId);
     let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%d/credentials", clientId);
-    lunaPost(url)
-        .on('response', function(response) {
-            //TODO: check auth failure
-
-            let body = '';
-            response.on('data', function(d) {
-                body += d;
-            });
-            response.on('end', function() {
-                //TODO: check response
-                //TODO: validate response
-                if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    let clientCreds = JSON.parse(body);
-                    //console.info(clientCreds);
-                    callback(clientCreds);
-                } else {
-                    console.error('ERROR: could not create credentials')
-                }
-            });
-        }).on('error', function(e) {
-        console.error('ERROR problem with request: ' + e.message);
-    });
+    lunaRequest('POST', url,
+        function(response, body) {
+            if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
+                //let clientCreds = JSON.parse(body);
+                //console.info(clientCreds);
+                callback(body);
+            } else {
+                console.error('ERROR: could not create credentials')
+            }
+        }
+    );
 }
 
 // GET /apiprov/api/v1/clients/183768/credentials?_dc=1469595322474&page=1&start=0&limit=9999&sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D&filter=%5B%7B%22property%22%3A%22status%22%2C%22value%22%3Aundefined%7D%5D
@@ -390,35 +313,26 @@ function getClientCredentials(clientData, callback) {
         let clientId = clientData.clientNode.id;
         console.info("... retrieving app credentials {client id: %s}", clientId);
         let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/credentials?_dc=%d", clientId, Date.now());
-        lunaGet(url)
-            .on('response', function(response) {
-                //TODO: check auth failure
-
-                let body = '';
-                response.on('data', function(d) {
-                    body += d;
-                });
-                response.on('end', function() {
-                    //TODO: check response
-                    //TODO: validate response
-                    if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                        let clientCreds = JSON.parse(body);
-                        //console.info(clientCreds);
-                        clientCreds = clientCreds.filter(function(val) {return val && val.status && val.status === 'active'});
-                        if (!clientCreds || clientCreds.length < 1) {
-                            createClientCredentials(clientData, function(newData) {
-                                clientData.credentials = [newData];
-                                callback(clientData);
-                            })
-                        } else {
-                            clientData.credentials = clientCreds;
+        lunaRequest('GET', url,
+            function(response, body) {
+                //TODO: check response
+                //TODO: validate response
+                if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
+                    let creds = JSON.parse(body);
+                    //console.info(clientCreds);
+                    creds = creds.filter(function(val) {return val && val.status && val.status === 'active'});
+                    if (!creds || creds.length < 1) {
+                        createClientCredentials(clientData, function(newData) {
+                            clientData.credentials = [newData];
                             callback(clientData);
-                        }
+                        })
+                    } else {
+                        clientData.credentials = creds;
+                        callback(clientData);
                     }
-                });
-            }).on('error', function(e) {
-            console.error('ERROR problem with request: ' + e.message);
-        });
+                }
+            }
+        );
     });
 }
 
@@ -429,28 +343,19 @@ function getServiceProviderServices(groupId, serviceProviderId, callback) {
     console.info("... retrieving service provide details {service id: %s}", serviceProviderId);
 
     let url = util.format("https://control.akamai.com/apiprov/api/v1/service_providers/%s/services?_dc=%d&page=1&start=0&limit=9999&sort=%5B%7B%22property%22%3A%22name%22%2C%22direction%22%3A%22ASC%22%7D%5D&group_id=%s", serviceProviderId, Date.now(), groupId);
-    lunaGet(url)
-        .on('response', function(response) {
-            //TODO: check auth failure
-
-            let body = '';
-            response.on('data', function(d) {
-                body += d;
-            });
-            response.on('end', function() {
-                //TODO: check response
-                //TODO: validate response
-                //console.info(body);
-                if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    let services = JSON.parse(body);
-                    callback(services);
-                } else {
-                    console.error('ERROR: cannot get Service Provider Services');
-                }
-            });
-        }).on('error', function(e) {
-        console.error('ERROR problem with request: ' + e.message);
-    });
+    lunaRequest('GET', url,
+        function(response, body) {
+            //TODO: check response
+            //TODO: validate response
+            //console.info(body);
+            if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
+                let services = JSON.parse(body);
+                callback(services);
+            } else {
+                console.error('ERROR: cannot get Service Provider Services');
+            }
+        }
+    )
 }
 
 // GET /apiprov/api/v1/grant_models/3?_dc=1469595273209&id=3&group_id=64867
@@ -459,29 +364,19 @@ function getServiceProviderServices(groupId, serviceProviderId, callback) {
 function getServiceGrantModel(groupId, grantModelId, callback) {
     console.info("... retrieving grant model {grant model id: %s}", grantModelId);
     let url = util.format("https://control.akamai.com/apiprov/api/v1/grant_models/%s?_dc=%d&id=%s&group_id=%s", grantModelId, Date.now(), grantModelId, groupId);
-    lunaGet(url)
-        .on('response', function(response) {
-            //TODO: check auth failure
-
-            let body = '';
-            response.on('data', function(d) {
-                body += d;
-            });
-            response.on('end', function() {
-                //TODO: check response
-                //TODO: validate response
-                //console.info(body);
-                if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    let grants = JSON.parse(body);
-                    callback(grants);
-                } else {
-                    console.error('ERROR: cannot get GrantModel');
-                }
-            });
-        }).on('error', function(e) {
-        console.error('ERROR problem with request: ' + e.message);
-    });
-
+    lunaRequest('GET', url,
+        function(response, body) {
+            //TODO: check response
+            //TODO: validate response
+            //console.info(body);
+            if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
+                let grants = JSON.parse(body);
+                callback(grants);
+            } else {
+                console.error('ERROR: cannot get GrantModel');
+            }
+        }
+    );
 }
 
 // create authorization
@@ -543,31 +438,21 @@ function createClientAuthorizations(clientData, callback) {
                 let clientId = clientData.clientNode.id;
                 console.info("... creating new auth for {client id: %s}", clientId);
                 let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations?_dc=%d", clientId, Date.now());
-                lunaPost(url)
-                    .json(postData)
-                    .on('response', function(response) {
-                        //TODO: check auth failure
-
-                        let body = '';
-                        response.on('data', function(d) {
-                            body += d;
-                        });
-                        response.on('end', function() {
-                            //TODO: check response
-                            //TODO: validate response
-                            //console.info(body);
-                            if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                                let auths = JSON.parse(body);
-                                activateAuthorization(auths.clientId, auths.clientAuthorizationId, function() {
-                                    callback(auths);
-                                });
-                            } else {
-                                console.error('ERROR: cannot create Authorization');
-                            }
-                        });
-                    }).on('error', function(e) {
-                    console.error('ERROR problem with request: ' + e.message);
-                });
+                lunaRequest('POST', url,
+                    function(response, body) {
+                        //TODO: check response
+                        //TODO: validate response
+                        //console.info(body);
+                        if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
+                            //let auths = JSON.parse(body);
+                            activateAuthorization(body.clientId, body.clientAuthorizationId, function() {
+                                callback(body);
+                            });
+                        } else {
+                            console.error('ERROR: cannot create Authorization');
+                        }
+                    }
+                ).json(postData);
             });
         }
     });
@@ -584,29 +469,19 @@ function activateAuthorization(clientId, clientAuthorizationId, callback) {
 
     console.info("... activating {auth id: %s}", clientAuthorizationId);
     let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations/%s?_dc=%d", clientId, clientAuthorizationId, Date.now());
-    lunaPut(url)
-        .json(postData)
-        .on('response', function(response) {
-            //TODO: check auth failure
-
-            let body = '';
-            response.on('data', function(d) {
-                body += d;
-            });
-            response.on('end', function() {
-                //TODO: check response
-                //TODO: validate response
-                //console.info(body);
-                if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    let auths = JSON.parse(body);
-                    callback(auths);
-                } else {
-                    console.error('ERROR: cannot activate Authorization');
-                }
-            });
-        }).on('error', function(e) {
-        console.error('ERROR problem with request: ' + e.message);
-    });
+    lunaRequest('PUT', url,
+        function(response, body) {
+            //TODO: check response
+            //TODO: validate response
+            //console.info(body);
+            if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
+                //let auths = JSON.parse(body);
+                callback(body);
+            } else {
+                console.error('ERROR: cannot activate Authorization');
+            }
+        }
+    ).json(postData);
 }
 
 
@@ -616,39 +491,30 @@ function getClientAuthorizations(clientData, callback) {
     let clientId = clientData.clientNode.id;
     console.info("... retrieving authorization list {client id: %s}", clientId);
     let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations?_dc=%d", clientId, Date.now());
-    lunaGet(url)
-        .on('response', function(response) {
-            //TODO: check auth failure
-
-            let body = '';
-            response.on('data', function(d) {
-                body += d;
-            });
-            response.on('end', function() {
-                //TODO: check response
-                //TODO: validate response
-                if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    let auths = JSON.parse(body);
-                    let authDetails = [];
-                    //console.info(clientCreds);
-                    auths = auths.filter(function(val) {return val && val.status && val.status === 'active'});
-                    if (!auths || auths.length < 1) {
-                        createClientAuthorizations(clientData, function(newData) {
-                            clientData.authorizations = [newData];
-                            callback(clientData);
-                        })
-                    } else {
-                        Promise.all(auths.map(v => new Promise((resolve, reject) => getAuthorizationDetails(v.clientId, v.clientAuthorizationId, resolve))))
-                            .then(detailedAuths => {
-                                clientData.authorizations = detailedAuths;
-                                callback(clientData);
-                            });
-                    }
+    lunaRequest('GET', url,
+        function(response, body) {
+            //TODO: check response
+            //TODO: validate response
+            if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
+                let auths = JSON.parse(body);
+                let authDetails = [];
+                //console.info(clientCreds);
+                auths = auths.filter(function(val) {return val && val.status && val.status === 'active'});
+                if (!auths || auths.length < 1) {
+                    createClientAuthorizations(clientData, function(newData) {
+                        clientData.authorizations = [newData];
+                        callback(clientData);
+                    })
+                } else {
+                    Promise.all(auths.map(v => new Promise((resolve, reject) => getAuthorizationDetails(v.clientId, v.clientAuthorizationId, resolve))))
+                    .then(detailedAuths => {
+                        clientData.authorizations = detailedAuths;
+                        callback(clientData);
+                    });
                 }
-            });
-        }).on('error', function(e) {
-        console.error('ERROR problem with request: ' + e.message);
-    });
+            }
+        }
+    );
 }
 
 // GET https://control.akamai.com/apiprov/api/v1/clients/188573/client_authorizations/171768?_dc=1470662414284
@@ -657,33 +523,27 @@ function getAuthorizationDetails(clientId, authorizationId, callback)
 {
     console.info("... retrieving auth details {auth id: %s}", authorizationId);
     let url = util.format("https://control.akamai.com/apiprov/api/v1/clients/%s/client_authorizations/%s?_dc=%d", clientId, authorizationId, Date.now());
-    lunaGet(url)
-        .on('response', function(response) {
-            //TODO: check auth failure
-
-            let body = '';
-            response.on('data', function(d) {
-                body += d;
-            });
-            response.on('end', function() {
-                //TODO: check response
-                //TODO: validate response
-                if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
-                    let auth = JSON.parse(body);
-                    callback(auth);
-                }
-            });
-        }).on('error', function(e) {
-        console.error('ERROR problem with request: ' + e.message);
-    });
+    lunaRequest('GET', url,
+        function(response, body) {
+            //TODO: check response
+            //TODO: validate response
+            if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
+                let auth = JSON.parse(body);
+                callback(auth);
+            }
+        }
+    );
 }
 
 let args = process.argv.slice(2);
-loginLuna(args[0], args[1], function() {
+let username = args[0];
+let password = args[1];
+
+loginLuna(username, password, function() {
     let clientData = {
         'serviceProviderName': _LUNA_API_SERVICE_PROVIDER,
-        'collectionName': 'cbtestcoll2',
-        'clientName': 'cbtestapp2',
+        'collectionName': 'cbtestcoll4',
+        'clientName': 'cbtestapp4',
         'grantScopes': 'READ-WRITE'
     };
     getClientCredentials(clientData, function(clientData) {
