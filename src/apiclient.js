@@ -73,7 +73,6 @@ APIClient.prototype._getAPINavTree = function(groupId) {
                 let navtree = JSON.parse(response.body);
                 navtree.groupId = groupId;
                 resolve(navtree);
-                // console.info(parsed);
             });
         });
 };
@@ -175,7 +174,6 @@ APIClient.prototype._getClient = function(queryData) {
                         queryData._clientNode = body;
                         queryData.clientId = queryData._clientNode.id;
                         resolve(queryData);
-                        // console.info(clientData);
                     });
                 });
         } else {
@@ -199,7 +197,6 @@ APIClient.prototype._createClientCredentials = function(clientData) {
             console.info("... creating new app credentials {client id: %s}", clientId);
             if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                 let clientCreds = JSON.parse(response.body);
-                //console.info(clientCreds);
                 resolve(clientCreds);
             } else {
                 reject(Error('ERROR: could not create credentials'));
@@ -224,7 +221,6 @@ APIClient.prototype._getClientCredentials = function(clientData) {
             //TODO: validate response
             if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                 let creds = JSON.parse(body);
-                //console.info(clientCreds);
                 creds = creds.filter(function(val) {return val && val.status && val.status === 'active'});
                 if (!creds || creds.length < 1) {
                     return this._createClientCredentials(clientData)
@@ -259,7 +255,6 @@ APIClient.prototype._getServiceProviderServices = function(groupId, serviceProvi
                 console.info("... retrieving service provide details {service id: %s}", serviceProviderId);
                 //TODO: check response
                 //TODO: validate response
-                //console.info(body);
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                     let services = JSON.parse(body);
                     resolve(services);
@@ -283,7 +278,6 @@ APIClient.prototype._getServiceGrantModel = function(groupId, grantModelId) {
                 console.info("... retrieving grant model {grant model id: %s}", grantModelId);
                 //TODO: check response
                 //TODO: validate response
-                //console.info(body);
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                     let grants = JSON.parse(body);
                     resolve(grants);
@@ -311,7 +305,7 @@ APIClient.prototype._createClientAuthorizations = function(clientData) {
                 return val && val.active && val.active == true
             });
 
-            if (serviceProviderDetails && serviceProviderDetails.length > 1) {
+            if (serviceProviderDetails && serviceProviderDetails.length > 0) {
                 let grandModelId = serviceProviderDetails[0].grantModelId;
                 // Step 2: Get the grant Model. this tells us which services are available and which params are needed. This
                 // is really overly complicated and the naming is misleading because there really aren't 'roles' just a bunch
@@ -336,7 +330,7 @@ APIClient.prototype._createClientAuthorizations = function(clientData) {
                 // match the grant scope (eg: READ-ONLY). There isn't a convenient way to scope this to just a few
                 // grants. This would have to be done manually
 //                    postData.services = grantDetails.grantScopes
-                postData.services = [].concat(..._serviceProviderDetails
+                postData.services = [].concat(...serviceProviderDetails
                     .map(function (val) {
                             return val.grantScopes
                                 .filter(function (val) {
@@ -366,7 +360,6 @@ APIClient.prototype._createClientAuthorizations = function(clientData) {
                     });
             }
 
-            //console.info(JSON.stringify(postData));
             let clientId = clientData.clientId;
             let url = util.format("/apiprov/api/v1/clients/%s/client_authorizations?_dc=%d", clientId, Date.now());
             return this._luna.request('POST', url, {json: postData});
@@ -378,7 +371,6 @@ APIClient.prototype._createClientAuthorizations = function(clientData) {
             console.info("... creating new auth for {client id: %s}", clientId);
             //TODO: check response
             //TODO: validate response
-            //console.info(body);
             if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                 //let auths = JSON.parse(body);
                 return this._activateAuthorization(body.clientId, body.clientAuthorizationId, body);
@@ -407,7 +399,6 @@ APIClient.prototype._activateAuthorization = function(clientId, clientAuthorizat
                 console.info("... activating {auth id: %s}", clientAuthorizationId);
                 //TODO: check response
                 //TODO: validate response
-                //console.info(body);
                 if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                     //let auths = JSON.parse(body);
                     resolve(payload);
@@ -433,7 +424,6 @@ APIClient.prototype._getClientAuthorizations = function(clientData) {
             if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                 let auths = JSON.parse(body);
                 let authDetails = [];
-                //console.info(clientCreds);
                 auths = auths.filter(function (val) {
                     return val && val.status && val.status === 'active'
                 });
@@ -564,19 +554,20 @@ function _qualifyGrants(grant) {
  * @returns {Promise.<TResult>}
  */
 APIClient.prototype.getEdgeRC = function(appName) {
-    this.getCredential(appName)
-    .then(() => {
+    return this.getCredential(appName)
+    .then(clientData => {
         let counter = 0;
-        data.credentials.forEach(function(cred) {
-            data.authorizations.forEach(function(auth) {
-                console.log("\n[luna-%s-%s%s]", data.app.folder, data.app.name, counter++ > 0 ? '-'+counter : '');
+        clientData.credentials.forEach(function(cred) {
+            clientData.authorizations.forEach(function(auth) {
+                console.log("\n[luna-%s-%s%s]", clientData.app.folder, clientData.app.name, counter++ > 0 ? '-'+counter : '');
                 console.log("client_secret = %s", cred.secret);
                 console.log("host = %s", auth.fullUrl);
                 console.log("access_token = %s", auth.accessToken);
                 console.log("client_token = %s", cred.clientToken);
                 console.log("max_body = 131072")
             })
-        })
+        });
+        return new Promise((resolve, reject) => { resolve(clientData)});
     });
 
 };
@@ -593,7 +584,8 @@ APIClient.prototype.getCredential = function(appName) {
         .then(() => { return Promise.all([
             this._getClientCredentials(data),
             this._getClientAuthorizations(data)]);
-        });
+        })
+        .then(() => new Promise((resolve, reject) => { resolve(data)}))
 };
 
 /**
@@ -638,8 +630,10 @@ APIClient.prototype.createCredential = function (appName,
  */
 APIClient.prototype.rotateCredential = function(appName, expirationDate, options = {alwaysCreateNew: true}) {
     let stillValidCreds = 0;
+    let data = null;
     this.getCredential(appName)
     .then(clientData => {
+        data = clientData;
         return Promise.all(
             queryData.credentials.map(v => {
                 let createdDate = v.createdDate ? new Date(v.createdDate) : Date.now();
@@ -654,8 +648,8 @@ APIClient.prototype.rotateCredential = function(appName, expirationDate, options
         );
     })
     .then(() => {
-        if (options.alwaysCreateNew) return this._createClientCredentials(query);
-        return new Promise((resolve, reject) => { resolve(query)});
+        if (options.alwaysCreateNew) return this._createClientCredentials(data);
+        return new Promise((resolve, reject) => { resolve(data)});
     });
 };
 

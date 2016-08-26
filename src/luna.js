@@ -109,7 +109,7 @@ Luna.prototype.request = function(method, url, options = {}) {
  */
 Luna.prototype._getLunaToken = function() {
     let url = "/EdgeAuth/login.jsp";
-    if (this.options.cookieJar.getCookies(url).length > 0) {
+    if (this.options.cookieJar.getCookies(this.options.host + url).length > 0) {
         return new Promise((resolve, reject) => resolve());
     }
     return this.request('GET', url)
@@ -147,8 +147,8 @@ Luna.prototype._getLunaSession = function(lunatoken) {
         'login' : 'Log In'
     };
 
-    let url = "https://control.akamai.com/EdgeAuth/asyncUserLogin";
-    if (this.options.cookieJar.getCookies(url).length > 2) {
+    let url = "/EdgeAuth/asyncUserLogin";
+    if (this.options.cookieJar.getCookies(this.options.host + url).length > 2) {
         return new Promise(resolve => resolve());
     }
     return this.request('POST', url, {form: postData})

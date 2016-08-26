@@ -10,27 +10,29 @@ function main()
     let dns = new DNS();
 
     let args = process.argv.slice(2);
-    let appName = APIClient.SERVICE_PROVIDER.CCU + "/default-colin/colin-test2";
+    let appName = APIClient.SERVICE_PROVIDER.CCU + "/colin-test2";
     let endpoint = {};
     let auth = {
         username: args[0],
         password: args[1]
     };
-    // api.createCredential(appName)
-    //     .then(() => api.getEdgeRC(appName))
-    //     .catch((error) => {
-    //         console.error("ERROR: ", error);
-    //     });
+    api.createCredential(appName)
+        .then(() => api.createCredential(appName))
+        .then(() => api.getEdgeRC(appName))
+        .then(() => api.deleteCredential(appName, null, {disableOnly: false}))
+        .catch((error) => {
+            console.error("ERROR: ", error);
+        });
 
     // api.getEdgeRC(appName)
     // .catch((error) => {
     //     console.error("ERROR: ", error);
     // });
 
-    api.deleteCredential(appName, null, {disableOnly: false})
-        .catch((error) => {
-            console.error("ERROR: ", error);
-        });
+    // api.deleteCredential(appName, null, {disableOnly: false})
+    //     .catch((error) => {
+    //         console.error("ERROR: ", error);
+    //     });
 
     // dns.createDNSZone("edge2016.com")
     // .catch((error) => {
