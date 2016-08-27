@@ -243,7 +243,7 @@ DNS.prototype.create = function() {
  * @returns {Promise} zoneDetails. {} if the zone doesn't exist
  */
 DNS.prototype.retrieve = function() {
-    //TODO
+    //TODO do a zonecheck
     return this._getDNSZone(this._zone);
 };
 
@@ -253,7 +253,7 @@ DNS.prototype.retrieve = function() {
  * @returns {Promise} zone name (example.com) if successful
  */
 DNS.prototype.delete = function() {
-    //TODO
+    //TODO do a zonecheck
     return this._getDNSZone(this._zone)
         .then((zoneDetails) => this._deleteDNSZone(zoneDetails));
 };
@@ -267,7 +267,7 @@ DNS.prototype.delete = function() {
  * @returns {Promise} zoneDetails after the record has been updated
  */
 DNS.prototype.getRecord = function(recordName = "", type="NS") {
-    //TODO
+    //TODO do a zonecheck
     if (!recordName || recordName === "")
         recordName = null;
 
@@ -295,7 +295,7 @@ DNS.prototype.getRecord = function(recordName = "", type="NS") {
  * @returns {Promise} zoneDetails after the record has been updated
  */
 DNS.prototype.addRecord = function(recordName, records=[{target: "www.example.com", ttl: 30, active: true}], type="CNAME") {
-    //TODO
+    //TODO do a zonecheck
     if (!recordName || recordName === "")
         recordName = null;
 
@@ -333,7 +333,7 @@ DNS.prototype.addRecord = function(recordName, records=[{target: "www.example.co
 */
 
 DNS.prototype.updateRecord = function(recordName, records=[{target: "www.example.com", ttl: 30, active: true}], type="CNAME") {
-    //TODO
+    //TODO do a zonecheck
     if (!recordName || recordName === "")
         recordName = null;
 
@@ -368,6 +368,7 @@ DNS.prototype.updateRecord = function(recordName, records=[{target: "www.example
  * @returns {Promise} zoneDetails after the record has been updated
  */
 DNS.prototype.deleteRecord = function(recordName, type="CNAME") {
+    //TODO do a zonecheck
     if (!recordName || recordName === "")
         recordName = null;
 
