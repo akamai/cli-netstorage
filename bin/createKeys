@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 
 let APIClient = require('../src/apiclient');
-let DNS = require('../src/apiclient');
+let DNS = require('../src/dns');
 
 
 function main()
 {
     let api = new APIClient();
-    let dns = new DNS();
 
     let args = process.argv.slice(2);
     let appName = APIClient.SERVICE_PROVIDER.CCU + "/colin-test2";
@@ -16,13 +15,13 @@ function main()
         username: args[0],
         password: args[1]
     };
-    api.createCredential(appName)
-        .then(() => api.createCredential(appName))
-        .then(() => api.getEdgeRC(appName))
-        .then(() => api.deleteCredential(appName, null, {disableOnly: false}))
-        .catch((error) => {
-            console.error("ERROR: ", error);
-        });
+//     api.createCredential(appName)
+//         .then(() => api.createCredential(appName))
+//         .then(() => api.getEdgeRC(appName))
+// //        .then(() => api.deleteCredential(appName, null, {disableOnly: false}))
+//         .catch((error) => {
+//             console.error("ERROR: ", error);
+//         });
 
     // api.getEdgeRC(appName)
     // .catch((error) => {
@@ -40,6 +39,39 @@ function main()
     //     //process.exit(1);
     // });
 
+    let dns = new DNS("edge2016.com");
+
+    dns.create()
+    .then(data => {
+        console.info(JSON.stringify(data));
+        return dns.retrieve();
+    })
+    .then(data => {
+        console.info(JSON.stringify(data));
+        return dns.addRecord("test", "10.0.0.1", "A");
+    })
+    .then(data => {
+        console.info(JSON.stringify(data));
+        return dns.addRecord("test", "10.0.0.2", "A");
+    })
+    .then(data => {
+        console.info(JSON.stringify(data));
+        return dns.updateRecord("test", "10.1.2.3", "A");
+    })
+    .then(data => {
+       console.info(JSON.stringify(data));
+       return dns.deleteRecord("test", "A");
+    })
+    .then(data => {
+        console.info(JSON.stringify(data));
+        return dns.delete();
+    })
+    .then(data => {
+        console.info(JSON.stringify(data));
+    })
+    .catch((error) => {
+        console.error("ERROR: ", error);
+    });
 }
 
 main();
