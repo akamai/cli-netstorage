@@ -66,11 +66,15 @@ DNS.prototype._getDefaultAccount = function() {
  * POST https://control.akamai.com/portal/adns/adns_add.jsp
  *      action=add&childZoneOverride=false&param_acg_to_add=$ACCOUNT&adnsType=primary&adnsNotify=yes&adnsTsigAlgorithm=HMAC-MD5.SIG-ALG.REG.INT&adnsTsigKeyName=&adnsTsigKey=&adnsTsig=no&adnsNS=&adnsNS=&adnsNS=&adnsNS4=&adnsNewZones=$ZONES
  *
+ * POST /portal/adns/adns_add.jsp
+ *      action=add&childZoneOverride=false&param_acg_to_add=C-1FRYVV3&adnsType=alias&aliasOf=bendell.ca&adnsNotify=yes&adnsTsigAlgorithm=HMAC-MD5.SIG-ALG.REG.INT&adnsTsigKeyName=&adnsTsigKey=&adnsTsig=no&adnsNS=&adnsNS=&adnsNS=&adnsNS=&adnsNewZones=colinb.com
+ *
  * @param zoneName
+ * @param options
  * @returns {Promise} no return value on success
  * @private
  */
-DNS.prototype._createDNSZone = function(zoneName) {
+DNS.prototype._createDNSZone = function(zoneName, options={aliasOf: null}) {
     let url = "/portal/adns/adns_add.jsp";
     return this._luna.login()
         .then(() => this._getDefaultAccount())
@@ -227,6 +231,43 @@ DNS.prototype._deleteDNSZone = function(zoneDetails) {
 };
 
 /**
+ * GET https://control.akamai.com/portal/adns/adns_edit.jsp?zone=bendell.ca
+ * <select style="display:none;" name="adns_edns_mapping_cname_prototype">
+ *     <option value="1596213">akamaiapibootcamp.com.edgekey.net</option>
+ *
+ * <tr class="edns_mapping_row">
+ *     <td> <input type="hidden" name="adns_edns_mapping_rid_1" value="10025"/>
+ *     <input type="hidden" name="adns_edns_mapping_delete_1" value="false"/>
+ *     <input type="text" name="adns_edns_mapping_recordname_1" value='1' />
+ *     <span name="adns_edns_mapping_recordnameerror_1" class="error-message" style="display: none;"></span>
+ *     </td>
+ *     <td>
+ *         <select name="adns_edns_mapping_cname_1">
+ *             <option value="1251434" selected='selected'
+ *             >
+ *             bendell.ca.edgekey.net
+ *             </option>
+ *
+ */
+DNS.prototype._getZAMEntries = function(zone) {
+};
+
+/**
+ * POST /portal/adns/adns_edit.jsp
+ *      action=edit&zone=bendell.ca&adnsZone=bendell.ca&adnsType=primary&adnsNotify=no&adnsTsigAlgorithm=HMAC-MD5.SIG-ALG.REG.INT&adnsTsigKeyName=&adnsTsigKey=&adnsTsig=no&adnsNS=&adnsNS=&adnsNS=&adnsNS=&adns_cname=&adns_tlDomainAnswerType=1&adns_cname_ttl=300&adns_allow_edns_mapping=on&adns_edns_mapping_rid_prototype=&adns_edns_mapping_delete_prototype=false&adns_edns_mapping_recordname_prototype=&adns_edns_mapping_cname_prototype=1596213&adns_edns_mapping_rid_1=10025&adns_edns_mapping_delete_1=false&adns_edns_mapping_recordname_1=1&adns_edns_mapping_cname_1=1251434&adns_edns_mapping_rid_2=10026&adns_edns_mapping_delete_2=false&adns_edns_mapping_recordname_2=2&adns_edns_mapping_cname_2=1251434&adns_edns_mapping_rid_3=10024&adns_edns_mapping_delete_3=false&adns_edns_mapping_recordname_3=3&adns_edns_mapping_cname_3=1251434&adns_edns_mapping_rid_4=10027&adns_edns_mapping_delete_4=false&adns_edns_mapping_recordname_4=4&adns_edns_mapping_cname_4=1251434&adns_edns_mapping_rid_5=13917&adns_edns_mapping_delete_5=false&adns_edns_mapping_recordname_5=5&adns_edns_mapping_cname_5=1251434&adns_edns_mapping_rid_6=5871&adns_edns_mapping_delete_6=false&adns_edns_mapping_recordname_6=www&adns_edns_mapping_cname_6=1251434&adns_edns_mapping_rid_7=5872&adns_edns_mapping_delete_7=false&adns_edns_mapping_recordname_7=&adns_edns_mapping_cname_7=1251434&adns_edns_mapping_rid_8=&adns_edns_mapping_delete_8=false&adns_edns_mapping_recordname_8=6&adns_edns_mapping_cname_8=1251434&adns_edns_mapping_record_count=8
+ *
+ */
+DNS.prototype._updateZAMZone = function(zone, zamEntries = []) {
+    let formData = {
+        adns_edns_mapping_rid_8:null,
+        adns_edns_mapping_delete_8:false,
+        adns_edns_mapping_recordname_8:"www",
+        adns_edns_mapping_cname_8=1251434,
+        adns_edns_mapping_record_count=8
+    }
+};
+
+/**
  * Create a new primary DNZ zone. We will populate with the default SOA record and NS values.
  *
  * @returns {Promise} zoneDetails from a successful deployment
@@ -361,6 +402,29 @@ DNS.prototype.updateRecord = function(recordName, records=[{target: "www.example
 };
 
 /**
+ * Updates the ZAM record with the specified target CNAME value (usually edgekey.net)
+ *
+ * ZAM (Zone Apex Mapping) removes the CNAME chain by using EDNS0 and return the IP instead of the usual foo.edgekey.net
+ *
+ * @param recordName
+ * @param targetCname
+ */
+DNS.prototype.updateZAMRecord = function(recordName, targetCname) {
+    //todo
+};
+
+/**
+* Deletes ZAM (Zone Apex Mapping) record
+* @param recordName
+* @param targetCname
+*/
+
+DNS.prototype.deleteZAMRecord = function(recordName, targetCname) {
+    //TODO
+
+};
+
+/**
  * Delete a single DNS record from the zone Zone.
  *
  * @param {string} recordName the record name. Should _not_ be qualified. Eg: "www"
@@ -381,5 +445,6 @@ DNS.prototype.deleteRecord = function(recordName, type="CNAME") {
             return this._updateDNSZone(zoneDetails);
         });
 };
+
 
 module.exports = DNS;
