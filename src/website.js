@@ -509,11 +509,27 @@ WebSite.prototype.copySite = function (fromProperty, fromVersion, toProperty) {
         });
 };
 
+WebSite.prototype.promoteStagingToProd = function(hostOrPropertyId, notes="", email=["test@example.com"]) {
+    let propertyId = hostOrPropertyId;
+    let stagingVersion;
+    console.info("[Activating to %s]", env);
+    //todo: make sure email is an array
+    return this._getPropertyId(hostOrPropertyId)
+        .then(localPropId => {  propertyId = localPropId; return this._getPropertyLatest(propertyId, WebSite.STAGING) })
+        .then(version => {stagingVersion = version; return this._getPropertyLatest(propertyId, WebSite.PRODUCTION) })
+        .then(prodVersion => {
+            if (prodVersion !== stagingVersion) {
+                return this.activateSite(hostOrPropertyId, stagingVersion, WebSite.PRODUCTION, notes, email)
+            }
+            else console.info("%s is already active in PRODUCTION!", stagingVersion);
+        });
+};
+
 WebSite.prototype.activateSite = function(hostOrPropertyId, versionId, env = WebSite.STAGING, notes="", email=["test@example.com"]) {
     let propertyId = hostOrPropertyId;
     console.info("[Activating to %s]", env);
     //todo: make sure email is an array
-    return this._getPropertyId(hostOrPropertyId, env)
+    return this._getPropertyId(hostOrPropertyId)
         .then(localPropId => { propertyId = localPropId; return this._activateProperty(propertyId, versionId, env, notes, email)})
         .then(activationId => {return this._pollActivation(propertyId, activationId);})
         .then(() => {console.info("Successfully Active!")});
