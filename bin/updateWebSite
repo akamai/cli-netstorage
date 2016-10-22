@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+
+let WebSite = require('../src/website');
+
+
+function main()
+{
+
+    let args = process.argv.slice(2);
+    let env = args[0];
+    let akamaienv = args[1];
+    let website = new WebSite("ctr_C-1FRYVV3", "grp_91216");
+
+    let devEnv = "prp_336620";
+    let qaEnv = "prp_336619";
+    let prodEnv = "prp_336610";
+    let envProper = devEnv; //dev
+    if (env == "qa")
+        envProper = qaEnv;
+    else if (env == "www")
+        envProper = prodEnv;
+
+
+    if (devEnv != envProper)
+    website.copySite(devEnv, null, envProper, akamaienv)
+        .then(data => {
+            let newVersion = data.propertyVersion;
+            return website.activateSite(envProper, newVersion, akamaienv, "Updated Automatically!", ["colinb@akamai.com"]);
+        });
+}
+
+main();

@@ -1,7 +1,7 @@
 let Luna = require('./luna');
 let EdgeGrid = require('edgegrid');
 let util = require('util');
-let untildify = require('untildify')
+let untildify = require('untildify');
 
 DNS.prototype._DEFAULT_ZONE = {
     "token": "new",
@@ -262,8 +262,8 @@ DNS.prototype._updateZAMZone = function(zone, zamEntries = []) {
         adns_edns_mapping_rid_8:null,
         adns_edns_mapping_delete_8:false,
         adns_edns_mapping_recordname_8:"www",
-        adns_edns_mapping_cname_8=1251434,
-        adns_edns_mapping_record_count=8
+        adns_edns_mapping_cname_8:1251434,
+        adns_edns_mapping_record_count:8
     }
 };
 

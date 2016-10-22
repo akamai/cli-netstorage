@@ -1,0 +1,7 @@
+* Can't create initial zone in DNS
+* Can't update just a single record, have to download and upload entire zone
+
+* no way to query by pending activations
+* can't set notes
+* pollution of the uuid
+*
