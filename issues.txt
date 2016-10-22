@@ -4,4 +4,7 @@
 * no way to query by pending activations
 * can't set notes
 * pollution of the uuid
-*
+* warning counts from 19, 29, 24!
+* slow slow slow
+* no h2 or tcp connection resumption or prallelism
+* complaince reasons? the api key is not an akamai employee

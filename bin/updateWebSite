@@ -9,23 +9,29 @@ function main()
     let args = process.argv.slice(2);
     let env = args[0];
     let akamaienv = args[1];
-    let website = new WebSite("ctr_C-1FRYVV3", "grp_91216");
+    let website = new WebSite();
 
-    let devEnv = "prp_336620";
-    let qaEnv = "prp_336619";
-    let prodEnv = "prp_336610";
-    let envProper = devEnv; //dev
+    let devEnv = "dev-www.akamaiedgedemo.com";
+    let qaEnv = "qa-www.akamaiedgedemo.com";
+    let prodEnv = "www.akamaiedgedemo.com";
+    let envProper = env; //dev
     if (env == "qa")
         envProper = qaEnv;
     else if (env == "www")
         envProper = prodEnv;
 
-
+    let newVersion = 25;
     if (devEnv != envProper)
-    website.copySite(devEnv, null, envProper, akamaienv)
-        .then(data => {
-            let newVersion = data.propertyVersion;
-            return website.activateSite(envProper, newVersion, akamaienv, "Updated Automatically!", ["colinb@akamai.com"]);
+        // website.copySite(devEnv, null, envProper, akamaienv)
+        //     .then(data => {
+        //         newVersion = data.propertyVersion;
+        //         return website.activateSite(envProper, newVersion, "STAGING", "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
+        //     })
+        //     .then(data => {
+                return website.activateSite(envProper, newVersion, "PRODUCTION", "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"])
+            // })
+        .catch((error) => {
+            console.error("ERROR: ", error);
         });
 }
 
