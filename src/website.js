@@ -501,6 +501,17 @@ WebSite.prototype.updateSiteFromFile = function (hostOrPropertyId, fromFile) {
     .then(rules => {return this.updateSite(hostOrPropertyId, rules)});
 };
 
+/**
+ * Create a new version of a property, copying the rules from another seperate property configuration. The common use
+ * case is to migrate the rules from a QA setup to the WWW setup. If the version is not provided, the LATEST version
+ * will be assumed.
+ *
+ * @param fromProperty {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+ *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+ * @param fromVersion {number} optional version number. Will assume LATEST if none are specified
+ * @param toProperty {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456)
+ * @returns {Promise}
+ */
 WebSite.prototype.copySite = function (fromProperty, fromVersion, toProperty) {
     return this.getSite(fromProperty, fromVersion)
         .then(fromRules => {
@@ -509,6 +520,15 @@ WebSite.prototype.copySite = function (fromProperty, fromVersion, toProperty) {
         });
 };
 
+/**
+ * Convenience method to promote the STAGING version of a property to PRODUCTION
+ *
+ * @param hostOrPropertyId {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+ *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+ * @param notes {string} describe the reason for activation
+ * @param email {Array} notivation email addresses
+ * @returns {Promise}
+ */
 WebSite.prototype.promoteStagingToProd = function(hostOrPropertyId, notes="", email=["test@example.com"]) {
     let propertyId = hostOrPropertyId;
     let stagingVersion;
@@ -519,20 +539,31 @@ WebSite.prototype.promoteStagingToProd = function(hostOrPropertyId, notes="", em
         .then(version => {stagingVersion = version; return this._getPropertyLatest(propertyId, WebSite.PRODUCTION) })
         .then(prodVersion => {
             if (prodVersion !== stagingVersion) {
-                return this.activateSite(hostOrPropertyId, stagingVersion, WebSite.PRODUCTION, notes, email)
+                return this.activate(hostOrPropertyId, stagingVersion, WebSite.PRODUCTION, notes, email)
             }
-            else console.info("%s is already active in PRODUCTION!", stagingVersion);
+            else new Promise(resolve => resolve(true));
         });
 };
 
-WebSite.prototype.activateSite = function(hostOrPropertyId, versionId, env = WebSite.STAGING, notes="", email=["test@example.com"]) {
+/**
+ * Activate a property to either STAGING or PRODUCTION. This function will poll (30s) incr. until the property has
+ * successfully been promoted.
+ *
+ * @param hostOrPropertyId {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+ *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+ * @param versionId {number} version to activate
+ * @param networkEnv Akamai environment to activate the property (either WebSite.STAGING or WebSite.PRODUCTION)
+ * @param notes {string} describe the reason for activation
+ * @param email {Array} notivation email addresses
+ * @returns {Promise} does not return a promise,
+ */
+WebSite.prototype.activate = function(hostOrPropertyId, versionId, networkEnv = WebSite.STAGING, notes="", email=["test@example.com"]) {
     let propertyId = hostOrPropertyId;
-    console.info("[Activating to %s]", env);
+    console.info("[Activating to %s]", networkEnv);
     //todo: make sure email is an array
     return this._getPropertyId(hostOrPropertyId)
-        .then(localPropId => { propertyId = localPropId; return this._activateProperty(propertyId, versionId, env, notes, email)})
+        .then(localPropId => { propertyId = localPropId; return this._activateProperty(propertyId, versionId, networkEnv, notes, email)})
         .then(activationId => {return this._pollActivation(propertyId, activationId);})
-        .then(() => {console.info("Successfully Active!")});
 };
 
 // function createCPCode() {

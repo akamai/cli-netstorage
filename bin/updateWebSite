@@ -25,11 +25,12 @@ function main()
         website.copySite(devProperty, null, targetProperty)
         .then(data => {
             newVersion = data.propertyVersion;
-            return website.activateSite(targetProperty, newVersion, WebSite.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
+            return website.activate(targetProperty, newVersion, WebSite.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
         })
         .then(success => {
             return website.promoteStagingToProd(targetProperty, "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"]);
         })
+        .then(() => {console.info("Successfully Active!")})
         .catch((error) => {
             console.error("ERROR: ", error);
         });
