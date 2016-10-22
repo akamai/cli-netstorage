@@ -3,23 +3,6 @@ let EdgeGrid = require('edgegrid');
 let util = require('util');
 let untildify = require('untildify');
 
-DNS.prototype._DEFAULT_ZONE = {
-    "token": "new",
-    "zone": {
-        "name": "example.com",
-        "soa": {
-            "contact": "hostmaster.akamai.com.",
-            "expire": 604800,
-            "minimum": 180,
-            "originserver": "www.example.com.",
-            "refresh": 900,
-            "retry": 300,
-            "serial": 12345,
-            "ttl": 900
-        }
-    }
-};
-
 let DNS = function(zoneName, config = {path:"~/.edgerc", lunasection: "luna", section: "default"}) {
     this._zone = zoneName;
     this._luna = new Luna({path: config.path, section: config.lunasection});
@@ -445,6 +428,23 @@ DNS.prototype.deleteRecord = function(recordName, type="CNAME") {
             return this._updateDNSZone(zoneDetails);
         });
 };
+
+DNS.prototype._DEFAULT_ZONE = Object.freeze({
+    "token": "new",
+    "zone": {
+        "name": "example.com",
+        "soa": {
+            "contact": "hostmaster.akamai.com.",
+            "expire": 604800,
+            "minimum": 180,
+            "originserver": "www.example.com.",
+            "refresh": 900,
+            "retry": 300,
+            "serial": 12345,
+            "ttl": 900
+        }
+    }
+});
 
 
 module.exports = DNS;

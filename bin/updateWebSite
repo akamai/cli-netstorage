@@ -9,27 +9,28 @@ function main()
     let args = process.argv.slice(2);
     let env = args[0];
     let akamaienv = args[1];
-    let website = new WebSite();
+    let website = new WebSite.WebSite();
 
-    let devEnv = "dev-www.akamaiedgedemo.com";
-    let qaEnv = "qa-www.akamaiedgedemo.com";
-    let prodEnv = "www.akamaiedgedemo.com";
-    let envProper = env; //dev
+    let devProperty = "dev-www.akamaiedgedemo.com";
+    let qaProperty = "qa-www.akamaiedgedemo.com";
+    let prodProperty = "www.akamaiedgedemo.com";
+
+    let targetProperty = env; //dev
     if (env == "qa")
-        envProper = qaEnv;
+        targetProperty = qaProperty;
     else if (env == "www")
-        envProper = prodEnv;
+        targetProperty = prodProperty;
 
-    let newVersion = 25;
-    if (devEnv != envProper)
-        // website.copySite(devEnv, null, envProper, akamaienv)
-        //     .then(data => {
-        //         newVersion = data.propertyVersion;
-        //         return website.activateSite(envProper, newVersion, "STAGING", "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
-        //     })
-        //     .then(data => {
-                return website.activateSite(envProper, newVersion, "PRODUCTION", "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"])
-            // })
+    let newVersion;
+    if (devProperty != targetProperty)
+        website.copySite(devProperty, null, targetProperty)
+            .then(data => {
+                newVersion = data.propertyVersion;
+                return website.activateSite(targetProperty, newVersion, WebSite.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
+            })
+            .then(data => {
+                return website.activateSite(targetProperty, newVersion, WebSite.PRODUCTION, "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"]);
+            })
         .catch((error) => {
             console.error("ERROR: ", error);
         });

@@ -2,6 +2,7 @@ let Luna = require('./luna');
 let EdgeGrid = require('edgegrid');
 let util = require('util');
 let untildify = require('untildify');
+var fs = require('fs');
 
 function sleep (time) {
     return new Promise((resolve) => setTimeout(resolve, time));
@@ -32,20 +33,24 @@ WebSite.prototype._populateHosts = function() {
                 });
             });
             // get the  list of all properties for the known list of contracts and groups now
+            console.log("... retrieving properties from %s groups", groupcontractList.length);
             return Promise.all(groupcontractList.map(v => {
                 return this._getPropertyList(v.contractId, v.groupId);
             }));
         })
         .then(propList => {
-            let pList = [];
+            let promiseList = [];
+            
             propList.map(v => {
                 return v.properties.items.map(item => {
                     this._propertyList[item.propertyId] = item;
-                    pList.push(this._getHostnameList(item.propertyId, null, "STAGING"));
-                    pList.push(this._getHostnameList(item.propertyId, null, "PRODUCTION"));
+                    promiseList.push(this._getHostnameList(item.propertyId, null, WebSite.STAGING));
+                    promiseList.push(this._getHostnameList(item.propertyId, null, WebSite.PRODUCTION));
                 });
             });
-            return Promise.all(pList);
+
+            console.log("... retrieving Hosts from %s properties", Object.keys(this._propertyList).length);
+            return Promise.all(promiseList);
         })
         .then(hostListList => {
             this._propertyList = {};
@@ -56,9 +61,9 @@ WebSite.prototype._populateHosts = function() {
                 else delete this._propertyList[hostList.propertyId].environment;
 
                 hostList.hostnames.items.map(host => {
-                    if (!hostList.environment || hostList.environment === "STAGING")
+                    if (!hostList.environment || hostList.environment === WebSite.STAGING)
                         this._stagingHostnameList[host.cnameFrom] = hostList;
-                    if (!hostList.environment || hostList.environment === "PRODUCTION")
+                    if (!hostList.environment || hostList.environment === WebSite.PRODUCTION)
                         this._prodHostnameList[host.cnameFrom] = hostList;
                 })
             });
@@ -83,18 +88,19 @@ WebSite.prototype._getPropertyIdTupil = function(propertyID) {
         });
 };
 
-WebSite.prototype._getPropertyId = function(property, env) {
+WebSite.prototype._getPropertyId = function(property, envOverride = WebSite.STAGING) {
     //were we passed the propertyId? or a hostname as a colloquial expression for the propertyId?
     if (property.includes("prp_")) {
         //noop - pass the property back
         return new Promise (resolve => {resolve(property)})
     }
 
-    //lookup the hostname to find the propertyId. In this case the environment (STAGING/PRODUCTION) could matter
+    // in case where the hostname is associated with a different property in different environments
+    // lookup the hostname by environment to find the propertyId.
     return this._populateHosts()
         .then(() => {
             return new Promise(resolve => {
-                if (env === "STAGING")
+                if (envOverride === WebSite.STAGING)
                     resolve(this._stagingHostnameList[property].propertyId);
                 else
                     resolve(this._prodHostnameList[property].propertyId);
@@ -128,7 +134,7 @@ WebSite.prototype._getGroupList = function() {
 
 WebSite.prototype._getPropertyList = function(contractId, groupId) {
     return new Promise((resolve, reject) => {
-        console.info("... retrieving list of properties {%s : %s}", contractId, groupId);
+        //console.info("... retrieving list of properties {%s : %s}", contractId, groupId);
 
         let request = {
             method: 'GET',
@@ -171,7 +177,7 @@ WebSite.prototype._getHostnameList = function(propertyId, versionReq, env) {
         .then(version => {
 
             return new Promise((resolve, reject) => {
-                console.info("... retrieving list of hostnames {%s : %s : %s}", contractId, groupId, propertyId);
+                //console.info("... retrieving list of hostnames {%s : %s : %s}", contractId, groupId, propertyId);
 
                 let request = {
                     method: 'GET',
@@ -194,7 +200,7 @@ WebSite.prototype._getHostnameList = function(propertyId, versionReq, env) {
         });
 };
 
-WebSite.prototype._getPropertyLatest = function(propertyId, env) {
+WebSite.prototype._getPropertyLatest = function(propertyId, env = WebSite.LATEST) {
     let contractId;
     let groupId;
 
@@ -219,9 +225,9 @@ WebSite.prototype._getPropertyLatest = function(propertyId, env) {
                         let latestVersion = parsed.properties.items[0].latestVersion;
                         let stageVersion = parsed.properties.items[0].stagingVersion || latestVersion;
                         let prodVersion = parsed.properties.items[0].productionVersion || stageVersion;
-                        if (env === "PRODUCTION")
+                        if (env === WebSite.PRODUCTION)
                             resolve(prodVersion);
-                        else if (env === "STAGING")
+                        else if (env === WebSite.STAGING)
                             resolve(stageVersion);
                         else
                             resolve(latestVersion);
@@ -325,8 +331,8 @@ WebSite.prototype._updatePropertyRules = function(propertyId, versionId, rules) 
 
                 this._edge.send(function (data, response) {
                     if (response.statusCode >= 200 && response.statusCode < 400) {
-                        let parsed = JSON.parse(response.body);
-                        resolve(parsed);
+                        let newRules = JSON.parse(response.body);
+                        resolve(newRules);
                     }
                     else {
                         reject(response);
@@ -336,7 +342,7 @@ WebSite.prototype._updatePropertyRules = function(propertyId, versionId, rules) 
         });
 };
 
-WebSite.prototype._activateProperty = function(propertyId, versionId, env = "STAGING", notes = "", email=["test@example.com"], acknowledgeWarnings=[], autoAcceptWarnings=true) {
+WebSite.prototype._activateProperty = function(propertyId, versionId, env = WebSite.STAGING, notes = "", email=["test@example.com"], acknowledgeWarnings=[], autoAcceptWarnings=true) {
     let contractId;
     let groupId;
 
@@ -449,6 +455,70 @@ WebSite.prototype._pollActivation = function(propertyId, activationID) {
         });
 };
 
+WebSite.prototype.lookupPropertyIdFromHost = function(hostname, env = WebSite.PRODUCTION) {
+    return this._getPropertyId(property, env);
+};
+
+WebSite.prototype.getSite = function(hostOrPropertyId, versionId, versionEnv = WebSite.LATEST) {
+    console.info("[Get Site]");
+    let propertyId = hostOrPropertyId;
+    return this._getPropertyId(hostOrPropertyId)
+        .then(localPropId => {
+            propertyId = localPropId;
+            if (versionId && versionId > 0)
+                return new Promise(resolve => {resolve(versionId)});
+            return this._getPropertyLatest(propertyId, versionEnv);
+        })
+        .then(versionId => {
+            return this._getPropertyRules(propertyId, versionId)
+        });
+};
+
+WebSite.prototype.updateSite = function (hostOrPropertyId, newRules) {
+    console.info("[Update Site]");
+    let propertyId = hostOrPropertyId;
+    return this._getPropertyId(hostOrPropertyId)
+        .then(localPropId => { propertyId = localPropId; return this._getPropertyLatest(propertyId)})
+        .then(versionId => {return this._copyPropertyVersion(propertyId, versionId);})
+        .then(newVersionId => {return this.getSite(propertyId, newVersionId);})
+        .then(oldRules => {
+            let updatedRules = newRules;
+            updatedRules.rules = newRules.rules;
+            return this._updatePropertyRules(propertyId, oldRules.propertyVersion, updatedRules);
+        });
+};
+
+WebSite.prototype.updateSiteFromFile = function (hostOrPropertyId, fromFile) {
+    return new Promise((resolve, revoke) => {
+        console.info("[Reading %s Rules: %s]", hostOrPropertyId, fromFile);
+        fs.readFile(fromFile, function (err, data) {
+            if (err)
+                revoke(err);
+            else
+                resolve(JSON.parse(data));
+        });
+    })
+    .then(rules => {return this.updateSite(hostOrPropertyId, rules)});
+};
+
+WebSite.prototype.copySite = function (fromProperty, fromVersion, toProperty) {
+    return this.getSite(fromProperty, fromVersion)
+        .then(fromRules => {
+            console.info("[Copy %s to %s]", fromProperty, toProperty);
+            return this.updateSite(toProperty, fromRules)
+        });
+};
+
+WebSite.prototype.activateSite = function(hostOrPropertyId, versionId, env = WebSite.STAGING, notes="", email=["test@example.com"]) {
+    let propertyId = hostOrPropertyId;
+    console.info("[Activating to %s]", env);
+    //todo: make sure email is an array
+    return this._getPropertyId(hostOrPropertyId, env)
+        .then(localPropId => { propertyId = localPropId; return this._activateProperty(propertyId, versionId, env, notes, email)})
+        .then(activationId => {return this._pollActivation(propertyId, activationId);})
+        .then(() => {console.info("Successfully Active!")});
+};
+
 // function createCPCode() {
 //
 // }
@@ -460,66 +530,17 @@ WebSite.prototype._pollActivation = function(propertyId, activationID) {
 // function createConfig() {
 //
 // }
-// function retrieveConfig() {
-//
-// }
-
 // function deleteConfig() {
 //
 // }
 //
-
-WebSite.prototype.getSite = function(property, versionId = 0, env = "STAGING") {
-    console.info("[Get Site]");
-    let propertyId = property;
-    return this._getPropertyId(property, env)
-        .then(localPropId => {
-            propertyId = localPropId;
-            if (versionId && versionId > 0)
-                return new Promise(resolve => {resolve(versionId)});
-            return this._getPropertyLatest(propertyId, env);
-        })
-        .then(versionId => {
-            return this._getPropertyRules(propertyId, versionId)
-        });
-};
-
-WebSite.prototype.updateSite = function (property, newRules, env = "STAGING") {
-    console.info("[Update Site]");
-    let propertyId = property;
-    return this._getPropertyId(property, env)
-        .then(localPropId => { propertyId = localPropId; return this._getPropertyLatest(propertyId, env)})
-        .then(versionId => {return this._copyPropertyVersion(propertyId, versionId);})
-        .then(newVersionId => {return this.getSite(propertyId, newVersionId, env);})
-        .then(oldRules => {
-            let updatedRules = newRules;
-            updatedRules.rules = newRules.rules;
-            return this._updatePropertyRules(propertyId, oldRules.propertyVersion, updatedRules);
-        });
-};
-
-WebSite.prototype.copySite = function (fromPropertyId, fromVersion = 0, toPropertyId, env = "STAGING") {
-    return this.getSite(fromPropertyId, fromVersion, env)
-        .then(fromRules => {
-            console.info("[Copy Site]");
-            return this.updateSite(toPropertyId, fromRules, env)
-        });
-};
-
-
-WebSite.prototype.activateSite = function(property, versionId, env = "STAGING", notes="", email=["test@example.com"]) {
-    let propertyId = property;
-    console.info("[Activating]");
-    //todo: make sure email is an array
-    return this._getPropertyId(property, env)
-        .then(localPropId => { propertyId = localPropId; return this._activateProperty(propertyId, versionId, env, notes, email)})
-        .then(activationId => {return this._pollActivation(propertyId, activationId);})
-        .then(() => {console.info("Successfully Active!")});
-};
-
 // function deactivate() {
 //     //TODO
 // }
 
-
-module.exports = WebSite;
+module.exports = {
+    WebSite: WebSite,
+    STAGING: 'STAGING',
+    PRODUCTION: 'PRODUCTION',
+    LATEST: 'latest'
+};
