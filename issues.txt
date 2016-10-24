@@ -8,3 +8,4 @@
 * slow slow slow
 * no h2 or tcp connection resumption or prallelism
 * complaince reasons? the api key is not an akamai employee
+* 500 errors are common

@@ -1,14 +1,14 @@
 #!/usr/bin/env node
+"use strict";
 
-let WebSite = require('../src/website');
-
+//import {WebSite, AKAMAI_ENV} from '../src/website';
+let website = require('../src/website');
 
 function main()
 {
     let args = process.argv.slice(2);
     let env = args[0];
-    let akamaienv = args[1];
-    let website = new WebSite.WebSite();
+    let website = new website.WebSite();
 
     let devProperty = "dev-www.akamaiedgedemo.com";
     let qaProperty = "qa-www.akamaiedgedemo.com";
@@ -22,14 +22,14 @@ function main()
 
     let newVersion;
     if (devProperty != targetProperty)
-        website.copySite(devProperty, null, targetProperty)
-        .then(data => {
-            newVersion = data.propertyVersion;
-            return website.activate(targetProperty, newVersion, WebSite.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
-        })
-        .then(success => {
-            return website.promoteStagingToProd(targetProperty, "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"]);
-        })
+        // website.copy(devProperty, null, targetProperty)
+        // .then(data => {
+        //     newVersion = data.propertyVersion;
+        //     return website.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
+        // })
+        // .then(success => {
+            return website.promoteStagingToProd(targetProperty, "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"])
+        // })
         .then(() => {console.info("Successfully Active!")})
         .catch((error) => {
             console.error("ERROR: ", error);
