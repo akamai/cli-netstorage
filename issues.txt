@@ -9,3 +9,7 @@
 * no h2 or tcp connection resumption or prallelism
 * complaince reasons? the api key is not an akamai employee
 * 500 errors are common
+* deactivation uses *dumb* check v. arlid traffic check
+* undocumented production activation reason
+* compliance reasons for a customer api call to call production?
+* complaince reason ENUM inconsistent with deactivate (NO_PRODUCTION_TRAFFIC v. NO_PRODUCTION )

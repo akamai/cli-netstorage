@@ -22,14 +22,14 @@ function main()
 
     let newVersion;
     if (devProperty != targetProperty)
-        // website.copy(devProperty, null, targetProperty)
-        // .then(data => {
-        //     newVersion = data.propertyVersion;
-        //     return website.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
-        // })
-        // .then(success => {
-            return website.promoteStagingToProd(targetProperty, "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"])
-        // })
+        website.copy(devProperty, null, targetProperty)
+        .then(data => {
+            newVersion = data.propertyVersion;
+            return website.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
+        })
+        .then(success => {
+            return website.promoteStagingToProd(targetProperty, "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"]);
+        })
         .then(() => {console.info("Successfully Active!")})
         .catch((error) => {
             console.error("ERROR: ", error);

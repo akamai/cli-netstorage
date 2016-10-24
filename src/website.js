@@ -662,6 +662,13 @@ class WebSite {
             .then(activationId => {return this._pollActivation(propertyId, activationId);})
     }
 
+    /**
+     *
+     * @param hostOrPropertyId
+     * @param networkEnv
+     */
+    //POST /platformtoolkit/service/properties/deActivate.json?accountId=B-C-1FRYVMN&aid=10357352&gid=64867&v=12
+    //{"complianceRecord":{"unitTested":false,"peerReviewedBy":"","customerEmail":"","nonComplianceReason":"NO_PRODUCTION","otherNoncomplianceReason":"","siebelCase":""},"emailList":"colinb@akamai.com","network":"PRODUCTION","notes":"","notificationType":"FINISHED","signedOffWarnings":[]}
     deactivate(hostOrPropertyId, networkEnv = AKAMAI_ENV.STAGING) {
         //TODO
     }
