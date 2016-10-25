@@ -8,7 +8,7 @@ function main()
 {
     let args = process.argv.slice(2);
     let env = args[0];
-    let website = new website.WebSite();
+    let property = new website.WebSite();
 
     let devProperty = "dev-www.akamaiedgedemo.com";
     let qaProperty = "qa-www.akamaiedgedemo.com";
@@ -21,19 +21,26 @@ function main()
         targetProperty = prodProperty;
 
     let newVersion;
-    if (devProperty != targetProperty)
-        website.copy(devProperty, null, targetProperty)
-        .then(data => {
-            newVersion = data.propertyVersion;
-            return website.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
-        })
-        .then(success => {
-            return website.promoteStagingToProd(targetProperty, "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"]);
-        })
-        .then(() => {console.info("Successfully Active!")})
-        .catch((error) => {
-            console.error("ERROR: ", error);
-        });
+    if (devProperty != targetProperty) {
+
+        console.time('TestJob');
+        property.copy(devProperty, website.LATEST_VERSION.LATEST, targetProperty)
+            .then(data => {
+                newVersion = data.propertyVersion;
+                return property.activate(targetProperty, newVersion, website.AKAMAI_ENV.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
+            })
+            .then(() => {
+                return property.promoteStagingToProd(targetProperty, "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"]);
+            })
+            .then(() => {
+                console.timeEnd('TestJob');
+                console.info("Successfully Active!")
+            })
+            .catch((error) => {
+                console.error("ERROR: ", error.body || error);
+            });
+
+    }
 }
 
 main();
