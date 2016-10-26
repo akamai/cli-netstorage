@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+
+let APIClient = require('../src/apiclient');
+let DNS = require('../src/dns');
+
+
+function main()
+{
+    let dns = new DNS("edge2016.com");
+
+    dns.create()
+        .then(data => {
+            console.info(JSON.stringify(data));
+            return dns.retrieve();
+        })
+        .then(data => {
+            console.info(JSON.stringify(data));
+            return dns.addRecord("test", "10.0.0.1", "A");
+        })
+        .then(data => {
+            console.info(JSON.stringify(data));
+            return dns.addRecord("test", "10.0.0.2", "A");
+        })
+        .then(data => {
+            console.info(JSON.stringify(data));
+            return dns.updateRecord("test", "10.1.2.3", "A");
+        })
+        .then(data => {
+            console.info(JSON.stringify(data));
+            return dns.deleteRecord("test", "A");
+        })
+        .then(data => {
+            console.info(JSON.stringify(data));
+            return dns.delete();
+        })
+        .then(data => {
+            console.info(JSON.stringify(data));
+        })
+        .catch((error) => {
+            console.error("ERROR: ", error);
+        });
+}
+
+main();

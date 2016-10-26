@@ -394,6 +394,51 @@ class WebSite {
             });
     };
 
+    //POST /platformtoolkit/service/properties/deActivate.json?accountId=B-C-1FRYVMN&aid=10357352&gid=64867&v=12
+    //{"complianceRecord":{'unitTested":false,"peerReviewedBy":"","customerEmail":"","nonComplianceReason":"NO_PRODUCTION","otherNoncomplianceReason":"","siebelCase":""},"emailList":"colinb@akamai.com","network":"PRODUCTION","notes":"","notificationType":"FINISHED","signedOffWarnings":[]}
+
+    _deactivateProperty(propertyLookup, versionId, env = LATEST_VERSION.STAGING, notes = '', email=['test@example.com']) {
+            return this._getProperty(propertyLookup)
+                .then((data) => {
+                    //set basic data like contract & group
+                    const contractId = data.contractId;
+                    const groupId = data.groupId;
+                    const propertyId = data.propertyId;
+                    return new Promise((resolve, reject) => {
+                        console.time('... activating');
+                        console.info('... activating property {%s v%s}', propertyId, versionId);
+
+                        let activationData = {
+                            propertyVersion: versionId,
+                            network: env,
+                            notifyEmails: email,
+                            activationType: "DEACTIVATE",
+                            complianceRecord: {
+                                noncomplianceReason: 'NO_PRODUCTION_TRAFFIC'
+                            }
+
+                        };
+                        console.info(activationData);
+                        let request = {
+                            method: 'POST',
+                            path: `/papi/v0/properties/${propertyId}/activations?contractId=${contractId}&groupId=${groupId}`,
+                            body: activationData
+                        };
+
+                        this._edge.auth(request);
+
+                        this._edge.send(function (data, response) {
+                            if (response.statusCode >= 200 && response.statusCode <= 400) {
+                                let parsed = JSON.parse(response.body);
+                                resolve(parsed);
+                            }
+                            else {
+                                reject(response.body);
+                            }
+                        });
+                    });
+                })
+    }
     _pollActivation(propertyLookup, activationID) {
         return this._getProperty(propertyLookup)
             .then(data => {
@@ -456,6 +501,7 @@ class WebSite {
     lookupPropertyIdFromHost(hostname, env = LATEST_VERSION.PRODUCTION) {
         return this._getProperty(property, env).propertyId;
     }
+
 
     /**
      * @param hostOrPropertyId {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
@@ -594,11 +640,11 @@ class WebSite {
      * @returns {Promise} returns a promise with the TResult of boolean
      */
     activate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes='', email=['test@example.com']) {
-        console.info('[Activating to %s]', networkEnv);
         //todo: make sure email is an array
         //todo: change the version lookup
         return this._getProperty(propertyLookup)
             .then(property => {
+                console.info(`Activating ${propertyLookup} to ${networkEnv}`);
                 let activationVersion = version;
                 if (!version || version <= 0)
                     activationVersion = WebSite._getLatestVersion(property, version);
@@ -606,16 +652,18 @@ class WebSite {
             })
             .then(activationId => {return this._pollActivation(propertyLookup, activationId);})
     }
-
-    /**
-     *
-     * @param hostOrPropertyId
-     * @param networkEnv
-     */
     //POST /platformtoolkit/service/properties/deActivate.json?accountId=B-C-1FRYVMN&aid=10357352&gid=64867&v=12
     //{"complianceRecord":{'unitTested":false,"peerReviewedBy":"","customerEmail":"","nonComplianceReason":"NO_PRODUCTION","otherNoncomplianceReason":"","siebelCase":""},"emailList":"colinb@akamai.com","network":"PRODUCTION","notes":"","notificationType":"FINISHED","signedOffWarnings":[]}
-    deactivate(hostOrPropertyId, networkEnv = AKAMAI_ENV.STAGING) {
-        //TODO
+
+    deactivate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes='', email=['test@example.com']) {
+        return this._getProperty(propertyLookup)
+            .then(property => {
+                console.info(`Deactivating ${propertyLookup} to_ ${networkEnv}`);
+                let deactivationVersion = version;
+                if (!version || version <= 0)
+                    deactivationVersion = WebSite._getLatestVersion(property, version);
+                return this._deactivateProperty(property, deactivationVersion, networkEnv, notes, email)
+            })
     }
 }
 

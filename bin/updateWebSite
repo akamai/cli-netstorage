@@ -24,22 +24,32 @@ function main()
     if (devProperty != targetProperty) {
 
         console.time('TestJob');
-        property.copy(devProperty, website.LATEST_VERSION.LATEST, targetProperty)
+        // property.copy(devProperty, website.LATEST_VERSION.LATEST, targetProperty)
+        //     .then(data => {
+        //         newVersion = data.propertyVersion;
+        //         return property.activate(targetProperty, newVersion, website.AKAMAI_ENV.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
+        //     })
+        //     .then(() => {
+        //         return property.promoteStagingToProd(targetProperty, "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"]);
+        //     })
+        //     .then(() => {
+        //         console.timeEnd('TestJob');
+        //         console.info("Successfully Active!")
+        //     })
+        //     .catch((error) => {
+        //         console.error("ERROR: ", error.body || error);
+        //     });
+
+        property.deactivate(devProperty, website.LATEST_VERSION.STAGING, website.AKAMAI_ENV.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"])
             .then(data => {
-                newVersion = data.propertyVersion;
-                return property.activate(targetProperty, newVersion, website.AKAMAI_ENV.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
-            })
-            .then(() => {
-                return property.promoteStagingToProd(targetProperty, "Updated Automatically to PRODUCTION!", ["colinb@akamai.com"]);
-            })
-            .then(() => {
                 console.timeEnd('TestJob');
-                console.info("Successfully Active!")
+                console.info("Successfully deactivated!");
+                console.info(data);
             })
             .catch((error) => {
                 console.error("ERROR: ", error.body || error);
             });
-
+        ;
     }
 }
 
