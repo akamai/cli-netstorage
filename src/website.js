@@ -22,7 +22,10 @@ const AKAMAI_ENV = {
 class WebSite {
 
     constructor(config = {path:"~/.edgerc", lunasection: "luna", section: "default"}) {
-        this._edge = new EdgeGrid({path: untildify(config.path), section: config.section});
+        if (config.clientToken && config.clientSecret && config.accessToken && config.host)
+            this._edge = new EdgeGrid(config.clientToken. config.clientSecret, config.accessToken, config.host);
+        else
+            this._edge = new EdgeGrid({path: untildify(config.path), section: config.section});
         this._propertyById = {};
         this._propertyByName = {};
         this._propertyByHost = {};
