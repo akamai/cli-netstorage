@@ -1,13 +1,20 @@
 {
-  "name": "AkaBootstrap",
-  "version": "0.0.0",
+  "name": "akamaiweb-kit",
+  "version": "0.0.1",
   "private": true,
+  "description": "A wrapping development kit to interface common tasks with akamai's {OPEN} API.",
+  "repository": "ssh://git@stash.akamai.com:7999/~colinb/akamaiweb-kit.git",
+  "license": "apache-2.0",
   "scripts": {
     "start": "node ./bin/createKeys"
   },
   "dependencies": {
-    "request": "~2.74.0",
+    "request": "^2.74.0",
     "edgegrid": "*",
     "untildify": "*"
+  },
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "through2": "^2.0.1"
   }
 }
