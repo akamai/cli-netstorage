@@ -45,8 +45,8 @@ class WebSite {
         }
 
         let groupcontractList = [];
-        console.time('Init cache');
-        console.info('Init cache (hostname and property)');
+        console.time('Init PropertyManager cache');
+        console.info('Init PropertyManager cache (hostnames and property list)');
         return this._getGroupList()
             .then(data => {
                 data.groups.items.map(item => {
@@ -57,7 +57,7 @@ class WebSite {
                     });
                 });
                 // get the  list of all properties for the known list of contracts and groups now
-                console.log('... retrieving properties from %s groups', groupcontractList.length);
+                console.info('... retrieving properties from %s groups', groupcontractList.length);
                 return Promise.all(groupcontractList.map(v => {
                     return this._getPropertyList(v.contractId, v.groupId);
                 }));
@@ -76,7 +76,7 @@ class WebSite {
                     });
                 });
 
-                console.log('... retrieving Hosts from %s properties', Object.keys(this._propertyById).length);
+                console.info('... retrieving Hosts from %s properties', Object.keys(this._propertyById).length);
                 return Promise.all(promiseList);
             })
             .then(hostListList => {
@@ -98,7 +98,7 @@ class WebSite {
                             hostRef.production = prop;
                     })
                 });
-                console.timeEnd('Init cache');
+                console.timeEnd('Init PropertyManager cache');
                 return new Promise(resolve => resolve(true));
             });
     };
@@ -221,7 +221,7 @@ class WebSite {
                 const propertyId = data.propertyId;
                 return new Promise((resolve, reject) => {
                     console.time('... copy');
-                    console.info('... copy property {%s : %s}', propertyId, versionId);
+                    console.info(`... copy property (${propertyLookup}) v${versionId}`);
                     let body = {};
                     body.createFromVersion = versionId;
 
@@ -264,7 +264,7 @@ class WebSite {
                 const propertyId = data.propertyId;
                 return new Promise((resolve, reject) => {
                     console.time('... retrieving');
-                    console.info('... retrieving property {%s : %s}', propertyId, version);
+                    console.info(`... retrieving property (${propertyLookup}) v${version}`);
                     let request = {
                         method: 'GET',
                         path: `/papi/v0/properties/${propertyId}/versions/${version}/rules?contractId=${contractId}&groupId=${groupId}`,
@@ -290,7 +290,7 @@ class WebSite {
                 const propertyId = data.propertyId;
                 return new Promise((resolve, reject) => {
                     console.time('... updating');
-                    console.info('... updating property {%s : %s}', propertyId, version);
+                    console.info(`... updating property (${propertyLookup}) v${version}`);
 
                     let request = {
                         method: 'PUT',
@@ -336,7 +336,7 @@ class WebSite {
                 const propertyId = data.propertyId;
                 return new Promise((resolve, reject) => {
                     console.time('... activating');
-                    console.info('... activating property {%s : %s}', propertyId, versionId);
+                    console.info(`... activating property (${propertyLookup}) v${versionId}`);
 
                     let activationData = {
                         propertyVersion: versionId,
@@ -409,7 +409,7 @@ class WebSite {
                     const propertyId = data.propertyId;
                     return new Promise((resolve, reject) => {
                         console.time('... activating');
-                        console.info('... activating property {%s v%s}', propertyId, versionId);
+                        console.info(`... activating property (${propertyLookup}) v${versionId}`);
 
                         let activationData = {
                             propertyVersion: versionId,
@@ -530,7 +530,7 @@ class WebSite {
         return this._getProperty(propertyLookup)
             .then(property => {
                 let version = (versionLookup && versionLookup > 0) ? versionLookup : WebSite._getLatestVersion(property, versionLookup)
-                console.info(`[Retrieving ${property.propertyName} v${version}]`);
+                console.info(`Retrieving ${property.propertyName} v${version}`);
                 return this._getPropertyRules(property.propertyId, version)
             });
     }
@@ -547,7 +547,7 @@ class WebSite {
         return this._getProperty(propertyLookup)
             .then(localProp => {
                 property = localProp;
-                console.info(`[Updating ${property.propertyName}]`);
+                console.info(`Updating ${property.propertyName}`);
                 const version = WebSite._getLatestVersion(property);
                 return this._copyPropertyVersion(property, version);
             })
@@ -572,7 +572,7 @@ class WebSite {
      */
     updateFromFile(propertyLookup, fromFile) {
         return new Promise((resolve, revoke) => {
-                console.info('[Reading %s rules from %s]', propertyLookup, fromFile);
+                console.info(`Reading ${propertyLookup} rules from ${fromFile}`);
                 fs.readFile(fromFile, (err, data) => {
                     if (err)
                         revoke(err);
@@ -597,7 +597,7 @@ class WebSite {
     copy(fromProperty, fromVersion = LATEST_VERSION.LATEST, toProperty) {
         return this.retrieve(fromProperty, fromVersion)
             .then(fromRules => {
-                console.info(`[Copy ${fromProperty} v${fromRules.propertyVersion} to ${toProperty}]`);
+                console.info(`Copy ${fromProperty} v${fromRules.propertyVersion} to ${toProperty}`);
                 return this.update(toProperty, fromRules)
             });
     }
@@ -643,15 +643,18 @@ class WebSite {
      * @returns {Promise} returns a promise with the TResult of boolean
      */
     activate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes='', email=['test@example.com']) {
-        //todo: make sure email is an array
         //todo: change the version lookup
+        let emailNotification = email;
+        if (!Array.isArray(emailNotification))
+            emailNotification = [email];
+
         return this._getProperty(propertyLookup)
             .then(property => {
                 console.info(`Activating ${propertyLookup} to ${networkEnv}`);
                 let activationVersion = version;
                 if (!version || version <= 0)
                     activationVersion = WebSite._getLatestVersion(property, version);
-                return this._activateProperty(property, activationVersion, networkEnv, notes, email)
+                return this._activateProperty(property, activationVersion, networkEnv, notes, emailNotification)
             })
             .then(activationId => {return this._pollActivation(propertyLookup, activationId);})
     }
@@ -659,9 +662,11 @@ class WebSite {
     //{"complianceRecord":{'unitTested":false,"peerReviewedBy":"","customerEmail":"","nonComplianceReason":"NO_PRODUCTION","otherNoncomplianceReason":"","siebelCase":""},"emailList":"colinb@akamai.com","network":"PRODUCTION","notes":"","notificationType":"FINISHED","signedOffWarnings":[]}
 
     deactivate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes='', email=['test@example.com']) {
+        if (!Array.isArray(email))
+            email = [email];
         return this._getProperty(propertyLookup)
             .then(property => {
-                console.info(`Deactivating ${propertyLookup} to_ ${networkEnv}`);
+                console.info(`Deactivating ${propertyLookup} to ${networkEnv}`);
                 let deactivationVersion = version;
                 if (!version || version <= 0)
                     deactivationVersion = WebSite._getLatestVersion(property, version);
