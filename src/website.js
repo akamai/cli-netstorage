@@ -67,6 +67,7 @@ class WebSite {
 
                 propList.map(v => {
                     return v.properties.items.map(item => {
+                        item.toString = function() {return this.propertyName;};
                         this._propertyByName[item.propertyName] = item;
                         this._propertyById[item.propertyId] = item;
                         if (item.productionVersion)
@@ -530,7 +531,7 @@ class WebSite {
         return this._getProperty(propertyLookup)
             .then(property => {
                 let version = (versionLookup && versionLookup > 0) ? versionLookup : WebSite._getLatestVersion(property, versionLookup)
-                console.info(`Retrieving ${property.propertyName} v${version}`);
+                console.info(`Retrieving ${property} v${version}`);
                 return this._getPropertyRules(property.propertyId, version)
             });
     }
@@ -547,7 +548,7 @@ class WebSite {
         return this._getProperty(propertyLookup)
             .then(localProp => {
                 property = localProp;
-                console.info(`Updating ${property.propertyName}`);
+                console.info(`Updating ${property}`);
                 const version = WebSite._getLatestVersion(property);
                 return this._copyPropertyVersion(property, version);
             })
