@@ -500,10 +500,10 @@ class WebSite {
      *
      * @param hostname {string} for example www.example.com
      * @param env for the latest version lookup (PRODUCTION | STAGING | latest)
-     * @returns {string} the PropertyId
+     * @returns {Promise} the {object} of Property as the {TResult}
      */
     lookupPropertyIdFromHost(hostname, env = LATEST_VERSION.PRODUCTION) {
-        return this._getProperty(property, env).propertyId;
+        return this._getProperty(hostname, env);
     }
 
 
@@ -648,16 +648,25 @@ class WebSite {
         let emailNotification = email;
         if (!Array.isArray(emailNotification))
             emailNotification = [email];
+        let activationVersion = version;
+        let property = propertyLookup;
 
         return this._getProperty(propertyLookup)
-            .then(property => {
-                console.info(`Activating ${propertyLookup} to ${networkEnv}`);
-                let activationVersion = version;
+            .then(data => {
+                property = data;
                 if (!version || version <= 0)
                     activationVersion = WebSite._getLatestVersion(property, version);
+
+                console.info(`Activating ${propertyLookup} to ${networkEnv}`);
                 return this._activateProperty(property, activationVersion, networkEnv, notes, emailNotification)
             })
-            .then(activationId => {return this._pollActivation(propertyLookup, activationId);})
+            .then(activationId => {
+                if (networkEnv === AKAMAI_ENV.STAGING)
+                    property.stagingVersion = activationVersion;
+                else
+                    property.productiongVersion = activationVersion;
+                return this._pollActivation(propertyLookup, activationId);
+            })
     }
     //POST /platformtoolkit/service/properties/deActivate.json?accountId=B-C-1FRYVMN&aid=10357352&gid=64867&v=12
     //{"complianceRecord":{'unitTested":false,"peerReviewedBy":"","customerEmail":"","nonComplianceReason":"NO_PRODUCTION","otherNoncomplianceReason":"","siebelCase":""},"emailList":"colinb@akamai.com","network":"PRODUCTION","notes":"","notificationType":"FINISHED","signedOffWarnings":[]}
