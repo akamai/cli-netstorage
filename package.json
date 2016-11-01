@@ -8,6 +8,11 @@
   "scripts": {
     "start": "node ./bin/createKeys"
   },
+  "main": "./index.js",
+  "files": [
+    "index.js",
+    "src"
+  ],
   "dependencies": {
     "request": "^2.74.0",
     "edgegrid": "*",
