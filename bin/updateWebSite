@@ -20,6 +20,9 @@ SRC_CONFIG           is the source configuration name. Use either hostnames (eg:
 --copyto DEST_CONFIG indicates that the SRC_CONFIG is being copied to DEST_CONFIG (using VERSION)
 --file FILE          updates SRC_CONFIG with the rule contents from FILE. Cannot be used in conjunction with --to
 --activate  ENV      indicates to also activate to ENV. Values include PRODUCTION, STAGING, or both.
+--deactivate ENV     //TODO
+--force              //TODO create new version
+--addhost            //TODO
 `);
     process.exit(0);
 }
