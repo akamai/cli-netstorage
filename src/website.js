@@ -574,7 +574,7 @@ class WebSite {
     updateFromFile(propertyLookup, fromFile) {
         return new Promise((resolve, revoke) => {
                 console.info(`Reading ${propertyLookup} rules from ${fromFile}`);
-                fs.readFile(fromFile, (err, data) => {
+                fs.readFile(untildify(fromFile), (err, data) => {
                     if (err)
                         revoke(err);
                     else
