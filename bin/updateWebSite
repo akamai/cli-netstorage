@@ -2,7 +2,7 @@
 "use strict";
 
 //import {WebSite, AKAMAI_ENV} from '../src/website';
-let website = require('../src/website');
+let WebSite = require('../index').WebSite;
 
 function appName() {
     return process.argv[1].replace(/.*\//, "");
@@ -69,7 +69,7 @@ function main()
     if (destProperty && fromFile) help();
     if (!destProperty && !fromFile && !env) help();
 
-    let property = new website.WebSite();
+    let property = new WebSite();
     let newVersion = version;
     let targetProperty = srcProperty;
     let app = appName();
@@ -88,12 +88,12 @@ function main()
         .then(data => {
             newVersion = data.propertyVersion;
             if ("both" === env || "STAGING" === env)
-                return property.activate(targetProperty, newVersion, website.AKAMAI_ENV.STAGING, "Updated Automatically to staging.", email);
+                return property.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.STAGING, "Updated Automatically to staging.", email);
             return new Promise(resolve => resolve());
         })
         .then(() => {
             if ("both" === env || "PRODUCTION" === env)
-                return property.activate(targetProperty, newVersion, website.AKAMAI_ENV.PRODUCTION, "Updated Automatically to prod.", email);
+                return property.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.PRODUCTION, "Updated Automatically to prod.", email);
             return new Promise(resolve => resolve());
         })
         .then(() => {
@@ -104,52 +104,6 @@ function main()
             console.timeEnd(app);
             console.error("ERROR: ", error.body || error);
         });
-
-    //
-    // let args = process.argv.slice(2);
-    // let env = args[0];
-    // let property = new website.WebSite();
-    //
-    // let devProperty = "dev-www.akamaiedgedemo.com";
-    // let qaProperty = "qa-www.akamaiedgedemo.com";
-    // let prodProperty = "www.akamaiedgedemo.com";
-    //
-    // let targetProperty = env; //dev
-    // if (env == "qa")
-    //     targetProperty = qaProperty;
-    // else if (env == "www")
-    //     targetProperty = prodProperty;
-    //
-    // let newVersion;
-    // if (devProperty != targetProperty) {
-    //
-    //     console.time('TestJob');
-    //     property.copy(devProperty, website.LATEST_VERSION.LATEST, targetProperty)
-    //         .then(data => {
-    //             newVersion = data.propertyVersion;
-    //             return property.activate(targetProperty, newVersion, website.AKAMAI_ENV.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"]);
-    //         })
-    //         .then(() => {
-    //             return property.promoteStagingToProd(targetProperty, "Updated Automatically to PRODUCTION!", [email]);
-    //         })
-    //         .then(() => {
-    //             console.timeEnd('TestJob');
-    //             console.info("Successfully Active!")
-    //         })
-    //         .catch((error) => {
-    //             console.error("ERROR: ", error.body || error);
-    //         });
-
-        // property.deactivate(devProperty, website.LATEST_VERSION.STAGING, website.AKAMAI_ENV.STAGING, "Updated Automatically to STAGING!", ["colinb@akamai.com"])
-        //     .then(data => {
-        //         console.timeEnd('TestJob');
-        //         console.info("Successfully deactivated!");
-        //         console.info(data);
-        //     })
-        //     .catch((error) => {
-        //         console.error("ERROR: ", error.body || error);
-        //     });
-    // }
 }
 
 main();

@@ -685,7 +685,8 @@ class WebSite {
     }
 }
 
-
+WebSite.AKAMAI_ENV = Object.freeze(AKAMAI_ENV);
+WebSite.LATEST_VERSION = Object.freeze(LATEST_VERSION);
 
 // function createCPCode() {
 //
@@ -695,8 +696,4 @@ class WebSite {
 //
 // }
 
-module.exports = {
-    LATEST_VERSION: LATEST_VERSION,
-    AKAMAI_ENV: AKAMAI_ENV,
-    WebSite: WebSite
-};
+module.exports = WebSite;
