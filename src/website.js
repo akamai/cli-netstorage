@@ -89,9 +89,9 @@ class WebSite {
                         prop.productionHosts = hostList.hostnames.items;
 
                     hostList.hostnames.items.map(host => {
-                        let hostRef = this._propertyByHost[host];
+                        let hostRef = this._propertyByHost[host.cnameFrom];
                         if (!hostRef)
-                            hostRef = this._propertyByHost[host] = {};
+                            hostRef = this._propertyByHost[host.cnameFrom] = {};
 
                         if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
                             hostRef.staging = prop;
@@ -104,26 +104,21 @@ class WebSite {
             });
     };
 
-    //TODO: ugh, I hate this tupil property overload. should rewrite.
-    //TODO: refactor as a Proxy class
     _getProperty(propertyLookup, hostnameEnvironment = LATEST_VERSION.STAGING) {
         if (propertyLookup && propertyLookup.groupId && propertyLookup.propertyId && propertyLookup.contractId)
             return Promise.resolve(propertyLookup);
         return this.init()
             .then(() => {
-                return new Promise((resolve, reject) => {
-                    let prop = this._propertyById[propertyLookup] || this._propertyByName[propertyLookup];
-                    if (!prop) {
-                        let host = this._propertyByHost[propertyLookup];
-                        if (host)
-                            prop = hostnameEnvironment === LATEST_VERSION.STAGING ? host.staging : host.production;
-                    }
+                let prop = this._propertyById[propertyLookup] || this._propertyByName[propertyLookup];
+                if (!prop) {
+                    let host = this._propertyByHost[propertyLookup];
+                    if (host)
+                        prop = hostnameEnvironment === LATEST_VERSION.STAGING ? host.staging : host.production;
+                }
 
-                    if (!prop)
-                        reject(Error(`Cannot find property: ${propertyLookup}`));
-                    else
-                        resolve(prop);
-                });
+                if (!prop)
+                    return Promise.reject(Error(`Cannot find property: ${propertyLookup}`));
+                return Promise.resolve(prop);
             });
     };
 
@@ -552,21 +547,21 @@ class WebSite {
     retrieveToFile(propertyLookup, versionLookup = LATEST_VERSION.LATEST, toFile) {
         return this.retrieve(propertyLookup, versionLookup)
             .then(data => {
-                return new Promise((resolve, reject) => {
-                    console.info(`Writing ${propertyLookup} rules to ${toFile}`);
-                    if (toFile === '-') {
-                        console.log(JSON.stringify(data));
-                        resolve(data);
-                    }
-                    else {
-                        fs.writeFile(untildify(toFile), data, (err) => {
+                console.info(`Writing ${propertyLookup} rules to ${toFile}`);
+                if (toFile === '-') {
+                    console.log(JSON.stringify(data));
+                    return Promise.resolve(data);
+                }
+                else {
+                    return new Promise((resolve, reject) => {
+                        fs.writeFile(untildify(toFile), JSON.stringify(data), (err) => {
                             if (err)
                                 reject(err);
                             else
                                 resolve(data);
                         });
-                    }
-                });
+                    });
+                }
             });
     }
 
