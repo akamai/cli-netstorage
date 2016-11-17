@@ -18,9 +18,10 @@ SRC_CONFIG           is the source configuration name. Use either hostnames (eg:
                      Values are either numbers >= 1 corresponding to versions, 0 for LATEST, -1 for current PROD version
                      or -2 for current STAGING version. Default is LATEST (0).
 --copyto DEST_CONFIG indicates that the SRC_CONFIG is being copied to DEST_CONFIG (using VERSION)
---file FILE          updates SRC_CONFIG with the rule contents from FILE. Cannot be used in conjunction with --to
+--out FILE           stores the rules to FILE
+--src FILE           updates SRC_CONFIG with the rule contents from FILE. Cannot be used in conjunction with --copyto
 --activate  ENV      indicates to also activate to ENV. Values include PRODUCTION, STAGING, or both.
---deactivate ENV     //TODO
+--deactivate ENV     deactivate ENV (PRODUCTION, STAGING, or both) from the Akamai platform
 --force              //TODO create new version
 --addhost            //TODO
 `);
@@ -32,8 +33,11 @@ function main()
     let srcProperty,
         destProperty,
         fromFile,
+        toFile,
         version = 0,
-        env,
+        env = 'both',
+        activate,
+        deactivate,
         email;
 
     let lastValue;
@@ -47,20 +51,30 @@ function main()
         else {
             switch (lastValue) {
                 case "--version":
-                    if (!Number.isInteger(value) || value < -2)
+                    if (Number.isNaN(Number(value)) || value < -2)
                         help();
                     version = value;
                     break;
                 case "--copyto":
                     destProperty = value;
                     break;
-                case "--file":
+                case "--src":
                     fromFile = value;
+                    break;
+                case "--out":
+                    toFile = value;
                     break;
                 case "--activate":
                     if ("both" != value && "PRODUCTION" != value && "STAGING" != value)
                         help();
                     env = value;
+                    activate = true;
+                    break;
+                case "--deactivate":
+                    if ("both" != value && "PRODUCTION" != value && "STAGING" != value)
+                        help();
+                    env = value;
+                    deactivate = true;
                     break;
                 case "--email":
                     email = value;
@@ -70,7 +84,7 @@ function main()
     }
     if (!srcProperty) help();
     if (destProperty && fromFile) help();
-    if (!destProperty && !fromFile && !env) help();
+    if (!destProperty && !fromFile && !env && !toFile) help();
 
     let property = new WebSite();
     let newVersion = version;
@@ -78,7 +92,9 @@ function main()
     let app = appName();
 
     console.time(app);
-    new Promise(resolve => resolve())
+    env = env.toUpperCase();
+
+    Promise.resolve()
         .then(() => {
             if (fromFile)
                 return property.updateFromFile(srcProperty, fromFile);
@@ -90,22 +106,37 @@ function main()
         })
         .then(data => {
             newVersion = data.propertyVersion;
-            if ("both" === env || "STAGING" === env)
-                return property.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.STAGING, "Updated Automatically to staging.", email);
-            return new Promise(resolve => resolve());
+            if ("BOTH" === env || env.startsWith("STAG")) {
+                if (activate)
+                    return property.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.STAGING, "Updated Automatically to staging.", email);
+                else if (deactivate)
+                    return property.deactivate(targetProperty, newVersion, WebSite.AKAMAI_ENV.STAGING, "Automatically deactivating on staging.", email);
+            }
+            return Promise.resolve();
         })
         .then(() => {
-            if ("both" === env || "PRODUCTION" === env)
-                return property.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.PRODUCTION, "Updated Automatically to prod.", email);
-            return new Promise(resolve => resolve());
+            if ("BOTH" === env || env.startsWith("PROD")) {
+                if (activate)
+                    return property.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.PRODUCTION, "Updated Automatically to prod.", email);
+                else if (deactivate)
+                    return property.deactivate(targetProperty, newVersion, WebSite.AKAMAI_ENV.PRODUCTION, "Automatically deactivating on prod.", email);
+            }
+            return Promise.resolve();
+        })
+        .then(() => {
+            if (toFile) {
+                return property.retrieveToFile(srcProperty, version, toFile);
+            }
+            return Promise.resolve();
         })
         .then(() => {
             console.timeEnd(app);
-            console.info("Successfully Active!")
+            console.info("Successfully Active!");
         })
         .catch((error) => {
             console.timeEnd(app);
-            console.error("ERROR: ", error.body || error);
+            console.error("ERROR: ", error.body || JSON.stringify(error));
+            console.log(error.stack);
         });
 }
 

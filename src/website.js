@@ -38,10 +38,10 @@ class WebSite {
 
     init() {
         if (this._initComplete)
-            return new Promise(resolve => resolve());
+            return Promise.resolve();
         if (Object.keys(this._propertyById).length > 0) {
             this._initComplete = true;
-            return new Promise(resolve => resolve());
+            return Promise.resolve();
         }
 
         let groupcontractList = [];
@@ -100,7 +100,7 @@ class WebSite {
                     })
                 });
                 console.timeEnd('Init PropertyManager cache');
-                return new Promise(resolve => resolve(true));
+                return Promise.resolve(true);
             });
     };
 
@@ -108,7 +108,7 @@ class WebSite {
     //TODO: refactor as a Proxy class
     _getProperty(propertyLookup, hostnameEnvironment = LATEST_VERSION.STAGING) {
         if (propertyLookup && propertyLookup.groupId && propertyLookup.propertyId && propertyLookup.contractId)
-            return new Promise(resolve => resolve(propertyLookup));
+            return Promise.resolve(propertyLookup);
         return this.init()
             .then(() => {
                 return new Promise((resolve, reject) => {
@@ -409,8 +409,8 @@ class WebSite {
                     const groupId = data.groupId;
                     const propertyId = data.propertyId;
                     return new Promise((resolve, reject) => {
-                        console.time('... activating');
-                        console.info(`... activating property (${propertyLookup}) v${versionId}`);
+                        console.time('... deactivating');
+                        console.info(`... deactivating property (${propertyLookup}) v${versionId}`);
 
                         let activationData = {
                             propertyVersion: versionId,
@@ -422,7 +422,6 @@ class WebSite {
                             }
 
                         };
-                        console.info(activationData);
                         let request = {
                             method: 'POST',
                             path: `/papi/v0/properties/${propertyId}/activations?contractId=${contractId}&groupId=${groupId}`,
@@ -432,6 +431,8 @@ class WebSite {
                         this._edge.auth(request);
 
                         this._edge.send(function (data, response) {
+                            console.info(response.statusCode);
+                            console.info(response.body);
                             if (response.statusCode >= 200 && response.statusCode <= 400) {
                                 let parsed = JSON.parse(response.body);
                                 resolve(parsed);
@@ -477,10 +478,10 @@ class WebSite {
             })
             .then(data => {
                 let pending = false;
-                let active = true;
+                let active = false;
                 data.activations.items.map(status => {
                     pending = pending || 'PENDING' === status.status;
-                    active = !pending && active && 'ACTIVE' === status.status;
+                    active = !pending && 'ACTIVE' === status.status;
                 });
                 if (pending) {
                     console.info('... waiting 30s');
@@ -488,7 +489,7 @@ class WebSite {
                 }
                 else {
                     console.timeEnd('Activation Time');
-                    return new Promise((resolve, reject) => {if (active) resolve(true); else reject(data);});
+                    return active ? Promise.resolve(true) : Promise.reject(data);
                 }
 
             });
@@ -537,6 +538,40 @@ class WebSite {
     }
 
     /**
+     * Create a new version of a property, copying the rules from a file stream. This allows storing the property configuration
+     * in a version control system and then updating the Akamai system when it becomes live. Only the Object.rules from the file
+     * will be used to update the property
+     *
+     * @param propertyLookup {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+     * @param versionLookup {number} specify the version or use LATEST_VERSION.PRODUCTION / STAGING / latest
+     * @param toFile the filename to read a previously saved (and modified) form of the property configuration.
+     *     Only the {Object}.rules will be copied
+     * @returns {Promise} returns a promise with the updated form of the
+     */
+    retrieveToFile(propertyLookup, versionLookup = LATEST_VERSION.LATEST, toFile) {
+        return this.retrieve(propertyLookup, versionLookup)
+            .then(data => {
+                return new Promise((resolve, reject) => {
+                    console.info(`Writing ${propertyLookup} rules to ${toFile}`);
+                    if (toFile === '-') {
+                        console.log(JSON.stringify(data));
+                        resolve(data);
+                    }
+                    else {
+                        fs.writeFile(untildify(toFile), data, (err) => {
+                            if (err)
+                                reject(err);
+                            else
+                                resolve(data);
+                        });
+                    }
+                });
+            });
+    }
+
+
+    /**
      *
      * @param propertyLookup {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
@@ -572,11 +607,11 @@ class WebSite {
      * @returns {Promise} returns a promise with the updated form of the
      */
     updateFromFile(propertyLookup, fromFile) {
-        return new Promise((resolve, revoke) => {
+        return new Promise((resolve, reject) => {
                 console.info(`Reading ${propertyLookup} rules from ${fromFile}`);
                 fs.readFile(untildify(fromFile), (err, data) => {
                     if (err)
-                        revoke(err);
+                        reject(err);
                     else
                         resolve(JSON.parse(data));
                 });
@@ -641,9 +676,11 @@ class WebSite {
      * @param networkEnv Akamai environment to activate the property (either STAGING or PRODUCTION)
      * @param notes {string} describe the reason for activation
      * @param email {Array} notivation email addresses
+     * @param wait {boolean} whether the Promise should return after activation is completed across the Akamai
+     *     platform (wait=true) or if it should return immediately after submitting the job (wait=false)
      * @returns {Promise} returns a promise with the TResult of boolean
      */
-    activate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes='', email=['test@example.com']) {
+    activate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes='', email=['test@example.com'], wait=true) {
         //todo: change the version lookup
         let emailNotification = email;
         if (!Array.isArray(emailNotification))
@@ -665,13 +702,27 @@ class WebSite {
                     property.stagingVersion = activationVersion;
                 else
                     property.productiongVersion = activationVersion;
-                return this._pollActivation(propertyLookup, activationId);
+                if (wait)
+                    return this._pollActivation(propertyLookup, activationId);
+                return Promise.resolve(activationId);
             })
     }
-    //POST /platformtoolkit/service/properties/deActivate.json?accountId=B-C-1FRYVMN&aid=10357352&gid=64867&v=12
-    //{"complianceRecord":{'unitTested":false,"peerReviewedBy":"","customerEmail":"","nonComplianceReason":"NO_PRODUCTION","otherNoncomplianceReason":"","siebelCase":""},"emailList":"colinb@akamai.com","network":"PRODUCTION","notes":"","notificationType":"FINISHED","signedOffWarnings":[]}
 
-    deactivate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes='', email=['test@example.com']) {
+    /**
+     * De-Activate a property to either STAGING or PRODUCTION. This function will poll (30s) incr. until the property has
+     * successfully been promoted.
+     *
+     * @param propertyLookup {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+     * @param version {number} version to activate
+     * @param networkEnv Akamai environment to activate the property (either STAGING or PRODUCTION)
+     * @param notes {string} describe the reason for activation
+     * @param email {Array} notivation email addresses
+     * @param wait {boolean} whether the Promise should return after activation is completed across the Akamai
+     *     platform (wait=true) or if it should return immediately after submitting the job (wait=false)
+     * @returns {Promise} returns a promise with the TResult of boolean
+     */
+    deactivate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes='', email=['test@example.com'], wait=true) {
         if (!Array.isArray(email))
             email = [email];
         return this._getProperty(propertyLookup)
@@ -681,6 +732,15 @@ class WebSite {
                 if (!version || version <= 0)
                     deactivationVersion = WebSite._getLatestVersion(property, version);
                 return this._deactivateProperty(property, deactivationVersion, networkEnv, notes, email)
+            })
+            .then(activationId => {
+                if (networkEnv === AKAMAI_ENV.STAGING)
+                    property.stagingVersion = null;
+                else
+                    property.productiongVersion = null;
+                if (wait)
+                    return this._pollActivation(propertyLookup, activationId);
+                return Promise.resolve(activationId);
             })
     }
 }
