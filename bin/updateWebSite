@@ -28,6 +28,72 @@ SRC_CONFIG           is the source configuration name. Use either hostnames (eg:
     process.exit(0);
 }
 
+function updateProperty(property, options) {
+    if (fromFile)
+        return property.updateFromFile(options.srcProperty, options.srcFile);
+    if (destProperty)
+        return property.copy(options.srcProperty, options.srcVersion, options.destProperty);
+    return Promise.resolve();
+}
+
+function retrieveProperty(property, options) {
+    if (options.srcFile)
+        return property.retrieveToFile(options.srcProperty, options.srcVersion, options.destFile);
+    return Promise.resolve();
+}
+
+function activateProperty(property, options, data) {
+    if (!options.activate)
+        return Promise.resolve();
+
+    let env = options.activateNetwork;
+    return Promise.resolve()
+        .then(() => {
+            if (data && data.propertyVersion)
+                return Promise.resolve(data);
+            return lookupPropertyIdFromHost(property.srcProperty);
+        })
+        .then(data => {
+            options.activateVersion = data.propertyVersion;
+            if ("BOTH" === env || env.startsWith("STAG"))
+                return property.activate(options.destProperty, options.activateVersion, WebSite.AKAMAI_ENV.STAGING,
+                    "Updated Automatically to staging.", option.email);
+            return Promise.resolve(data);
+        })
+        .then(data => {
+            if ("BOTH" === env || env.startsWith("PROD"))
+                return property.activate(options.destProperty, options.activateVersion, WebSite.AKAMAI_ENV.PRODUCTION,
+                    "Updated Automatically to prod.", email);
+            return Promise.resolve(data);
+        });
+}
+
+function deactivateProperty(property, options, data) {
+    if (!options.deactivate)
+        return Promise.resolve();
+
+    let env = options.deactivateNetwork;
+    return Promise.resolve()
+        .then(() => {
+            if (data && data.propertyVersion)
+                return Promise.resolve(data);
+            return lookupPropertyIdFromHost(property.srcProperty);
+        })
+        .then(data => {
+            options.activateVersion = data.propertyVersion;
+            if ("BOTH" === env || env.startsWith("STAG"))
+                return property.deactivate(options.destProperty, options.deactivateVersion, WebSite.AKAMAI_ENV.STAGING,
+                    "Automatically deactivating on staging.", option.email);
+            return Promise.resolve(data);
+        })
+        .then(data => {
+            if ("BOTH" === env || env.startsWith("PROD"))
+                return property.deactivate(options.destProperty, options.deactivateVersion, WebSite.AKAMAI_ENV.PRODUCTION,
+                    "Automatically deactivating on prod.", email);
+            return Promise.resolve(data);
+        });
+}
+
 function main()
 {
     let srcProperty,
@@ -86,49 +152,33 @@ function main()
     if (destProperty && fromFile) help();
     if (!destProperty && !fromFile && !env && !toFile) help();
 
+    env = env.toUpperCase();
+    let options = {
+        srcProperty: srcProperty,
+        srcFile: fromFile,
+        srcVersion: version,
+        destProperty: (destProperty || srcProperty),
+        destFile: toFile,
+        activate: activate,
+        activateVersion: version,
+        activateNetwork: env,
+        deactivate: deactivate,
+        deactivateVersion: version,
+        deativateNetwork: env,
+        email: email
+    };
+
     let property = new WebSite();
     let newVersion = version;
-    let targetProperty = srcProperty;
+    //let targetProperty = srcProperty;
     let app = appName();
-
     console.time(app);
-    env = env.toUpperCase();
 
     Promise.resolve()
-        .then(() => {
-            if (fromFile)
-                return property.updateFromFile(srcProperty, fromFile);
-            if (destProperty) {
-                targetProperty = destProperty;
-                return property.copy(srcProperty, version, destProperty);
-            }
-            return property.lookupPropertyIdFromHost(srcProperty);
-        })
-        .then(data => {
-            newVersion = data.propertyVersion;
-            if ("BOTH" === env || env.startsWith("STAG")) {
-                if (activate)
-                    return property.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.STAGING, "Updated Automatically to staging.", email);
-                else if (deactivate)
-                    return property.deactivate(targetProperty, newVersion, WebSite.AKAMAI_ENV.STAGING, "Automatically deactivating on staging.", email);
-            }
-            return Promise.resolve();
-        })
-        .then(() => {
-            if ("BOTH" === env || env.startsWith("PROD")) {
-                if (activate)
-                    return property.activate(targetProperty, newVersion, WebSite.AKAMAI_ENV.PRODUCTION, "Updated Automatically to prod.", email);
-                else if (deactivate)
-                    return property.deactivate(targetProperty, newVersion, WebSite.AKAMAI_ENV.PRODUCTION, "Automatically deactivating on prod.", email);
-            }
-            return Promise.resolve();
-        })
-        .then(() => {
-            if (toFile) {
-                return property.retrieveToFile(srcProperty, version, toFile);
-            }
-            return Promise.resolve();
-        })
+        .then(() => updateProperty(property, options))
+        .then(data => activateProperty(property, options, data))
+        .then(data => deactivateProperty(property, options, data))
+        .then(data => retrieveProperty(property, options))
         .then(() => {
             console.timeEnd(app);
             console.info("Success!");

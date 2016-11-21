@@ -1,94 +1,56 @@
+"use strict"
+
 /**
  * Module dependencies.
  */
 
-let request = require('request').defaults({jar: true, strictSSL: false}),
+let httpRequest = require('request').defaults({jar: true, strictSSL: false}),
     util = require('util'),
     edgerc = require('edgegrid/src/edgerc'),
     untildify = require('untildify');
 
+class Luna {
 
-/**
- * Luna utility functions
- */
+    constructor(config = {path: "~/.edgerc", section: "luna"}, username, password) {
+        this.options = {
+            host: "https://control.akamai.com",
+            username: username,
+            password: password,
+            cookieJar: httpRequest.jar()
+        };
 
-function extend(target) {
-    let sources = [].slice.call(arguments, 1);
-    sources.forEach(function (source) {
-        for (let prop in source) {
-            target[prop] = source[prop];
+        if (!username || !password) {
+            this.options = extend(this.options, Luna._loadconfig(config));
         }
-    });
-    return target;
-}
-
-/**
- * Load username and password from config files
- * @param config
- */
-function loadconfig(config) {
-    if (!config.path) {
-        throw new Error('No edgerc path');
     }
 
-    return edgerc(untildify(config.path), config.section);
-}
+    /**
+     * Load username and password from config files
+     * @param config
+     */
+    static _loadconfig(config) {
+        if (!config.path) {
+            throw new Error('No edgerc path');
+        }
 
-/**
- *
- * @param config
- * @param username
- * @param password
- * @constructor
- */
-let Luna = function(config = {path:"~/.edgerc", section: "luna"}, username, password) {
-    this.options = {
-        host: "https://control.akamai.com",
-        username: username,
-        password: password,
-        cookieJar: request.jar()
-    };
-
-    if (!username || !password) {
-        this.options = extend(this.options, loadconfig(config));
+        return edgerc(untildify(config.path), config.section);
     }
-};
 
-/**
- *
- * @param method
- * @param url
- * @param options
- * @returns {Promise}
- */
-Luna.prototype.request = function(method, url, options = {}) {
-    if (!url.startsWith("https://")) {
-        if (!url.startsWith("/")) url = "/" + url;
-        if (this.options.host.endsWith("/")) url = url.substr(1);
-        url = this.options.host + url;
-    }
-    return new Promise((resolve, reject) => {
-        //    followAllRedirects: true,
-        options = extend({}, options, {
-            method: method,
-            uri: url,
-            jar: this.options.cookieJar,
-            gzip: true,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
-                'Referer': 'https://control.akamai.com/EdgeAuth/logindirect.jsp',
-                'Origin': 'https://control.akamai.com',
-                'Accept': '*/*'
+    /**
+     * Luna utility functions
+     */
+
+    static _extend(target) {
+        let sources = [].slice.call(arguments, 1);
+        sources.forEach(function (source) {
+            for (let prop in source) {
+                target[prop] = source[prop];
             }
         });
-        request(options, function (error, response) {
-            if (error)
-                reject(Error('problem with request: ' + error.message));
-            else
-                resolve(response);
-        });
-    });
-};
+        return target;
+    }
+
+
 
 // curl 'https://control.akamai.com/EdgeAuth/asyncUserLogin'
 // -H 'Origin: https://control.akamai.com' -H 'Accept-Encoding: gzip, deflate, br'
@@ -100,82 +62,91 @@ Luna.prototype.request = function(method, url, options = {}) {
 // -H 'Connection: keep-alive'
 // --data 'TARGET_URL=Y29udHJvbC5ha2FtYWkuY29tL2hvbWVuZy92aWV3L21haW5BS0FQTVplRzBDZzlxbTl4Z0pBMzE4VWZRc0UrV09iL0w2cGwrZ2J5SldyNEp1bW1pM243NXpVL01NSVlLV01VaDZmNzE0QVZCUnc9&username=advocate2&password=password1234&login=Log+In'
 
-/**
- * Step 1: get TARGET_URL token required for login. This initializes the java session. It shows the age of the Luna
- * product by the need to create an intermediate page for login.
- *
- * @returns {Promise}
- * @private
- */
-Luna.prototype._getLunaToken = function() {
-    let url = "/EdgeAuth/login.jsp";
-    if (this.options.cookieJar.getCookies(this.options.host + url).length > 0) {
-        return new Promise((resolve, reject) => resolve());
-    }
-    return this.request('GET', url, {followAllRedirects: false, followRedirects: false, follows: false})
-        .then((response) => {
-            console.info("... retrieving luna session cookies");
-            return p = new Promise((resolve, reject) => {
-                resolve('Y29udHJvbC5ha2FtYWkuY29tL2hvbWVuZy92aWV3L21haW4');
-                return;
-                if (response.statusCode != 200) {
-                    reject(Error('cannot contact https://control.akamai.com'));
-                } else {
-                    let matches = response.body.match(/name=["']?TARGET_URL["']?.*value=["']?([A-Za-z0-9]+).*/);
-                    if (!matches) {
-                        //reject(Error('cannot find <input name="TARGET_URL" value="" > in the login form'));
-                        reject(response);
-                    } else {
-                        resolve(matches[1]);
-                    }
-                }
-            });
-        });
-};
 
-/**
- * Step 2: get the authorization session. Username and password are sent as form data. TargetUrl token required to complete
- * the login process. This is, of course, intended for a human to interact with in a webpage so thees two steps are hidden
- * from the user normally.
- *
- * @param lunatoken
- * @returns {Promise}
- * @private
- */
-Luna.prototype._getLunaSession = function(lunatoken) {
-    let postData = {
-        'TARGET_URL' : lunatoken,
-        'username': this.options.username,
-        'password': this.options.password,
-        'login' : 'Log In'
+    /**
+     * Get the authorization session. Username and password are sent as form data. TargetUrl token required to complete
+     * the login process. This is, of course, intended for a human to interact with in a webpage so thees two steps are hidden
+     * from the user normally.
+     *
+     * @param lunatoken
+     * @returns {Promise}
+     * @private
+     */
+    _getLunaSession() {
+        let postData = {
+            'TARGET_URL': "Y29udHJvbC5ha2FtYWkuY29tL2hvbWVuZy92aWV3L21haW4",
+            'username': this.options.username,
+            'password': this.options.password,
+            'login': 'Log In'
+        };
+
+        let url = "/EdgeAuth/asyncUserLogin";
+        if (this.options.cookieJar.getCookies(this.options.host + url).length > 2) {
+            return Promise.resolve();
+        }
+        return this.request('POST', url, {form: postData})
+            .then((response) => {
+                console.info("... logging into luna {user: %s}", this.options.username);
+                return new Promise((resolve, reject) => {
+                    if (response.statusCode != 302 || response.headers['location'] !== 'https://control.akamai.com/homeng/view/main') {
+                        reject(Error('login failure!'));
+                    } else {
+                        resolve();
+                    }
+                });
+            });
     };
 
-    let url = "/EdgeAuth/asyncUserLogin";
-    if (this.options.cookieJar.getCookies(this.options.host + url).length > 2) {
-        return new Promise(resolve => resolve());
+    /**
+     * Log into Luna with username/password. After successfull login, we can perform usual activities.
+     *
+     * @returns {Promise}
+     */
+    login() {
+        return this._getLunaSession();
     }
-    return this.request('POST', url, {form: postData})
-    .then((response) => {
-        console.info("... logging into luna {user: %s}", this.options.username);
-        return new Promise((resolve, reject) => {
-            if (response.statusCode != 302 || response.headers['location'] !== 'https://control.akamai.com/homeng/view/main') {
-                reject(Error('login failure!'));
-            } else {
-                resolve();
-            }
-        });
-    });
-};
 
-/**
- * Log into Luna with username/password. After successfull login, we can perform usual activities.
- *
- * @returns {Promise}
- */
-Luna.prototype.login = function() {
-    console.info("[Luna Login]");
-    return this._getLunaToken()
-        .then((lunatoken) => this._getLunaSession(lunatoken));
-};
+    /**
+     * Request a resource (html or api) through Luna credentials. This is often needed when equivelant functionality is
+     * not yet available through the standard {OPEN} apis.
+     *
+     * @param method {string} HTTP verbs (GET, POST, PUT, DELETE...)
+     * @param url {string} either relative or fully qualified url
+     * @param options {Object} an associated array of options to be passed through to the Request
+     * @returns {Promise}
+     */
+    request(method, url, options = {}) {
+        if (!url.startsWith("https://")) {
+            if (!url.startsWith("/")) url = "/" + url;
+            if (this.options.host.endsWith("/")) url = url.substr(1);
+            url = this.options.host + url;
+        }
+        return this.login()
+            .then(() => {
+                new Promise((resolve, reject) => {
+                    //    followAllRedirects: true,
+                    options = Luna._extend({}, options, {
+                        method: method,
+                        uri: url,
+                        jar: this.options.cookieJar,
+                        gzip: true,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
+                            'Referer': 'https://control.akamai.com/EdgeAuth/logindirect.jsp',
+                            'Origin': 'https://control.akamai.com',
+                            'Accept': '*/*'
+                        }
+                    });
+                    httpRequest(options, function (error, response) {
+                        if (error)
+                            reject(Error('problem with httpRequest: ' + error.message));
+                        else
+                            resolve(response);
+                    });
+
+                });
+            });
+    };
+}
 
 module.exports = Luna;

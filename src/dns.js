@@ -14,7 +14,7 @@ const _DEFAULT_ZONE = {
             "originserver": "www.example.com.",
             "refresh": 900,
             "retry": 300,
-            "serial": 12345,
+            "serial": 12344,
             "ttl": 900
         }
     }
@@ -79,8 +79,7 @@ class DNS {
      */
     _createDNSZone(zoneName, options = {aliasOf: null}) {
         let url = "/portal/adns/adns_add.jsp";
-        return this._luna.login()
-            .then(() => this._getDefaultAccount())
+        return this._getDefaultAccount()
             .then((accountID) => {
                 let postData = {
                     "action": "add",
@@ -94,17 +93,19 @@ class DNS {
                     "adnsTsig": "no",
                     "adnsNS": "",
                     "adnsNewZones": zoneName
-                }
+                };
                 return this._luna.request('POST', url, {form: postData});
 
             })
             .then((response) => {
-                console.info("... creating zone {zone: %s}", zoneName);
+                console.info(`... creating zone ${zoneName}`);
                 return new Promise((resolve, reject) => {
-                    if (response.statusCode != 200) {
-                        reject(Error('create failure!'));
-                    } else {
+                    if (response.statusCode == 200
+                        && (response.body.includes("The zones were successfully submitted.")
+                        || response.body.includes("Failed to add zones as zones with the following names already exist"))) {
                         resolve();
+                    } else {
+                        reject(Error('create failure!'));
                     }
                 });
             });
@@ -143,6 +144,13 @@ class DNS {
         });
     }
 
+    static _initZone(zoneName) {
+        let zone = new Object(DNS._DEFAULT_ZONE);
+        zone.zone.name = zoneName;
+        zone.zone.soa.originserver = `${zoneName}.`;
+        return zone;
+    }
+    
     /**
      * Call the OPEN API to update a DNS Zone. We will make sure that the zone token is preserved and serial is incremented
      * between updates automatically.
@@ -151,46 +159,29 @@ class DNS {
      * @returns {Promise} with zone details object
      * @private
      */
-    _updateDNSZone(newZone) {
+    _updateDNSZone(zone) {
+        return new Promise((resolve, reject) => {
+            console.info("... updating zone {%s}", zone.zone.name);
+            //zone.token = newZoneDetails.token;
+            zone.zone.soa.serial++;
+            let request = {
+                method: 'POST',
+                path: `/config-dns/v1/zones/${zone.zone.name}`,
+                body: zone
+            };
 
-        let p;
-        let zone = "";
-        if (typeof newZone === 'string') {
-            let zoneName = zone;
-            zone = new Object(this._DEFAULT_ZONE);
-            zone.zone.name = zoneName;
-            zone.zone.soa.originserver = zoneName + "."; //must be fully qualified
-            p = new Promise(resolve => {
-                resolve(zone)
-            });
-        }
-        else {
-            p = this._getDNSZone(zone.zone.name);
-        }
+            this._edge.auth(request);
 
-        return p.then(oldZoneDetails => {
-            return new Promise((resolve, reject) => {
-                console.info("... updating zone {%s}", zone.zone.name);
-                zone.token = oldZoneDetails.token;
-                zone.zone.soa.serial = oldZoneDetails.zone.soa.serial + 1;
-                let request = {
-                    method: 'POST',
-                    path: util.format('/config-dns/v1/zones/%s', zone.zone.name),
-                    body: zone
+            this._edge.send(function (data, response) {
+                if (response.statusCode === 201 || response.statusCode === 204) {
+                    resolve(zone);
                 }
-
-                this._edge.auth(request);
-
-                this._edge.send(function (data, response) {
-                    if (response.statusCode === 201 || response.statusCode === 204) {
-                        resolve(zone);
-                    }
-                    else {
-                        reject(Error("Unexpected response from DNS API: %s", response.statusCode));
-                    }
-                });
+                else {
+                    reject(Error(`Unexpected response from DNS API: ${response.statusCode}`));
+                }
             });
         });
+        
     }
 
 
@@ -218,7 +209,7 @@ class DNS {
                 let postData = {
                     "action": "delete",
                     "ednsicdelete": false
-                }
+                };
                 postData["delzone_" + zoneDetails.zone.id] = "foo";
                 return this._luna.request('POST', url, {form: postData});
 
@@ -280,7 +271,7 @@ class DNS {
     create() {
         //TODO check for pre-existence
         return this._createDNSZone(this._zone)
-            .then(() => this._updateDNSZone(this._zone));
+            .then(() => this._updateDNSZone(DNS._initZone(this._zone)));
     }
 
     /**
@@ -335,12 +326,12 @@ class DNS {
      *
      * As a shortcut for A/AAAA/CNAME you simply specify the target value instead of a record object
      *
-     * @param {string} recordName the record name. Should _not_ be qualified. Eg: "www"
-     * @param {string} or {object} records to be added
-     * @param {string} type the DNS record type. case does not matter
+     * @param recordName {string} recordName the record name. Should _not_ be qualified. Eg: "www"
+     * @param records {string} or {object} records to be added
+     * @param type {string} type the DNS record type. case does not matter
      * @returns {Promise} zoneDetails after the record has been updated
      */
-    addRecord(recordName, records = [{target: 'www.example.com', ttl: 30, active: true}], type = 'CNAME') {
+    addRecord(recordName, records = [{target: 'www.example.com.', ttl: 30, active: true}], type = 'CNAME') {
         //TODO do a zonecheck
         if (!recordName || recordName === "")
             recordName = null;
@@ -424,9 +415,8 @@ class DNS {
      * @param targetCname
      */
 
-    deleteZAMRecord(recordName, targetCname) {
+    removeZAMRecord(recordName, targetCname) {
         //TODO
-
     }
 
     /**
@@ -452,6 +442,6 @@ class DNS {
     }
 }
 
-DNS._DEFAULT_ZONE = Object.freeze(_DEFAULT_ZONE);
+DNS._DEFAULT_ZONE = _DEFAULT_ZONE;
 
 module.exports = DNS;
