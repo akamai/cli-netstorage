@@ -20,14 +20,25 @@ const _DEFAULT_ZONE = {
     }
 };
 
+/**
+ * DNS Activities
+ */
 class DNS {
 
-    constructor(zoneName, config = {path: "~/.edgerc", lunasection: "luna", section: "default"}) {
-        this._zone = zoneName;
-        this._luna = new Luna({path: config.path, section: config.lunasection});
-        this._edge = new EdgeGrid({path: untildify(config.path), section: config.section});
+    /**
+     * Default constructor for dns management library. By default the `~/.edgerc` file is used for authentication,
+     * using the `[default]` section for standard API calls. Luna credentials are also required for Domain creation.  
+     * @param domain {string} the zone name (domain) to be managed. For example, `akamai.com` or `example.com`
+     * @param auth {Object} providing the path, section and lunasection for the authentication. We require the
+     */
+    constructor(domain, auth = {path: "~/.edgerc", lunasection: "luna", section: "default"}) {
+        this._zone = domain;
+        this._luna = new Luna({path: untildify(auth.path), section: auth.lunasection});
+        if (auth.clientToken && auth.clientSecret && auth.accessToken && auth.host)
+            this._edge = new EdgeGrid(auth.clientToken. config.clientSecret, auth.accessToken, auth.host);
+        else
+            this._edge = new EdgeGrid({path: untildify(auth.path), section: auth.section});
     }
-
 
     /**
      * Retrieve the default Account ID. To do this we log into luna and retrieve the html value <input name="param_acg_to_add" ... />
@@ -326,9 +337,9 @@ class DNS {
      *
      * As a shortcut for A/AAAA/CNAME you simply specify the target value instead of a record object
      *
-     * @param recordName {string} recordName the record name. Should _not_ be qualified. Eg: "www"
-     * @param records {string} or {object} records to be added
-     * @param type {string} type the DNS record type. case does not matter
+     * @param {string} recordName recordName the record name. Should _not_ be qualified. Eg: "www"
+     * @param {Object[]} records or {string} records to be added
+     * @param {string} type type the DNS record type. case does not matter
      * @returns {Promise} zoneDetails after the record has been updated
      */
     addRecord(recordName, records = [{target: 'www.example.com.', ttl: 30, active: true}], type = 'CNAME') {
@@ -364,7 +375,7 @@ class DNS {
      * As a shortcut for A/AAAA/CNAME you simply specify the target value instead of a record object
      *
      * @param {string} recordName the record name. Should _not_ be qualified. Eg: "www"
-     * @param {object} records  (or {string}) to be added
+     * @param {Object[]} records  (or {string}) to be added
      * @param {string} type the DNS record type. case does not matter
      * @returns {Promise} zoneDetails after the record has been updated
      */
@@ -402,8 +413,8 @@ class DNS {
      *
      * ZAM (Zone Apex Mapping) removes the CNAME chain by using EDNS0 and return the IP instead of the usual foo.edgekey.net
      *
-     * @param recordName
-     * @param targetCname
+     * @param {string} recordName
+     * @param {string} targetCname
      */
     updateZAMRecord(recordName, targetCname) {
         //todo
@@ -411,10 +422,9 @@ class DNS {
 
     /**
      * Deletes ZAM (Zone Apex Mapping) record
-     * @param recordName
-     * @param targetCname
+     * @param {string} recordName
+     * @param {string} targetCname
      */
-
     removeZAMRecord(recordName, targetCname) {
         //TODO
     }
@@ -444,4 +454,4 @@ class DNS {
 
 DNS._DEFAULT_ZONE = _DEFAULT_ZONE;
 
-module.exports = DNS;
+//module.exports = DNS;

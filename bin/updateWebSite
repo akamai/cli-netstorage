@@ -29,15 +29,15 @@ SRC_CONFIG           is the source configuration name. Use either hostnames (eg:
 }
 
 function updateProperty(property, options) {
-    if (fromFile)
+    if (options.srcFile)
         return property.updateFromFile(options.srcProperty, options.srcFile);
-    if (destProperty)
+    if (options.destProperty)
         return property.copy(options.srcProperty, options.srcVersion, options.destProperty);
     return Promise.resolve();
 }
 
 function retrieveProperty(property, options) {
-    if (options.srcFile)
+    if (options.destFile)
         return property.retrieveToFile(options.srcProperty, options.srcVersion, options.destFile);
     return Promise.resolve();
 }
@@ -51,19 +51,19 @@ function activateProperty(property, options, data) {
         .then(() => {
             if (data && data.propertyVersion)
                 return Promise.resolve(data);
-            return lookupPropertyIdFromHost(property.srcProperty);
+            return property.lookupPropertyIdFromHost(options.activateProperty);
         })
         .then(data => {
             options.activateVersion = data.propertyVersion;
             if ("BOTH" === env || env.startsWith("STAG"))
-                return property.activate(options.destProperty, options.activateVersion, WebSite.AKAMAI_ENV.STAGING,
-                    "Updated Automatically to staging.", option.email);
+                return property.activate(options.activateProperty, options.activateVersion, WebSite.AKAMAI_ENV.STAGING,
+                    "Updated Automatically to staging.", options.email);
             return Promise.resolve(data);
         })
         .then(data => {
             if ("BOTH" === env || env.startsWith("PROD"))
-                return property.activate(options.destProperty, options.activateVersion, WebSite.AKAMAI_ENV.PRODUCTION,
-                    "Updated Automatically to prod.", email);
+                return property.activate(options.activateProperty, options.activateVersion, WebSite.AKAMAI_ENV.PRODUCTION,
+                    "Updated Automatically to prod.", options.email);
             return Promise.resolve(data);
         });
 }
@@ -77,19 +77,19 @@ function deactivateProperty(property, options, data) {
         .then(() => {
             if (data && data.propertyVersion)
                 return Promise.resolve(data);
-            return lookupPropertyIdFromHost(property.srcProperty);
+            return property.lookupPropertyIdFromHost(options.deactivateProperty);
         })
         .then(data => {
             options.activateVersion = data.propertyVersion;
             if ("BOTH" === env || env.startsWith("STAG"))
-                return property.deactivate(options.destProperty, options.deactivateVersion, WebSite.AKAMAI_ENV.STAGING,
-                    "Automatically deactivating on staging.", option.email);
+                return property.deactivate(options.deactivateProperty, options.deactivateVersion, WebSite.AKAMAI_ENV.STAGING,
+                    "Automatically deactivating on staging.", options.email);
             return Promise.resolve(data);
         })
         .then(data => {
             if ("BOTH" === env || env.startsWith("PROD"))
-                return property.deactivate(options.destProperty, options.deactivateVersion, WebSite.AKAMAI_ENV.PRODUCTION,
-                    "Automatically deactivating on prod.", email);
+                return property.deactivate(options.deactivateProperty, options.deactivateVersion, WebSite.AKAMAI_ENV.PRODUCTION,
+                    "Automatically deactivating on prod.", options.email);
             return Promise.resolve(data);
         });
 }
@@ -106,7 +106,7 @@ function main()
         deactivate,
         email;
 
-    let lastValue;
+    let lastValue = null;
     for (const value of process.argv.slice(2)) {
         if ("--help" === value) {
             help();
@@ -157,20 +157,20 @@ function main()
         srcProperty: srcProperty,
         srcFile: fromFile,
         srcVersion: version,
-        destProperty: (destProperty || srcProperty),
+        destProperty: destProperty,
         destFile: toFile,
         activate: activate,
         activateVersion: version,
         activateNetwork: env,
+        activateProperty: (destProperty || srcProperty),
         deactivate: deactivate,
         deactivateVersion: version,
-        deativateNetwork: env,
+        deactivateNetwork: env,
+        deactivateProperty: (destProperty || srcProperty),
         email: email
     };
 
     let property = new WebSite();
-    let newVersion = version;
-    //let targetProperty = srcProperty;
     let app = appName();
     console.time(app);
 

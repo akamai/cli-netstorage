@@ -1,6 +1,5 @@
 'use strict';
 
-let Luna = require('./luna');
 let EdgeGrid = require('edgegrid');
 let untildify = require('untildify');
 let fs = require('fs');
@@ -18,25 +17,34 @@ const AKAMAI_ENV = {
     PRODUCTION: 'PRODUCTION'
 };
 
+function sleep(time) {
+    return new Promise((resolve) => setTimeout(resolve, time));
+}
+
+/**
+ * WebSite configuration and manipulation. Use this class to control the workflow of your Akamai configuration for which
+ * you normally would use the Property Manager apis.
+ */
 //export default class WebSite {
 class WebSite {
 
-    constructor(config = {path:"~/.edgerc", lunasection: "luna", section: "default"}) {
-        if (config.clientToken && config.clientSecret && config.accessToken && config.host)
-            this._edge = new EdgeGrid(config.clientToken. config.clientSecret, config.accessToken, config.host);
+    /**
+     * Default constructor. By default the `~/.edgerc` file is used for authentication, using the `[default]` section.
+     * @param auth {Object} providing the `path`, and `section` for the authentication. Alternatively, you can pass in
+     *     `clientToken`, `clientSecret`, `accessToken`, and `host` directly.
+     */
+    constructor(auth = {path:"~/.edgerc", section: "default"}) {
+        if (auth.clientToken && auth.clientSecret && auth.accessToken && auth.host)
+            this._edge = new EdgeGrid(auth.clientToken. config.clientSecret, auth.accessToken, auth.host);
         else
-            this._edge = new EdgeGrid({path: untildify(config.path), section: config.section});
+            this._edge = new EdgeGrid({path: untildify(auth.path), section: auth.section});
         this._propertyById = {};
         this._propertyByName = {};
         this._propertyByHost = {};
         this._initComplete = false;
     }
 
-    static sleep (time) {
-        return new Promise((resolve) => setTimeout(resolve, time));
-    }
-
-    init() {
+    _init() {
         if (this._initComplete)
             return Promise.resolve();
         if (Object.keys(this._propertyById).length > 0) {
@@ -107,7 +115,7 @@ class WebSite {
     _getProperty(propertyLookup, hostnameEnvironment = LATEST_VERSION.STAGING) {
         if (propertyLookup && propertyLookup.groupId && propertyLookup.propertyId && propertyLookup.contractId)
             return Promise.resolve(propertyLookup);
-        return this.init()
+        return this._init()
             .then(() => {
                 let prop = this._propertyById[propertyLookup] || this._propertyByName[propertyLookup];
                 if (!prop) {
@@ -480,7 +488,7 @@ class WebSite {
                 });
                 if (pending) {
                     console.info('... waiting 30s');
-                    return WebSite.sleep(30000).then(() => {return this._pollActivation(propertyLookup, activationID);});
+                    return sleep(30000).then(() => {return this._pollActivation(propertyLookup, activationID);});
                 }
                 else {
                     console.timeEnd('Activation Time');
@@ -494,8 +502,8 @@ class WebSite {
      * Lookup the PropertyId using the associated Host name. Provide the environment if the Hostname association is
      * moving between configurations.
      *
-     * @param hostname {string} for example www.example.com
-     * @param env for the latest version lookup (PRODUCTION | STAGING | latest)
+     * @param {string} hostname for example www.example.com
+     * @param {string} env for the latest version lookup (PRODUCTION | STAGING | latest)
      * @returns {Promise} the {object} of Property as the {TResult}
      */
     lookupPropertyIdFromHost(hostname, env = LATEST_VERSION.PRODUCTION) {
@@ -504,22 +512,12 @@ class WebSite {
 
 
     /**
-     * @param hostOrPropertyId {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
-     *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     * @param newRules {Object} of the configuration to be updated. Only the {object}.rules will be copied.
-     * @returns {Promise} with the property rules as the {TResult}
-     */
-    create(hostOrPropertyId, newRules) {
-        //TODO:
-    }
-
-    /**
      * Retrieve the configuration rules for a given property. Use either Host or PropertyId to use as the lookup
      * for the rules
      *
-     * @param propertyLookup {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     * @param versionLookup {number} specify the version or use LATEST_VERSION.PRODUCTION / STAGING / latest
+     * @param {number} versionLookup specify the version or use LATEST_VERSION.PRODUCTION / STAGING / latest
      * @returns {Promise} with the property rules as the {TResult}
      */
     retrieve(propertyLookup, versionLookup = LATEST_VERSION.LATEST) {
@@ -537,10 +535,10 @@ class WebSite {
      * in a version control system and then updating the Akamai system when it becomes live. Only the Object.rules from the file
      * will be used to update the property
      *
-     * @param propertyLookup {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     * @param versionLookup {number} specify the version or use LATEST_VERSION.PRODUCTION / STAGING / latest
-     * @param toFile the filename to read a previously saved (and modified) form of the property configuration.
+     * @param {number} versionLookup specify the version or use LATEST_VERSION.PRODUCTION / STAGING / latest
+     * @param {string} toFile the filename to read a previously saved (and modified) form of the property configuration.
      *     Only the {Object}.rules will be copied
      * @returns {Promise} returns a promise with the updated form of the
      */
@@ -568,9 +566,9 @@ class WebSite {
 
     /**
      *
-     * @param propertyLookup {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     * @param newRules {Object} of the configuration to be updated. Only the {object}.rules will be copied.
+     * @param {Object} newRules of the configuration to be updated. Only the {object}.rules will be copied.
      * @returns {Promise} with the property rules as the {TResult}
      */
     update(propertyLookup, newRules) {
@@ -595,9 +593,9 @@ class WebSite {
      * in a version control system and then updating the Akamai system when it becomes live. Only the Object.rules from the file
      * will be used to update the property
      *
-     * @param propertyLookup {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     * @param fromFile the filename to read a previously saved (and modified) form of the property configuration.
+     * @param {string} fromFile the filename to read a previously saved (and modified) form of the property configuration.
      *     Only the {Object}.rules will be copied
      * @returns {Promise} returns a promise with the updated form of the
      */
@@ -619,10 +617,10 @@ class WebSite {
      * case is to migrate the rules from a QA setup to the WWW setup. If the version is not provided, the LATEST version
      * will be assumed.
      *
-     * @param fromProperty {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     * @param {string} fromProperty either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     * @param fromVersion {number} optional version number. Will assume LATEST_VERSION.LATEST if none are specified
-     * @param toProperty {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456)
+     * @param {number} fromVersion optional version number. Will assume LATEST_VERSION.LATEST if none are specified
+     * @param {string} toProperty either colloquial host name (www.example.com) or canonical PropertyId (prp_123456)
      * @returns {Promise} returns a promise with the TResult of boolean
      */
     copy(fromProperty, fromVersion = LATEST_VERSION.LATEST, toProperty) {
@@ -633,17 +631,13 @@ class WebSite {
             });
     }
 
-    deleteConfig() {
-        //TODO
-    }
-
     /**
      * Convenience method to promote the STAGING version of a property to PRODUCTION
      *
-     * @param propertyLookup {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     * @param notes {string} describe the reason for activation
-     * @param email {Array} notivation email addresses
+     * @param {string} notes describe the reason for activation
+     * @param {string[]} email notivation email addresses
      * @returns {Promise} returns a promise with the TResult of boolean
      */
     promoteStagingToProd(propertyLookup, notes='', email=['test@example.com']) {
@@ -665,13 +659,13 @@ class WebSite {
      * Activate a property to either STAGING or PRODUCTION. This function will poll (30s) incr. until the property has
      * successfully been promoted.
      *
-     * @param propertyLookup {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     * @param version {number} version to activate
-     * @param networkEnv Akamai environment to activate the property (either STAGING or PRODUCTION)
-     * @param notes {string} describe the reason for activation
-     * @param email {Array} notivation email addresses
-     * @param wait {boolean} whether the Promise should return after activation is completed across the Akamai
+     * @param {number} version version to activate
+     * @param {string} networkEnv Akamai environment to activate the property (either STAGING or PRODUCTION)
+     * @param {string} notes describe the reason for activation
+     * @param {string[]} email notivation email addresses
+     * @param {boolean} wait whether the Promise should return after activation is completed across the Akamai
      *     platform (wait=true) or if it should return immediately after submitting the job (wait=false)
      * @returns {Promise} returns a promise with the TResult of boolean
      */
@@ -707,13 +701,13 @@ class WebSite {
      * De-Activate a property to either STAGING or PRODUCTION. This function will poll (30s) incr. until the property has
      * successfully been promoted.
      *
-     * @param propertyLookup {string} either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     * @param version {number} version to activate
-     * @param networkEnv Akamai environment to activate the property (either STAGING or PRODUCTION)
-     * @param notes {string} describe the reason for activation
-     * @param email {Array} notivation email addresses
-     * @param wait {boolean} whether the Promise should return after activation is completed across the Akamai
+     * @param {number} version version to activate
+     * @param {string} networkEnv Akamai environment to activate the property (either STAGING or PRODUCTION)
+     * @param {string} notes describe the reason for activation
+     * @param {Array} email notivation email addresses
+     * @param {boolean} wait whether the Promise should return after activation is completed across the Akamai
      *     platform (wait=true) or if it should return immediately after submitting the job (wait=false)
      * @returns {Promise} returns a promise with the TResult of boolean
      */
@@ -738,17 +732,29 @@ class WebSite {
                 return Promise.resolve(activationId);
             })
     }
+
+    /**
+     * TODO
+     */
+    deleteConfig() {
+        //TODO
+    }
+
+    /**
+     * TODO
+     * Create a new website configuration on Akamai with a hostname and a base set of rules
+     *
+     * @param {string} hostname either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+     * @param {Object} newRules of the configuration to be updated. Only the {object}.rules will be copied.
+     * @returns {Promise} with the property rules as the {TResult}
+     */
+    create(hostname, newRules) {
+        //TODO:
+    }
 }
 
 WebSite.AKAMAI_ENV = Object.freeze(AKAMAI_ENV);
 WebSite.LATEST_VERSION = Object.freeze(LATEST_VERSION);
-
-// function createCPCode() {
-//
-// }
-//
-// function createTLSCertificate() {
-//
-// }
 
 module.exports = WebSite;
