@@ -34,8 +34,9 @@ class WebSite {
      *     `clientToken`, `clientSecret`, `accessToken`, and `host` directly.
      */
     constructor(auth = {path:"~/.edgerc", section: "default"}) {
+
         if (auth.clientToken && auth.clientSecret && auth.accessToken && auth.host)
-            this._edge = new EdgeGrid(auth.clientToken. config.clientSecret, auth.accessToken, auth.host);
+            this._edge = new EdgeGrid(auth.clientToken. auth.clientSecret, auth.accessToken, auth.host);
         else
             this._edge = new EdgeGrid({path: untildify(auth.path), section: auth.section});
         this._propertyById = {};

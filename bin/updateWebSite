@@ -131,15 +131,15 @@ function main()
                     toFile = value;
                     break;
                 case "--activate":
-                    if ("both" != value && "PRODUCTION" != value && "STAGING" != value)
+                    env = value.toUpperCase();
+                    if ("BOTH" != env && !env.startsWith("STAG") && !env.startsWith("PROD"))
                         help();
-                    env = value;
                     activate = true;
                     break;
                 case "--deactivate":
-                    if ("both" != value && "PRODUCTION" != value && "STAGING" != value)
+                    env = value.toUpperCase();
+                    if ("BOTH" != env && !env.startsWith("STAG") && !env.startsWith("PROD"))
                         help();
-                    env = value;
                     deactivate = true;
                     break;
                 case "--email":
@@ -151,8 +151,6 @@ function main()
     if (!srcProperty) help();
     if (destProperty && fromFile) help();
     if (!destProperty && !fromFile && !env && !toFile) help();
-
-    env = env.toUpperCase();
     let options = {
         srcProperty: srcProperty,
         srcFile: fromFile,
