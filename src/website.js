@@ -606,7 +606,8 @@ class WebSite {
             .then(newVersionId => {return this.retrieve(property, newVersionId);})
             .then(oldRules => {
                 let updatedRules = newRules;
-                updatedRules.rules = newRules.rules;
+                // fallback in case the object is just the rules and not the full proeprty manager response
+                updatedRules.rules = newRules.rules ? newRules.rules : newRules;
                 return this._updatePropertyRules(property, oldRules.propertyVersion, updatedRules);
             });
     }
