@@ -50,9 +50,9 @@ class DNS {
         this._zone = domain;
         this._luna = new Luna({path: untildify(auth.path), section: auth.lunasection});
         if (auth.clientToken && auth.clientSecret && auth.accessToken && auth.host)
-            this._edge = new EdgeGrid(auth.clientToken. config.clientSecret, auth.accessToken, auth.host);
+            this._edge = new EdgeGrid(auth.clientToken. config.clientSecret, auth.accessToken, auth.host, auth.debug);
         else
-            this._edge = new EdgeGrid({path: untildify(auth.path), section: auth.section});
+            this._edge = new EdgeGrid({path: untildify(auth.path), section: auth.section, debug: auth.debug});
     }
 
     /**
