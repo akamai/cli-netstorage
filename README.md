@@ -23,7 +23,6 @@ let WebSite = require('AkamaiWeb').WebSite;
 let exampleDotCom = new WebSite();
 
 exampleDotCom.copy("qa-www.example.com", "sage-www.example.com")
-
   .then(data -> { console.log("Rules copied accross Akamai configurations!")});
 ```
 

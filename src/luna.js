@@ -34,7 +34,7 @@ class Luna {
         };
 
         if (!username || !password) {
-            this.options = extend(this.options, Luna._loadconfig(config));
+            this.options = Luna._extend(this.options, Luna._loadconfig(config));
         }
     }
 

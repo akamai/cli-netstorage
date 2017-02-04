@@ -392,6 +392,7 @@ class WebSite {
                     let messages = [];
                     console.info('... automatically acknowledging %s warnings!', body.warnings.length);
                     body.warnings.map(warning => {
+                        console.info('Warnings: %s', warning.detail);
                         //TODO report these warnings?
                         //console.trace(body.warnings[i]);
                         messages.push(warning.messageId);
@@ -404,8 +405,8 @@ class WebSite {
                     return new Promise((resolve, reject) => {
                         //TODO: chaise redirect?
                         console.time('Activation Time');
-
                         let matches = !body.activationLink ? null : body.activationLink.match('activations/([a-z0-9_]+)\\b');
+
                         if (!matches) {
                             reject(body);
                         }
@@ -453,7 +454,14 @@ class WebSite {
                             console.info(response.body);
                             if (response.statusCode >= 200 && response.statusCode <= 400) {
                                 let parsed = JSON.parse(response.body);
-                                resolve(parsed);
+                                let matches = !parsed.activationLink ? null : parsed.activationLink.match('activations/([a-z0-9_]+)\\b');
+
+                                if (!matches) {
+                                    reject(parsed);
+                                }
+                                else {
+                                    resolve(matches[1])
+                                }
                             }
                             else {
                                 reject(response.body);
@@ -718,7 +726,6 @@ class WebSite {
      *
      * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     * @param {number} version version to activate
      * @param {string} networkEnv Akamai environment to activate the property (either STAGING or PRODUCTION)
      * @param {string} notes describe the reason for activation
      * @param {Array} email notivation email addresses
@@ -726,15 +733,16 @@ class WebSite {
      *     platform (wait=true) or if it should return immediately after submitting the job (wait=false)
      * @returns {Promise} returns a promise with the TResult of boolean
      */
-    deactivate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes='', email=['test@example.com'], wait=true) {
+    deactivate(propertyLookup, networkEnv = AKAMAI_ENV.STAGING, notes='', email=['test@example.com'], wait=true) {
         if (!Array.isArray(email))
             email = [email];
+
+        let property = propertyLookup;
         return this._getProperty(propertyLookup)
-            .then(property => {
+            .then(data => {
+                property = data;
                 console.info(`Deactivating ${propertyLookup} to ${networkEnv}`);
-                let deactivationVersion = version;
-                if (!version || version <= 0)
-                    deactivationVersion = WebSite._getLatestVersion(property, version);
+                let deactivationVersion = WebSite._getLatestVersion(property, networkEnv == AKAMAI_ENV.STAGING ? LATEST_VERSION.STAGING : LATEST_VERSION.PRODUCTION);
                 return this._deactivateProperty(property, deactivationVersion, networkEnv, notes, email)
             })
             .then(activationId => {
