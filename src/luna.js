@@ -15,7 +15,9 @@
 "use strict"
 
 /**
- * Module dependencies.
+ * Luna login wrapper to support direct login of functions that aren't available through {OPEN} APIs
+ *
+ * @author Colin Bendell <colinb@akamai.com>
  */
 
 let httpRequest = require('request').defaults({jar: true, strictSSL: false}),

@@ -16,7 +16,12 @@
 
 "use strict";
 
-//import {WebSite, AKAMAI_ENV} from '../src/website';
+/**
+ * Command line tool to interface with the WebSite library for manipulating the CDN activities on Akamai
+ *
+ * @author Colin Bendell <colinb@akamai.com>
+ */
+
 let WebSite = require('../index').WebSite;
 
 function appName() {

@@ -16,11 +16,19 @@
 
 "use strict";
 
+/**
+ * Command line tool to interface with the DNS library for manipulating the DNS activities on Akamai
+ *
+ * @author Colin Bendell <colinb@akamai.com>
+ */
+
 let APIClient = require('../src/apiclient');
 let DNS = require('../src/dns');
 
 function main()
 {
+    //TODO update this!
+
     let dns = new DNS("edge2016.com");
 	for (const value of process.argv.slice(2)) {
 		dns = new DNS(value);

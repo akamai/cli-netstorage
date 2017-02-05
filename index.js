@@ -1,9 +1,7 @@
 'use strict';
 
 module.exports = {
-    APIClient: require('./src/apiclient'),
     WebSite: require('./src/website'),
-    // DNS: require('./src/dns'),
-    // TLS: require('./src/tls'),
+    DNS: require('./src/dns'),
     Luna: require('./src/luna')
 };

@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/**
+ * DNS Module for manipulating a domain on Akamai
+ *
+ * @author Colin Bendell <colinb@akamai.com>
+ */
 
 let Luna = require('./luna');
 let EdgeGrid = require('edgegrid');

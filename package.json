@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "description": "A wrapping development kit to interface common tasks with akamai's {OPEN} API.",
-  "repository": "git+ssh://git@stash.akamai.com:7999/~colinb/akamaiweb-kit.git",
+  "repository": "https://github.com/akamai-open/akamaiwebkit",
+  "author": "Colin Bendell <colinb@akamai.com",
   "license": "Apache-2.0",
   "scripts": {
     "start": "node ./bin/createKeys"
