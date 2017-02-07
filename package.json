@@ -3,11 +3,11 @@
   "version": "0.0.1",
   "private": true,
   "description": "A wrapping development kit to interface common tasks with akamai's {OPEN} API.",
-  "repository": "https://github.com/akamai-open/akamaiwebkit",
-  "author": "Colin Bendell <colinb@akamai.com",
+  "repository": "git+ssh://git@stash.akamai.com:7999/~colinb/akamaiweb-kit.git",
   "license": "Apache-2.0",
   "scripts": {
-    "start": "node ./bin/createKeys"
+    "start": "node ./bin/createKeys",
+    "test":"./node_modules/.bin/mocha --reporter spec"
   },
   "main": "./index.js",
   "files": [
@@ -15,8 +15,9 @@
     "src"
   ],
   "dependencies": {
-    "request": "^2.74.0",
     "edgegrid": "*",
+    "mocha": "^3.2.0",
+    "request": "^2.74.0",
     "untildify": "*"
   },
   "devDependencies": {

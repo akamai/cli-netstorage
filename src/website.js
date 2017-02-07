@@ -603,7 +603,10 @@ class WebSite {
                 const version = WebSite._getLatestVersion(property);
                 return this._copyPropertyVersion(property, version);
             })
-            .then(newVersionId => {return this.retrieve(property, newVersionId);})
+            .then(newVersionId => {
+		property.latestVersion = newVersionId;
+		return this.retrieve(property, newVersionId);
+	    })
             .then(oldRules => {
                 let updatedRules = newRules;
                 // fallback in case the object is just the rules and not the full proeprty manager response
