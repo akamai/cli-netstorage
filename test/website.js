@@ -87,9 +87,7 @@ describe('Full update including production and staging', function () {
                 .then(stag_data => {
                     return akamaiweb.retrieve(propertyId, "PRODUCTION")
                 .then(prod_data => {
-                    console.log(stag_data);
-                    console.log(prod_data);
-                    assert(data);
+                    assert(stag_data.propertyVersion === prod_data.propertyVersion);
                 })
             })
         })
