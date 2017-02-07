@@ -1,0 +1,5 @@
+Test directory
+
+To run the tests, first set the following environment variables:
+* AKAMAI_TEST_HOST = host you want to work with
+* AKAMAI_TEST_PROPID = property ID for that host
