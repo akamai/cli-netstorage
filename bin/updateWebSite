@@ -22,6 +22,8 @@
  * @author Colin Bendell <colinb@akamai.com>
  */
 
+var path = require('path');
+
 let WebSite = require('../index').WebSite;
 
 function appName() {
@@ -37,15 +39,24 @@ SRC_CONFIG           is the source configuration name. Use either hostnames (eg:
 --version VERSION    the configuration VERSION of SRC_CONFIG to copy from. Use in conjunction with --to and/or --on. 
                      Values are either numbers >= 1 corresponding to versions, 0 for LATEST, -1 for current PROD version
                      or -2 for current STAGING version. Default is LATEST (0).
---copyto DEST_CONFIG indicates that the SRC_CONFIG is being copied to DEST_CONFIG (using VERSION)
+--dest DEST_PROP     target property for clone, create or copy
 --out FILE           stores the rules to FILE
 --src FILE           updates SRC_CONFIG with the rule contents from FILE. Cannot be used in conjunction with --copyto
 --activate  ENV      indicates to also activate to ENV. Values include PRODUCTION, STAGING, or both.
 --deactivate ENV     deactivate ENV (PRODUCTION, STAGING, or both) from the Akamai platform
 --force              //TODO create new version
 --addhost            //TODO
+--create             create new version - requires dest
+--clone              create new property by cloning existing property (use --src and --dest)
+--config_file        config file for create or clone
 `);
     process.exit(0);
+}
+
+function createProperty(property, config) {
+    console.log("ABOUT TO CREATE PROPERTY");
+    return property.createProperty(config);
+    console.log("DONE CREATING PROPERTY");
 }
 
 function updateProperty(property, options) {
@@ -123,7 +134,10 @@ function main()
         env = 'both',
         activate,
         deactivate,
-        email;
+        email,
+        create,
+        clone,
+        configFile = "";
 
     let lastValue = null;
     for (const value of process.argv.slice(2)) {
@@ -140,7 +154,7 @@ function main()
                         help();
                     version = value;
                     break;
-                case "--copyto":
+                case "--dest":
                     destProperty = value;
                     break;
                 case "--src":
@@ -161,49 +175,88 @@ function main()
                         help();
                     deactivate = true;
                     break;
+                case "--create":
+                    create = true;
+                    destProperty = value;
+                    break;
+                case "--clone":
+                    clone = true;
+                    break;
+                case "--config_file":
+                    configFile = value;
+                    break;
                 case "--email":
                     email = value;
             }
             lastValue = lastValue ? null : value;
         }
     }
-    if (!srcProperty) help();
-    if (destProperty && fromFile) help();
-    if (!destProperty && !fromFile && !env && !toFile) help();
-    let options = {
-        srcProperty: srcProperty,
-        srcFile: fromFile,
-        srcVersion: version,
-        destProperty: destProperty,
-        destFile: toFile,
-        activate: activate,
-        activateVersion: version,
-        activateNetwork: env,
-        activateProperty: (destProperty || srcProperty),
-        deactivate: deactivate,
-        deactivateNetwork: env,
-        deactivateProperty: (destProperty || srcProperty),
-        email: email
-    };
 
-    let property = new WebSite();
-    let app = appName();
-    console.time(app);
+    if (create || clone) {
+        if (create && !destProperty && !configFile) help();
+        if (clone && (!srcProperty||!destProperty) && !configFile) help();
+        
+        let property = new WebSite({path:"~/.edgerc", section: "papi"});
+        let app = appName;
+        console.time(app);
 
-    Promise.resolve()
-        .then(() => updateProperty(property, options))
-        .then(data => activateProperty(property, options, data))
-        .then(data => deactivateProperty(property, options, data))
-        .then(data => retrieveProperty(property, options))
-        .then(() => {
-            console.timeEnd(app);
-            console.info("Success!");
-        })
-        .catch((error) => {
-            console.timeEnd(app);
-            console.error("ERROR: ", error.body || JSON.stringify(error));
-            if (error.stack) console.log(error.stack);
-        });
+        console.log(configFile);
+
+        Promise.resolve()
+            .then(() => property.setConfig(configFile)
+            .then((config) => {
+                config.srcProperty = srcProperty;
+                config.destProperty = destProperty;
+                createProperty(property, config);
+            })
+            .then(() => {
+                console.timeEnd(app);
+                console.info("Created property");
+            })
+            .catch((error) => {
+                console.timeEnd(app);
+                console.error("ERROR: ", error.body || JSON.stringify(error));
+                if (error.stack) console.log(error.stack);
+            }))
+    } else {
+        if (!srcProperty) help();
+        if (destProperty && fromFile) help();
+        if (!destProperty && !fromFile && !env && !toFile) help();
+        let options = {
+            srcProperty: srcProperty,
+            srcFile: fromFile,
+            srcVersion: version,
+            destProperty: destProperty,
+            destFile: toFile,
+            activate: activate,
+            activateVersion: version,
+            activateNetwork: env,
+            activateProperty: (destProperty || srcProperty),
+            deactivate: deactivate,
+            deactivateNetwork: env,
+            deactivateProperty: (destProperty || srcProperty),
+            email: email
+        };
+
+        let property = new WebSite();
+        let app = appName();
+        console.time(app);
+
+        Promise.resolve()
+            .then(() => updateProperty(property, options))
+            .then(data => activateProperty(property, options, data))
+            .then(data => deactivateProperty(property, options, data))
+            .then(data => retrieveProperty(property, options))
+            .then(() => {
+                console.timeEnd(app);
+                console.info("Success!");
+            })
+            .catch((error) => {
+                console.timeEnd(app);
+                console.error("ERROR: ", error.body || JSON.stringify(error));
+                if (error.stack) console.log(error.stack);
+            });
+    }
 }
 
 main();

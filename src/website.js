@@ -47,7 +47,7 @@ class WebSite {
      * @param auth {Object} providing the `path`, and `section` for the authentication. Alternatively, you can pass in
      *     `clientToken`, `clientSecret`, `accessToken`, and `host` directly.
      */
-    constructor(auth = {path:"~/.edgerc", section: "default"}) {
+    constructor(auth = {path:"~/.edgerc", section: "papi"}) {
 
         if (auth.clientToken && auth.clientSecret && auth.accessToken && auth.host)
             this._edge = new EdgeGrid(auth.clientToken. auth.clientSecret, auth.accessToken, auth.host, auth.debug);
@@ -57,10 +57,13 @@ class WebSite {
         this._propertyByName = {};
         this._propertyByHost = {};
         this._initComplete = false;
+        if (auth.create) {
+            this._initComplete = true;
+        }
     }
 
     _init() {
-        if (this._initComplete)
+        if (this._initComplete )
             return Promise.resolve();
         if (Object.keys(this._propertyById).length > 0) {
             this._initComplete = true;
@@ -95,7 +98,7 @@ class WebSite {
                         this._propertyById[item.propertyId] = item;
                         if (item.productionVersion)
                             promiseList.push(this._getHostnameList(item.propertyId, item.productionVersion));
-                        if (item.productionVersion && item.productVersion != item.stagingVersion)
+                        if (item.productionVersion && item.productionVersion != item.stagingVersion)
                             promiseList.push(this._getHostnameList(item.propertyId, item.stagingVersion));
                     });
                 });
@@ -145,7 +148,7 @@ class WebSite {
             });
     };
 
-    _getGroupList() {
+     _getGroupList() {
         return new Promise((resolve, reject) => {
             console.info('... retrieving list of Group Ids');
 
@@ -165,6 +168,35 @@ class WebSite {
                 else {
                     reject(response);
                 }
+            });
+        });
+    };
+
+
+    _getMainProduct(contractId, groupId) {
+        return new Promise((resolve, reject) => {
+            console.info('... retrieving list of Products for this contract');
+
+            let request = {
+                method: 'GET',
+                path: `/papi/v0/products?contractId=${contractId}&groupId=${groupId}`,
+                followRedirect: false,
+                followAllRedirects: false
+            };
+            this._edge.auth(request);
+
+            this._edge.send(function(data, response) {
+                if (response.statusCode >= 200 && response.statusCode  < 400) {
+                    let parsed = JSON.parse(response.body);
+                    parsed.products.items.map(item => {
+                        if (item.productId == "prd_SPM") {
+                            resolve(item.productId);
+                        }
+                    });
+                } else {
+                    reject(response);
+                }
+                resolve();
             });
         });
     };
@@ -639,6 +671,44 @@ class WebSite {
             .then(rules => {return this.update(propertyLookup, rules)});
     }
 
+       /**
+     * Create a new property
+     *
+     * @param {object} config
+     * File should contain a layout similar to the following:
+     * {
+     *   "productId": "prd_Alta",
+     *   "propertyName": "my.new.property.com",
+     *   "cloneFrom": {  <<<<==== optional section, only needed for cloning
+     *     "propertyId": "prp_175780",
+     *     "version": 2,
+     *     "cloneFromVersionEtag": "a9dfe78cf93090516bde891d009eaf57",
+     *     "copyHostnames": true
+     *   }
+     */
+    createProperty(config) {
+        console.log("IN CREATEPROPERTY IN THE WEBSITE THING AGAIN")
+        return this.create(config);
+    }
+
+    setConfig(configFile) {
+        let config = {};
+        return new Promise((resolve, reject) => {
+            fs.stat(untildify(configFile), function(err, stat) {
+                if (err==null) {
+                    fs.readFile(untildify(configFile), (err, data) => {
+                    if (err)
+                        reject(err);
+                    else
+                        resolve(JSON.parse(data));
+                    });
+                } else if (err.code == "ENOENT") {
+                     resolve(config);
+                }
+            })
+        })
+    }
+
     /**
      * Create a new version of a property, copying the rules from another seperate property configuration. The common use
      * case is to migrate the rules from a QA setup to the WWW setup. If the version is not provided, the LATEST version
@@ -717,7 +787,7 @@ class WebSite {
                 if (networkEnv === AKAMAI_ENV.STAGING)
                     property.stagingVersion = activationVersion;
                 else
-                    property.productiongVersion = activationVersion;
+                    property.productionVersion = activationVersion;
                 if (wait)
                     return this._pollActivation(propertyLookup, activationId);
                 return Promise.resolve(activationId);
@@ -753,7 +823,7 @@ class WebSite {
                 if (networkEnv === AKAMAI_ENV.STAGING)
                     property.stagingVersion = null;
                 else
-                    property.productiongVersion = null;
+                    property.productionVersion = null;
                 if (wait)
                     return this._pollActivation(propertyLookup, activationId);
                 return Promise.resolve(activationId);
@@ -776,11 +846,60 @@ class WebSite {
      * @param {Object} newRules of the configuration to be updated. Only the {object}.rules will be copied.
      * @returns {Promise} with the property rules as the {TResult}
      */
-    create(hostname, newRules) {
-        //TODO:
-    }
-}
+    create(config) {
+	    let property = new WebSite({path:"~/.edgerc", section: "papi"});
+        let contractId, groupId;
+        console.log("ABOUT TO CREATE IN THE WEBSITE THING");
 
+        //set contract & group
+        if (config.contractId && config.groupId) {
+                contractId = config.contractId;
+                groupId    = config.groupId;
+                delete config.groupId;
+                delete config.contractId;
+            } else {                
+                return property._getGroupList()
+                    .then(data => {
+                        data.groups.items.map(item => {
+                            item.contractIds.map(contract => {
+                                if (!item.parentGroupId) {
+                                    contractId = contract;
+                                    groupId = item.groupId;
+                                }
+                            });
+                        });
+            })}
+            config.productId = config.productId ? config.productId : 
+                getMainProduct(contractId, groupId);
+
+            console.time('... creating');
+            console.info(`... creating property ${config.destProperty}`);
+
+            let request = {
+                method: 'POST',
+                path: `/papi/v0/properties/?contractId=${contractId}&groupId=${groupId}`,
+                body: config
+            };
+
+            console.log(config);
+
+            this._edge.auth(request);
+
+            this._edge.send(function (data, response) {
+                console.timeEnd('... creating');
+                if (response.statusCode >= 200 && response.statusCode < 400) {
+                    let propertyResponse = JSON.parse(response.body);
+                    console.log(propertyResponse["propertyLink"]);
+                    response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
+                    console.log(response);
+                    return(response);
+                }
+                else {
+                    return;
+                }
+            });
+    };
+}
 WebSite.AKAMAI_ENV = Object.freeze(AKAMAI_ENV);
 WebSite.LATEST_VERSION = Object.freeze(LATEST_VERSION);
 
