@@ -39,24 +39,18 @@ SRC_CONFIG           is the source configuration name. Use either hostnames (eg:
 --version VERSION    the configuration VERSION of SRC_CONFIG to copy from. Use in conjunction with --to and/or --on. 
                      Values are either numbers >= 1 corresponding to versions, 0 for LATEST, -1 for current PROD version
                      or -2 for current STAGING version. Default is LATEST (0).
---dest DEST_PROP     target property for clone, create or copy
+--dest DEST_PROP     target property for copy
 --out FILE           stores the rules to FILE
 --src FILE           updates SRC_CONFIG with the rule contents from FILE. Cannot be used in conjunction with --copyto
 --activate  ENV      indicates to also activate to ENV. Values include PRODUCTION, STAGING, or both.
 --deactivate ENV     deactivate ENV (PRODUCTION, STAGING, or both) from the Akamai platform
 --force              //TODO create new version
 --addhost            //TODO
---create             create new version - requires dest
---clone              create new property by cloning existing property (use --src and --dest)
+--create PROP        create new version, pass -src to clone
+--clone PROP         property to clone for the new property
 --config_file        config file for create or clone
 `);
     process.exit(0);
-}
-
-function createProperty(property, config) {
-    console.log("ABOUT TO CREATE PROPERTY");
-    return property.createProperty(config);
-    console.log("DONE CREATING PROPERTY");
 }
 
 function updateProperty(property, options) {
@@ -181,6 +175,7 @@ function main()
                     break;
                 case "--clone":
                     clone = true;
+                    srcProperty = value;
                     break;
                 case "--config_file":
                     configFile = value;
@@ -200,14 +195,14 @@ function main()
         let app = appName;
         console.time(app);
 
-        console.log(configFile);
-
-        Promise.resolve()
+         Promise.resolve()
             .then(() => property.setConfig(configFile)
             .then((config) => {
-                config.srcProperty = srcProperty;
-                config.destProperty = destProperty;
-                createProperty(property, config);
+                if (srcProperty) {
+                    config.srcProperty = srcProperty;
+                }
+                config.propertyName = destProperty;
+                return property.createProperty(config);
             })
             .then(() => {
                 console.timeEnd(app);

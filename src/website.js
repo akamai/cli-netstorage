@@ -96,10 +96,12 @@ class WebSite {
                         item.toString = function() {return this.propertyName;};
                         this._propertyByName[item.propertyName] = item;
                         this._propertyById[item.propertyId] = item;
-                        if (item.productionVersion)
+                        if (item.productionVersion != null)
                             promiseList.push(this._getHostnameList(item.propertyId, item.productionVersion));
                         if (item.productionVersion && item.productionVersion != item.stagingVersion)
                             promiseList.push(this._getHostnameList(item.propertyId, item.stagingVersion));
+                        if (item.productionVersion == null)
+                            promiseList.push(this._getHostnameList(item.propertyId, item.latestVersion))
                     });
                 });
 
@@ -148,7 +150,8 @@ class WebSite {
             });
     };
 
-     _getGroupList() {
+     _getGroupList(config) {
+
         return new Promise((resolve, reject) => {
             console.info('... retrieving list of Group Ids');
 
@@ -173,13 +176,17 @@ class WebSite {
     };
 
 
-    _getMainProduct(contractId, groupId) {
+    _getMainProduct(config) {
+        if (config.productId) {
+            return Promise.resolve(config);
+        }
+
         return new Promise((resolve, reject) => {
             console.info('... retrieving list of Products for this contract');
 
             let request = {
                 method: 'GET',
-                path: `/papi/v0/products?contractId=${contractId}&groupId=${groupId}`,
+                path: `/papi/v0/products?contractId=${config.contractId}&groupId=${config.groupId}`,
                 followRedirect: false,
                 followAllRedirects: false
             };
@@ -190,7 +197,8 @@ class WebSite {
                     let parsed = JSON.parse(response.body);
                     parsed.products.items.map(item => {
                         if (item.productId == "prd_SPM") {
-                            resolve(item.productId);
+                            config.productId = "prd_SPM";
+                            resolve(config);
                         }
                     });
                 } else {
@@ -233,7 +241,9 @@ class WebSite {
 
                 return new Promise((resolve, reject) => {
                     //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
-
+                    if (version == null) {
+                        version = 1;
+                    }
                     let request = {
                         method: 'GET',
                         path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames?contractId=${contractId}&groupId=${groupId}`,
@@ -245,6 +255,40 @@ class WebSite {
                         if (response.statusCode >= 200 && response.statusCode  < 400) {
                             let parsed = JSON.parse(response.body);
                             resolve(parsed);
+                        }
+                        else {
+                            reject(response);
+                        }
+                    });
+                });
+            });
+    };
+
+    _getCloneConfig(config) {
+        config.cloneFrom = {};
+        return this._getProperty(config.srcProperty)
+            .then(property => {
+                config.cloneFrom.propertyId = property.propertyId;
+                return WebSite._getLatestVersion(property)
+            })
+            .then(version => {
+                config.cloneFrom.version = version;
+                return new Promise((resolve, reject) => {
+                    //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
+                    
+                    let request = {
+                        method: 'GET',
+                        path: `/papi/v0/properties/${config.cloneFrom.propertyId}/versions/${config.cloneFrom.version}?contractId=${config.contractId}&groupId=${config.groupId}`,
+                        followRedirect: false
+                    };
+                    this._edge.auth(request);
+
+                    this._edge.send(function(data, response) {
+                        if (response.statusCode >= 200 && response.statusCode  < 400) {
+                            let parsed = JSON.parse(response.body);
+                            config.cloneFrom.cloneFromVersionEtag = parsed.versions.items[0]["etag"];
+                            console.log(config);
+                            resolve(config);
                         }
                         else {
                             reject(response);
@@ -687,7 +731,6 @@ class WebSite {
      *   }
      */
     createProperty(config) {
-        console.log("IN CREATEPROPERTY IN THE WEBSITE THING AGAIN")
         return this.create(config);
     }
 
@@ -849,56 +892,59 @@ class WebSite {
     create(config) {
 	    let property = new WebSite({path:"~/.edgerc", section: "papi"});
         let contractId, groupId;
-        console.log("ABOUT TO CREATE IN THE WEBSITE THING");
+        
+        return property._getGroupList(config)
+           .then(data => {
+               return new Promise((resolve, reject) => {
+                  data.groups.items.map(item => {
+                    let queryObj = {};
+                    item.contractIds.map(contract => {
+                        if (!item.parentGroupId) {
+                            config.contractId = contract;
+                            config.groupId = item.groupId;
+                            resolve (queryObj);
+                    }
+               })
+              });
+           })
+        }).then(data => {
+            return this._getMainProduct(config);
+        }).then(config => {
+            if (config.srcProperty) {
+                return this._getCloneConfig(config);
+            } else {
+                return Promise.resolve(config);
+            }
+        }).then(data => {
+            return new Promise((resolve, reject) => {
+                contractId = data.contractId;
+                groupId = data.groupId;
+                console.time('... creating');
+                console.info(`... creating property ${config.propertyName}`);
 
-        //set contract & group
-        if (config.contractId && config.groupId) {
-                contractId = config.contractId;
-                groupId    = config.groupId;
-                delete config.groupId;
-                delete config.contractId;
-            } else {                
-                return property._getGroupList()
-                    .then(data => {
-                        data.groups.items.map(item => {
-                            item.contractIds.map(contract => {
-                                if (!item.parentGroupId) {
-                                    contractId = contract;
-                                    groupId = item.groupId;
-                                }
-                            });
-                        });
-            })}
-            config.productId = config.productId ? config.productId : 
-                getMainProduct(contractId, groupId);
+                let request = {
+                    method: 'POST',
+                    path: `/papi/v0/properties/?contractId=${contractId}&groupId=${groupId}`,
+                    body: config
+                };
 
-            console.time('... creating');
-            console.info(`... creating property ${config.destProperty}`);
+                this._edge.auth(request);
 
-            let request = {
-                method: 'POST',
-                path: `/papi/v0/properties/?contractId=${contractId}&groupId=${groupId}`,
-                body: config
-            };
-
-            console.log(config);
-
-            this._edge.auth(request);
-
-            this._edge.send(function (data, response) {
-                console.timeEnd('... creating');
-                if (response.statusCode >= 200 && response.statusCode < 400) {
-                    let propertyResponse = JSON.parse(response.body);
-                    console.log(propertyResponse["propertyLink"]);
-                    response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
-                    console.log(response);
-                    return(response);
-                }
-                else {
-                    return;
-                }
-            });
-    };
+                this._edge.send(function (data, response) {
+                    console.timeEnd('... creating');
+                    if (response.statusCode >= 200 && response.statusCode < 400) {
+                        let propertyResponse = JSON.parse(response.body);
+                        response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
+                        resolve(response);
+                    }
+                    else {
+                        reject(response);
+                    }
+                });
+        })
+    })
+            
+}
 }
 WebSite.AKAMAI_ENV = Object.freeze(AKAMAI_ENV);
 WebSite.LATEST_VERSION = Object.freeze(LATEST_VERSION);
