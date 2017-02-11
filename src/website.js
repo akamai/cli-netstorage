@@ -201,6 +201,7 @@ class WebSite {
                     parsed.products.items.map(item => {
                         if (item.productId == "prd_SPM") {
                             config.productId = "prd_SPM";
+                            config.productName = "SPM";
                             resolve(config);
                         }
                     });
@@ -255,11 +256,12 @@ class WebSite {
                     this._edge.auth(request);
 
                     this._edge.send(function(data, response) {
-                        if (response.statusCode >= 200 && response.statusCode  < 400) {
+                        if (response && response.statusCode >= 200 && response.statusCode  < 400) {
                             let parsed = JSON.parse(response.body);
                             resolve(parsed);
                         }
                         else {
+                            console.log(response);
                             reject(response);
                         }
                     });
@@ -372,8 +374,13 @@ class WebSite {
 
                     this._edge.send((data, response) => {
                         console.timeEnd('... retrieving');
-                        let parsed = JSON.parse(response.body);
-                        resolve(parsed);
+                        if (response.statusCode >= 200 && response.statusCode < 400) {
+                            let parsed = JSON.parse(response.body);
+                            resolve(parsed);
+                        } 
+                        else {
+                            reject(response);
+                        }
                     });
                 });
             });
@@ -897,9 +904,13 @@ class WebSite {
             this._edge.auth(request);
             this._edge.send((data, response) => {
                 console.timeEnd('... deleting property');
-                let parsed = JSON.parse(response.body);
-                console.log(parsed);
-                resolve(parsed);
+                if (response.statusCode >= 200 && response.statusCode < 400) {        
+                    let parsed = JSON.parse(response.body);
+                    console.log(parsed);
+                    resolve(parsed);
+                } else {
+                    reject(parsed);
+                }
             })
         })
     }
@@ -922,13 +933,86 @@ class WebSite {
 
             this._edge.send((data, response) => {
                 console.timeEnd('... creating new CPCode');
-                let parsed = JSON.parse(response.body);
-                config.cpcode = parsed["cpcodeLink"].split('?')[0].split("/")[4];
-                resolve(config);
+                if (response.statusCode >= 200 && response.statusCode < 400) {        
+                    let parsed = JSON.parse(response.body);
+                    config.cpcode = parsed["cpcodeLink"].split('?')[0].split("/")[4].split('_')[1];
+                    resolve(config);
+                } else {
+                    reject(response);
+                }
             });
         });
     }
 
+    _populateCPCode(config) {
+        return new Promise((resolve, reject) => {
+            let cpcode = config.cpcode;
+            console.info('Retrieving information for cpcode:'+ config.cpcode);
+            console.time('... retrieving CPCode info');
+            let request = {
+                method: 'GET',
+                path: `/papi/v0/cpcodes/cpc_${cpcode}?contractId=${config.contractId}&groupId=${config.groupId}`,
+            };
+
+            this._edge.auth(request);
+
+            this._edge.send((data, response) => {
+                console.timeEnd('... retrieving CPCode info');
+                if (response.statusCode >= 200 && response.statusCode < 400) {                        
+                    let parsed = JSON.parse(response.body);
+                    let cpCodeInfo = parsed.cpcodes.items[0];
+                    let datestring = cpCodeInfo.createdDate;
+                    config.cpcode = {
+                        "id": cpcode,
+                        "description":cpCodeInfo.cpcodeName,
+                        "name":cpCodeInfo.cpcodeName,
+                        "products":[config.productName],
+                        "createdDate":datestring
+                    }
+                    resolve(config);
+                } else {
+                    reject(config);
+                }
+            })
+        });
+    }
+
+    _createHostname(property) {
+        return new Promise((resolve, reject) => {
+
+            console.info('Creating edge hostname for property:'+ property.propertyId);
+            console.time('... creating hostname');
+            let hostnameObj = {
+                "productId": property.productId,
+                    "domainPrefix": property.propertyName,
+                    "domainSuffix": "edgesuite.net",
+                    "secure": false,
+                    "ipVersionBehavior": "IPV4",
+            }
+
+            let request = {
+                method: 'POST',
+                path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
+                body: hostnameObj
+            };
+
+            console.log(hostnameObj);
+
+            this._edge.auth(request);
+
+            this._edge.send((data, response) => {
+                console.timeEnd('... creating hostname');
+                if (response.statusCode >= 200 && response.statusCode < 400) {
+                    response = JSON.parse(response.body);
+                    console.log(response);
+                    resolve(response);
+                } else {
+                    console.log(response);
+                    reject(response);
+                }
+            })
+        });
+    }
     /**
      * Create a new website configuration on Akamai with a hostname and a base set of rules
      *
@@ -937,7 +1021,7 @@ class WebSite {
      * @param {Object} newRules of the configuration to be updated. Only the {object}.rules will be copied.
      * @returns {Promise} with the property rules as the {TResult}
      */
-    create(config) {
+     create(config) {
 	    let property = new WebSite({path:"~/.edgerc", section: "papi"});
         let contractId, groupId;
         
@@ -958,7 +1042,7 @@ class WebSite {
                })
               });
            })
-        }).then(data => {
+        }).then(config => {
             return this._getMainProduct(config);
         }).then(config => {
             if (config.srcProperty) {
@@ -966,10 +1050,10 @@ class WebSite {
             } else {
                 return Promise.resolve(config);
             }
-        }).then(data => {
+        }).then(config => {
             return new Promise((resolve, reject) => {
-                contractId = data.contractId;
-                groupId = data.groupId;
+                contractId = config.contractId;
+                groupId = config.groupId;
                 console.time('... creating');
                 console.info(`... creating property ${config.propertyName}`);
 
@@ -986,21 +1070,25 @@ class WebSite {
                     if (response.statusCode >= 200 && response.statusCode < 400) {
                         let propertyResponse = JSON.parse(response.body);
                         response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
-                        resolve(response);
+                        config.propertyId = response;
+                        resolve(config);
                     }
                     else {
+                        console.log(response);
                         reject(response);
                     }
                 });
             })
         })
-        .then(propertyId => {
-            config.propertyId = propertyId
+        .then(config => {
+            config.cpcode = 548751;
             if (config.cpcode) {
-                Promise.resolve(config);
+                return Promise.resolve(config);
             } else {
                 return this._getNewCPCode(config);
             }
+        }).then(config => {
+            return this._populateCPCode(config);
         })
         .then(config => {
             // If we're not cloning we need to grab the rules
@@ -1015,6 +1103,7 @@ class WebSite {
             // If we're cloning we can just skip this step
             if (!property) return Promise.resolve();
             let behaviors = [];
+            let children_behaviors = [];
 
             property.accountId = accountId;
             property.contractId = config.contractId;
@@ -1023,22 +1112,41 @@ class WebSite {
             property.propertyName = config.propertyName;
             property.rules.behaviors.map(behavior => {
                 if (behavior.name == "origin") {
-                    behavior.options.hostname = "origin." + property.propertyName
+                    behavior.options.hostname = "origin-" + property.propertyName
                 }
-                if (behavior.name == "cpcode") {
-                    behavior.options.id = config.cpcode;
+                if (behavior.name == "cpCode") {
+                    behavior.options.cpcode = config.cpcode;
+                    delete config.cpcode;
                 }
                 behaviors.push(behavior);
             })
             property.rules.behaviors = behaviors;
-            delete property.errors;
 
-            console.log(JSON.stringify(property, null, '  '))
+            property.rules.children.map(child => {
+                child.behaviors.map(behavior => {
+                    if (behavior.name == "sureRoute") {
+                        behavior.options.sr_stat_key_mode = "default";
+                        behavior.options.sr_test_object_url = "/akamai/sureroute-testobject.html"
+                    }
+                    children_behaviors.push(behavior);
+                })
+            })
+            property.rules.children.behaviors = children_behaviors;
+
+            delete property.errors;
             return this._updatePropertyRules(property, 1, property);
         })
-        .then(rules => {
-            console.log(JSON.stringify(rules, null, '  '))
-        })      
+        .then(property => {
+            console.log(JSON.stringify(property,null,' '));
+            property.productId = config.productId;
+            return property;
+        })
+        .then(property => {
+            return this._createHostname(property);
+        })
+        .then(property => {
+            return this._activateHostname(property);
+        })
     }
 }
 WebSite.AKAMAI_ENV = Object.freeze(AKAMAI_ENV);
