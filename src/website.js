@@ -1031,10 +1031,14 @@ class WebSite {
                 behaviors.push(behavior);
             })
             property.rules.behaviors = behaviors;
+            delete property.errors;
 
-            console.log(JSON.stringify(property));
+            console.log(JSON.stringify(property, null, '  '))
             return this._updatePropertyRules(property, 1, property);
-        });      
+        })
+        .then(rules => {
+            console.log(JSON.stringify(rules, null, '  '))
+        })      
     }
 }
 WebSite.AKAMAI_ENV = Object.freeze(AKAMAI_ENV);
