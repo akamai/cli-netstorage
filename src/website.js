@@ -31,6 +31,8 @@ const AKAMAI_ENV = {
     PRODUCTION: 'PRODUCTION'
 };
 
+let accountId;
+
 function sleep(time) {
     return new Promise((resolve) => setTimeout(resolve, time));
 }
@@ -75,6 +77,7 @@ class WebSite {
         console.info('Init PropertyManager cache (hostnames and property list)');
         return this._getGroupList()
             .then(data => {
+                accountId = data.accountId;
                 data.groups.items.map(item => {
                     item.contractIds.map(contractId => {
                         // if we have filtered out the contract and group already through the constructor, limit the list appropriately
@@ -876,12 +879,57 @@ class WebSite {
     /**
      * TODO
      */
-    deleteConfig() {
-        //TODO
+    deleteProperty(propertyLookup) {
+        return this._getProperty(propertyLookup)
+            .then(property => {
+                console.info(`Deleting ${propertyLookup}`);
+                return this.delete(property)
+            })
+    }
+
+    delete(property) {
+        return new Promise((resolve, reject) => {
+            console.time('... deleting property');
+            let request = {
+                method: 'DELETE',
+                path: `/papi/v0/properties/${property.propertyId}?contractId=${property.contractId}&groupId=${property.groupId}`
+            }
+            this._edge.auth(request);
+            this._edge.send((data, response) => {
+                console.timeEnd('... deleting property');
+                let parsed = JSON.parse(response.body);
+                console.log(parsed);
+                resolve(parsed);
+            })
+        })
+    }
+
+    _getNewCPCode(config) {
+        return new Promise((resolve, reject) => {
+            console.info('Creating new CPCode for property');
+            console.time('... creating new CPCode');
+            let cpCode = {
+                 "productId": config.productId,
+                 "cpcodeName": config.propertyName
+            }
+            let request = {
+                method: 'POST',
+                path: `/papi/v0/cpcodes?contractId=${config.contractId}&groupId=${config.groupId}`,
+                body: cpCode
+            };
+
+            this._edge.auth(request);
+
+            this._edge.send((data, response) => {
+                console.timeEnd('... creating new CPCode');
+                let parsed = JSON.parse(response.body);
+                config.cpcode = parsed["cpcodeLink"].split('?')[0].split("/")[4];
+                resolve(config);
+            });
+        });
     }
 
     /**
-     * TODO
      * Create a new website configuration on Akamai with a hostname and a base set of rules
      *
      * @param {string} hostname either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
@@ -895,6 +943,9 @@ class WebSite {
         
         return property._getGroupList(config)
            .then(data => {
+               if (config.contractId && config.groupId) {
+                   Promise.resolve(config);
+               }
                return new Promise((resolve, reject) => {
                   data.groups.items.map(item => {
                     let queryObj = {};
@@ -902,7 +953,7 @@ class WebSite {
                         if (!item.parentGroupId) {
                             config.contractId = contract;
                             config.groupId = item.groupId;
-                            resolve (queryObj);
+                            resolve (config);
                     }
                })
               });
@@ -941,10 +992,50 @@ class WebSite {
                         reject(response);
                     }
                 });
+            })
         })
-    })
-            
-}
+        .then(propertyId => {
+            config.propertyId = propertyId
+            if (config.cpcode) {
+                Promise.resolve(config);
+            } else {
+                return this._getNewCPCode(config);
+            }
+        })
+        .then(config => {
+            // If we're not cloning we need to grab the rules
+            if (!config.srcProperty) {
+                console.info(`... retrieving rules for ${config.propertyName}`);
+                return this.retrieve(config.propertyName)
+            } else {
+                return Promise.resolve();
+            }
+        })
+        .then(property => {
+            // If we're cloning we can just skip this step
+            if (!property) return Promise.resolve();
+            let behaviors = [];
+
+            property.accountId = accountId;
+            property.contractId = config.contractId;
+            property.groupId = config.groupId;
+            property.propertyId = config.propertyId;
+            property.propertyName = config.propertyName;
+            property.rules.behaviors.map(behavior => {
+                if (behavior.name == "origin") {
+                    behavior.options.hostname = "origin." + property.propertyName
+                }
+                if (behavior.name == "cpcode") {
+                    behavior.options.id = config.cpcode;
+                }
+                behaviors.push(behavior);
+            })
+            property.rules.behaviors = behaviors;
+
+            console.log(JSON.stringify(property));
+            return this._updatePropertyRules(property, 1, property);
+        });      
+    }
 }
 WebSite.AKAMAI_ENV = Object.freeze(AKAMAI_ENV);
 WebSite.LATEST_VERSION = Object.freeze(LATEST_VERSION);

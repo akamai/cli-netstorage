@@ -46,6 +46,7 @@ SRC_CONFIG           is the source configuration name. Use either hostnames (eg:
 --deactivate ENV     deactivate ENV (PRODUCTION, STAGING, or both) from the Akamai platform
 --force              //TODO create new version
 --addhost            //TODO
+--delete PROP        delete property from the system
 --create PROP        create new version, pass -src to clone
 --clone PROP         property to clone for the new property
 --config_file        config file for create or clone
@@ -131,6 +132,7 @@ function main()
         email,
         create,
         clone,
+        deleteProp,
         configFile = "";
 
     let lastValue = null;
@@ -180,6 +182,8 @@ function main()
                 case "--config_file":
                     configFile = value;
                     break;
+                case "--delete":
+                    deleteProp = value;
                 case "--email":
                     email = value;
             }
@@ -213,6 +217,9 @@ function main()
                 console.error("ERROR: ", error.body || JSON.stringify(error));
                 if (error.stack) console.log(error.stack);
             }))
+    } else if (deleteProp) {
+        let property = new WebSite();
+        return property.deleteProperty(deleteProp);
     } else {
         if (!srcProperty) help();
         if (destProperty && fromFile) help();
@@ -229,6 +236,7 @@ function main()
             activateProperty: (destProperty || srcProperty),
             deactivate: deactivate,
             deactivateNetwork: env,
+            deleteProperty: deleteProp,
             deactivateProperty: (destProperty || srcProperty),
             email: email
         };
