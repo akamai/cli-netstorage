@@ -31,8 +31,6 @@ const AKAMAI_ENV = {
     PRODUCTION: 'PRODUCTION'
 };
 
-let accountId;
-
 function sleep(time) {
     return new Promise((resolve) => setTimeout(resolve, time));
 }
@@ -59,6 +57,8 @@ class WebSite {
         this._propertyByName = {};
         this._propertyByHost = {};
         this._initComplete = false;
+        this._propertyHostnameList = {};
+        this._accountId = "";
         if (auth.create) {
             this._initComplete = true;
         }
@@ -73,11 +73,27 @@ class WebSite {
         }
 
         let groupcontractList = [];
+        let propertyHostnameList = {};
         console.time('Init PropertyManager cache');
         console.info('Init PropertyManager cache (hostnames and property list)');
         return this._getGroupList()
             .then(data => {
-                accountId = data.accountId;
+                return new Promise((resolve, reject) => {
+                    
+                    if (fs.existsSync("hostlist.json")) {
+                        fs.readFile("hostlist.json", function(err, hostlist) {
+                            data.propertyHostnameList = JSON.parse(hostlist);
+                            return resolve(data);
+                        })
+                    } else {
+                        return resolve(data);
+                    }
+                })
+            })
+    
+            .then(data => {
+                this._propertyHostnameList = data.propertyHostnameList;
+                this._accountId = data.accountId;
                 data.groups.items.map(item => {
                     item.contractIds.map(contractId => {
                         // if we have filtered out the contract and group already through the constructor, limit the list appropriately
@@ -96,6 +112,7 @@ class WebSite {
 
                 propList.map(v => {
                     return v.properties.items.map(item => {
+
                         item.toString = function() {return this.propertyName;};
                         this._propertyByName[item.propertyName] = item;
                         this._propertyById[item.propertyId] = item;
@@ -114,24 +131,35 @@ class WebSite {
             .then(hostListList => {
                 hostListList.map(hostList => {
                     let prop = this._propertyById[hostList.propertyId];
+                    let version = hostList.propertyVersion;
+                    if (!this._propertyHostnameList[hostList.propertyId]) {
+                        this._propertyHostnameList[hostList.propertyId] = {}
+                    }
+                    this._propertyHostnameList[hostList.propertyId][version] = hostList;
                     if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
                         prop.stagingHosts = hostList.hostnames.items;
                     if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
                         prop.productionHosts = hostList.hostnames.items;
-
                     hostList.hostnames.items.map(host => {
-                        let hostRef = this._propertyByHost[host.cnameFrom];
-                        if (!hostRef)
-                            hostRef = this._propertyByHost[host.cnameFrom] = {};
+                    let hostRef = this._propertyByHost[host.cnameFrom];
+                    if (!hostRef)
+                        hostRef = this._propertyByHost[host.cnameFrom] = {};
 
-                        if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
-                            hostRef.staging = prop;
-                        if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
-                            hostRef.production = prop;
-                    })
+                    if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
+                        hostRef.staging = prop;
+                    if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
+                        hostRef.production = prop;
+                })
+                })
+                    console.timeEnd('Init PropertyManager cache');
+                    return new Promise((resolve, reject) => {
+                        fs.writeFile("hostlist.json", JSON.stringify(this._propertyHostnameList,null,' '), (err) => {
+                            if (err)
+                                reject(err);
+                            else
+                                resolve(true);
+                    });
                 });
-                console.timeEnd('Init PropertyManager cache');
-                return Promise.resolve(true);
             });
     };
 
@@ -248,26 +276,33 @@ class WebSite {
                     if (version == null) {
                         version = 1;
                     }
-                    let request = {
-                        method: 'GET',
-                        path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames?contractId=${contractId}&groupId=${groupId}`,
-                        followRedirect: false
-                    };
-                    this._edge.auth(request);
+                    if (this._propertyHostnameList && 
+                        this._propertyHostnameList[propertyId] && 
+                        this._propertyHostnameList[propertyId][version]) {
+                        resolve(this._propertyHostnameList[propertyId][version]);
+                    } else {
 
-                    this._edge.send(function(data, response) {
-                        if (response && response.statusCode >= 200 && response.statusCode  < 400) {
-                            let parsed = JSON.parse(response.body);
-                            resolve(parsed);
-                        }
-                        else {
-                            console.log(response);
-                            reject(response);
-                        }
+                        let request = {
+                            method: 'GET',
+                            path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames?contractId=${contractId}&groupId=${groupId}`,
+                            followRedirect: false
+                        };
+                        this._edge.auth(request);
+
+                        this._edge.send(function(data, response) {
+                            if (response && response.statusCode >= 200 && response.statusCode  < 400) {
+                                let parsed = JSON.parse(response.body);
+                                resolve(parsed);
+                            }
+                            else {
+                                console.log(response);
+                                reject(response);
+                            }
+                        })}
                     });
                 });
-            });
-    };
+            };
+    
 
     _getCloneConfig(config) {
         config.cloneFrom = {};
@@ -977,42 +1012,78 @@ class WebSite {
         });
     }
 
-    _createHostname(property) {
+    _getEdgeHostnames(property) {
         return new Promise((resolve, reject) => {
-
-            console.info('Creating edge hostname for property:'+ property.propertyId);
-            console.time('... creating hostname');
-            let hostnameObj = {
-                "productId": property.productId,
-                    "domainPrefix": property.propertyName,
-                    "domainSuffix": "edgesuite.net",
-                    "secure": false,
-                    "ipVersionBehavior": "IPV4",
+            console.info('Checking for existing edge hostname');
+            console.time('... checking edge hostnames');
+            let request = {
+                method: 'GET',
+                path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`
             }
 
-            let request = {
-                method: 'POST',
-                path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
-                body: hostnameObj
-            };
-
-            console.log(hostnameObj);
-
             this._edge.auth(request);
-
             this._edge.send((data, response) => {
-                console.timeEnd('... creating hostname');
+                console.timeEnd('... checking edge hostnames');
                 if (response.statusCode >= 200 && response.statusCode < 400) {
                     response = JSON.parse(response.body);
-                    console.log(response);
                     resolve(response);
                 } else {
-                    console.log(response);
                     reject(response);
                 }
+ 
             })
-        });
+        })
     }
+
+    _createHostname(property) {
+        return this._getEdgeHostnames(property)
+                .then( edgeHostnames => {
+                    edgeHostnames.edgeHostnames.items.map(item => {
+                        if (item["domainPrefix"] === property.propertyName) {
+                            console.info("Hostname already exists");
+                            property.edgeHostnameId = item["edgeHostnameId"];
+                        }                       
+                    })
+                    return Promise.resolve(property);
+                })
+                .then(property => {
+                    if (property.edgeHostnameId) {
+                        return Promise.resolve(property);
+                    } else {
+                        console.info('Creating edge hostname for property:'+ property.propertyId);
+                        console.time('... creating hostname');
+                        let hostnameObj = {
+                            "productId": property.productId,
+                                "domainPrefix": property.propertyName,
+                                "domainSuffix": "edgesuite.net",
+                                "secure": false,
+                                "ipVersionBehavior": "IPV4",
+                        }
+
+                        let request = {
+                            method: 'POST',
+                            path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
+                            body: hostnameObj
+                        };
+
+                        
+                        this._edge.auth(request);
+
+                        this._edge.send((data, response) => {
+                            console.timeEnd('... creating hostname');
+                            if (response.statusCode >= 200 && response.statusCode < 400) {
+                                hostnameResponse = JSON.parse(response.body);
+                                response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
+                        
+                                return Promise.resolve(response);
+                            } else {
+                                console.log(response.body);
+                                return Promise.reject(response);
+                            }
+                        })
+                    }
+                })
+        }
     /**
      * Create a new website configuration on Akamai with a hostname and a base set of rules
      *
@@ -1105,7 +1176,7 @@ class WebSite {
             let behaviors = [];
             let children_behaviors = [];
 
-            property.accountId = accountId;
+            property.accountId = this._accountId;
             property.contractId = config.contractId;
             property.groupId = config.groupId;
             property.propertyId = config.propertyId;
@@ -1137,15 +1208,11 @@ class WebSite {
             return this._updatePropertyRules(property, 1, property);
         })
         .then(property => {
-            console.log(JSON.stringify(property,null,' '));
             property.productId = config.productId;
             return property;
         })
         .then(property => {
             return this._createHostname(property);
-        })
-        .then(property => {
-            return this._activateHostname(property);
         })
     }
 }
