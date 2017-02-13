@@ -38,7 +38,9 @@ function sleep(time) {
 /**
  * WebSite configuration and manipulation. Use this class to control the workflow of your Akamai configuration for which
  * you normally would use the Property Manager apis.
+ * @author Colin Bendell
  */
+
 //export default class WebSite {
 class WebSite {
 
@@ -78,7 +80,8 @@ class WebSite {
         return this._getGroupList()
             .then(data => {
                 return new Promise((resolve, reject) => {
-                    
+
+                    //TODO: move this to use system tmp or cache dirs
                     if (fs.existsSync("hostlist.json")) {
                         fs.readFile("hostlist.json", function(err, hostlist) {
                             data.propertyHostnameList = JSON.parse(hostlist);
@@ -89,7 +92,6 @@ class WebSite {
                     }
                 })
             })
-    
             .then(data => {
                 this._propertyHostnameList = data.propertyHostnameList;
                 this._accountId = data.accountId;
@@ -112,6 +114,7 @@ class WebSite {
                 propList.map(v => {
                     return v.properties.items.map(item => {
 
+                        //TODO: should use toJSON() instead of the primative toString()
                         item.toString = function() {return this.propertyName;};
                         this._propertyByName[item.propertyName] = item;
                         this._propertyById[item.propertyId] = item;
@@ -135,28 +138,29 @@ class WebSite {
                         this._propertyHostnameList[hostList.propertyId] = {}
                     }
                     this._propertyHostnameList[hostList.propertyId][version] = hostList;
+
                     if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
                         prop.stagingHosts = hostList.hostnames.items;
                     if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
                         prop.productionHosts = hostList.hostnames.items;
                     hostList.hostnames.items.map(host => {
-                    let hostRef = this._propertyByHost[host.cnameFrom];
-                    if (!hostRef)
-                        hostRef = this._propertyByHost[host.cnameFrom] = {};
+                        let hostRef = this._propertyByHost[host.cnameFrom];
+                        if (!hostRef)
+                            hostRef = this._propertyByHost[host.cnameFrom] = {};
 
-                    if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
-                        hostRef.staging = prop;
-                    if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
-                        hostRef.production = prop;
-                })
-                })
-                    console.timeEnd('Init PropertyManager cache');
-                    return new Promise((resolve, reject) => {
-                        fs.writeFile("hostlist.json", JSON.stringify(this._propertyHostnameList,null,' '), (err) => {
-                            if (err)
-                                reject(err);
-                            else
-                                resolve(true);
+                        if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
+                            hostRef.staging = prop;
+                        if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
+                            hostRef.production = prop;
+                    })
+                });
+                console.timeEnd('Init PropertyManager cache');
+                return new Promise((resolve, reject) => {
+                    fs.writeFile("hostlist.json", JSON.stringify(this._propertyHostnameList,null,' '), (err) => {
+                        if (err)
+                            reject(err);
+                        else
+                            resolve(true);
                     });
                 });
             });
@@ -262,6 +266,7 @@ class WebSite {
         });
     };
 
+    //TODO: this will only be called for LATEST, CURRENT_PROD and CURRENT_STAGE. How do we handle collecting hostnames fo different versions?
     _getHostnameList(propertyId, version) {
         return this._getProperty(propertyId)
             .then(property => {
@@ -338,7 +343,6 @@ class WebSite {
     };
 
     static _getLatestVersion(property, env = LATEST_VERSION) {
-//        let property = this._getPropertyIdTupil(propertyId);
         if (env === LATEST_VERSION.PRODUCTION)
             return property.productionVersion;
         else if (env === LATEST_VERSION.STAGING)
@@ -759,7 +763,7 @@ class WebSite {
             .then(rules => {return this.update(propertyLookup, rules)});
     }
 
-       /**
+    /**
      * Create a new property
      *
      * @param {object} config
@@ -773,11 +777,16 @@ class WebSite {
      *     "cloneFromVersionEtag": "a9dfe78cf93090516bde891d009eaf57",
      *     "copyHostnames": true
      *   }
+     *
+     *
      */
+    //TODO: remove config dependencies
+    //TODO: expose two constructors: `create(hostnames[], configName=null, contract=null)` and `create(srcProperty, srcVersion, cloneHostname=false, configName=null, contract=null)`
     createProperty(config) {
         return this.create(config);
     }
 
+    //TODO: remove config dependencies
     setConfig(configFile) {
         let config = {};
         return new Promise((resolve, reject) => {
@@ -918,7 +927,7 @@ class WebSite {
     }
 
     /**
-     * TODO
+     * TODO collapse deletePRoperty and property; property is a reserved word
      */
     deleteProperty(propertyLookup) {
         return this._getProperty(propertyLookup)
@@ -928,6 +937,7 @@ class WebSite {
             })
     }
 
+    // TODO: move to an internal (model) method and move above)
     delete(property) {
         return new Promise((resolve, reject) => {
             console.time('... deleting property');
@@ -949,6 +959,8 @@ class WebSite {
         })
     }
 
+    // TODO: move to model (internal) method and move above
+    // TODO: use crud naming. rename getNew to _create
     _getNewCPCode(config) {
         return new Promise((resolve, reject) => {
             console.info('Creating new CPCode for property');
@@ -978,6 +990,8 @@ class WebSite {
         });
     }
 
+    //TODO: move above, rename to _retrieve
+    //TODO: expose an public creatCPCode method
     _populateCPCode(config) {
         return new Promise((resolve, reject) => {
             let cpcode = config.cpcode;
@@ -1002,7 +1016,7 @@ class WebSite {
                         "name":cpCodeInfo.cpcodeName,
                         "products":[config.productName],
                         "createdDate":datestring
-                    }
+                    };
                     resolve(config);
                 } else {
                     reject(config);
@@ -1042,6 +1056,8 @@ class WebSite {
         })
     }
 
+    //TODO: how is this different than above?
+    //TODO: move
     _getEdgeHostnames(property) {
         return new Promise((resolve, reject) => {
             console.info('Checking for existing edge hostname');
@@ -1065,54 +1081,59 @@ class WebSite {
         })
     }
 
+    //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
+    //TODO: should use the internal cache for the hostnames
+    //TODO: move
     _createHostname(property) {
         return this._getEdgeHostnames(property)
-                .then( edgeHostnames => {
-                    edgeHostnames.edgeHostnames.items.map(item => {
-                        if (item["domainPrefix"] === property.propertyName) {
-                            console.info("Hostname already exists");
-                            property.edgeHostnameId = item["edgeHostnameId"];
-                        }                       
-                    })
-                    return Promise.resolve(property);
-                })
-                .then(property => {
-                    if (property.edgeHostnameId) {
-                        return Promise.resolve(property);
-                    } else {
-                        console.info('Creating edge hostname for property:'+ property.propertyId);
-                        console.time('... creating hostname');
-                        let hostnameObj = {
-                            "productId": property.productId,
-                                "domainPrefix": property.propertyName,
-                                "domainSuffix": "edgesuite.net",
-                                "secure": false,
-                                "ipVersionBehavior": "IPV4",
-                        }
-
-                        let request = {
-                            method: 'POST',
-                            path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
-                            body: hostnameObj
-                        };
-
-                        this._edge.auth(request);
-
-                        this._edge.send((data, response) => {
-                            console.timeEnd('... creating hostname');
-                            if (response.statusCode >= 200 && response.statusCode < 400) {
-                                let hostnameResponse = JSON.parse(response.body);
-                                response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
-                                property.edgeHostnameId = response;
-                                return Promise.resolve(property);
-                            } else {
-                                console.log(response.body);
-                                return Promise.reject(response);
-                            }
-                        })
+            .then( edgeHostnames => {
+                edgeHostnames.edgeHostnames.items.map(item => {
+                    if (item["domainPrefix"] === property.propertyName) {
+                        console.info("Hostname already exists");
+                        property.edgeHostnameId = item["edgeHostnameId"];
                     }
-                })
-        }
+                });
+                return Promise.resolve(property);
+            })
+            .then(property => {
+                if (property.edgeHostnameId) {
+                    return Promise.resolve(property);
+                } else {
+                    console.info('Creating edge hostname for property:'+ property.propertyId);
+                    console.time('... creating hostname');
+                    let hostnameObj = {
+                        "productId": property.productId,
+                            "domainPrefix": property.propertyName,
+                            "domainSuffix": "edgesuite.net",
+                            "secure": false,
+                            "ipVersionBehavior": "IPV4",
+                    };
+
+                    let request = {
+                        method: 'POST',
+                        path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
+                        body: hostnameObj
+                    };
+
+                    this._edge.auth(request);
+
+                    this._edge.send((data, response) => {
+                        console.timeEnd('... creating hostname');
+                        if (response.statusCode >= 200 && response.statusCode < 400) {
+                            //TODO: make response more robust
+                            let hostnameResponse = JSON.parse(response.body);
+                            response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
+
+                            return Promise.resolve(response);
+                        } else {
+                            console.log(response.body);
+                            return Promise.reject(response);
+                        }
+                    })
+                }
+            })
+    }
+
     /**
      * Create a new website configuration on Akamai with a hostname and a base set of rules
      *
@@ -1121,7 +1142,11 @@ class WebSite {
      * @param {Object} newRules of the configuration to be updated. Only the {object}.rules will be copied.
      * @returns {Promise} with the property rules as the {TResult}
      */
-     create(config) {
+    //TODO: remove the config usage
+    //TODO: exception should be thrown if more than one ctract exists and null passed
+    //TODO: refactor to separate controller and model
+    //TODO: move and convert to internal
+    create(config) {
 	    let property = new WebSite({path:"~/.edgerc", section: "papi"});
         let contractId, groupId;
         
