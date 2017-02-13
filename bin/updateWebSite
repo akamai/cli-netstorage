@@ -196,7 +196,7 @@ function main()
         if (clone && (!srcProperty||!destProperty) && !configFile) help();
         
         let property = new WebSite({path:"~/.edgerc", section: "papi"});
-        let app = appName;
+        let app = appName();
         console.time(app);
 
          Promise.resolve()

@@ -73,7 +73,6 @@ class WebSite {
         }
 
         let groupcontractList = [];
-        let propertyHostnameList = {};
         console.time('Init PropertyManager cache');
         console.info('Init PropertyManager cache (hostnames and property list)');
         return this._getGroupList()
@@ -1012,6 +1011,37 @@ class WebSite {
         });
     }
 
+    _assignHostname(property) {
+        return new Promise((resolve, reject) => {
+            console.info('Assigning hostname to property');
+            console.time('... assigning hostname');
+
+            let assignHostnameObj =  [{
+                "cnameType": "EDGE_HOSTNAME",
+                "edgeHostnameId": property.edgeHostnameId,
+                "cnameFrom": property.propertyName
+            }]
+
+            let request = {
+                method: 'PUT',
+                path: `/papi/v0/properties/${property.propertyId}/versions/1/hostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
+                body: assignHostnameObj
+             }
+
+            this._edge.auth(request);
+            this._edge.send((data, response) => {
+                console.timeEnd('... assigning hostname');
+                if (response.statusCode >= 200 && response.statusCode < 400) {
+                    response = JSON.parse(response.body);
+                    resolve(response);
+                } else {
+                    reject(response);
+                }
+ 
+            })
+        })
+    }
+
     _getEdgeHostnames(property) {
         return new Promise((resolve, reject) => {
             console.info('Checking for existing edge hostname');
@@ -1066,16 +1096,15 @@ class WebSite {
                             body: hostnameObj
                         };
 
-                        
                         this._edge.auth(request);
 
                         this._edge.send((data, response) => {
                             console.timeEnd('... creating hostname');
                             if (response.statusCode >= 200 && response.statusCode < 400) {
-                                hostnameResponse = JSON.parse(response.body);
+                                let hostnameResponse = JSON.parse(response.body);
                                 response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
-                        
-                                return Promise.resolve(response);
+                                property.edgeHostnameId = response;
+                                return Promise.resolve(property);
                             } else {
                                 console.log(response.body);
                                 return Promise.reject(response);
@@ -1213,6 +1242,9 @@ class WebSite {
         })
         .then(property => {
             return this._createHostname(property);
+        })
+        .then(property => {
+            return this._assignHostname(property);
         })
     }
 }
