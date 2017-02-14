@@ -166,26 +166,40 @@ class WebSite {
             });
     };
 
-    _getProperty(propertyLookup, hostnameEnvironment = LATEST_VERSION.STAGING) {
-        if (propertyLookup && propertyLookup.groupId && propertyLookup.propertyId && propertyLookup.contractId)
-            return Promise.resolve(propertyLookup);
-        return this._init()
-            .then(() => {
-                let prop = this._propertyById[propertyLookup] || this._propertyByName[propertyLookup];
-                if (!prop) {
-                    let host = this._propertyByHost[propertyLookup];
-                    if (host)
-                        prop = hostnameEnvironment === LATEST_VERSION.STAGING ? host.staging : host.production;
-                }
+    _getCloneConfig(property) {
+        property.cloneFrom = {};
+        return this._getProperty(property.srcProperty)
+            .then(property => {
+                property.cloneFrom.propertyId = property.propertyId;
+                return WebSite._getLatestVersion(property)
+            })
+            .then(version => {
+                property.cloneFrom.version = version;
+                return new Promise((resolve, reject) => {
+                    //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
+                    
+                    let request = {
+                        method: 'GET',
+                        path: `/papi/v0/properties/${property.propertyId}/versions/${property.cloneFrom.version}?contractId=${config.contractId}&groupId=${config.groupId}`,
+                        followRedirect: false
+                    };
+                    this._edge.auth(request);
 
-                if (!prop)
-                    return Promise.reject(Error(`Cannot find property: ${propertyLookup}`));
-                return Promise.resolve(prop);
+                    this._edge.send(function(data, response) {
+                        if (response.statusCode >= 200 && response.statusCode  < 400) {
+                            let parsed = JSON.parse(response.body);
+                            property.cloneFrom.cloneFromVersionEtag = parsed.versions.items[0]["etag"];
+                            resolve(property);
+                        }
+                        else {
+                            reject(response);
+                        }
+                    });
+                });
             });
     };
 
-     _getGroupList(config) {
-
+    _getGroupList() {
         return new Promise((resolve, reject) => {
             console.info('... retrieving list of Group Ids');
 
@@ -209,65 +223,9 @@ class WebSite {
         });
     };
 
-
-    _getMainProduct(config) {
-        if (config.productId) {
-            return Promise.resolve(config);
-        }
-
-        return new Promise((resolve, reject) => {
-            console.info('... retrieving list of Products for this contract');
-
-            let request = {
-                method: 'GET',
-                path: `/papi/v0/products?contractId=${config.contractId}&groupId=${config.groupId}`,
-                followRedirect: false,
-                followAllRedirects: false
-            };
-            this._edge.auth(request);
-
-            this._edge.send(function(data, response) {
-                if (response.statusCode >= 200 && response.statusCode  < 400) {
-                    let parsed = JSON.parse(response.body);
-                    parsed.products.items.map(item => {
-                        if (item.productId == "prd_SPM") {
-                            config.productId = "prd_SPM";
-                            config.productName = "SPM";
-                            resolve(config);
-                        }
-                    });
-                } else {
-                    reject(response);
-                }
-                resolve();
-            });
-        });
-    };
-
-    _getPropertyList(contractId, groupId) {
-        return new Promise((resolve, reject) => {
-            //console.info('... retrieving list of properties {%s : %s}', contractId, groupId);
-
-            let request = {
-                method: 'GET',
-                path:  `/papi/v0/properties?contractId=${contractId}&groupId=${groupId}`,
-            };
-            this._edge.auth(request);
-
-            this._edge.send(function(data, response) {
-                if (response.statusCode >= 200 && response.statusCode  < 400) {
-                    let parsed = JSON.parse(response.body);
-                    resolve(parsed);
-                }
-                else {
-                    reject(response);
-                }
-            });
-        });
-    };
-
     //TODO: this will only be called for LATEST, CURRENT_PROD and CURRENT_STAGE. How do we handle collecting hostnames fo different versions?
     _getHostnameList(propertyId, version) {
+
         return this._getProperty(propertyId)
             .then(property => {
                 //set basic data like contract & group
@@ -306,34 +264,100 @@ class WebSite {
                     });
                 });
             };
-    
+   
+    _getMainProduct(config) {
+        return new Promise((resolve, reject) => {
+            console.info('... retrieving list of Products for this contract');
 
-    _getCloneConfig(config) {
-        config.cloneFrom = {};
-        return this._getProperty(config.srcProperty)
-            .then(property => {
-                config.cloneFrom.propertyId = property.propertyId;
-                return WebSite._getLatestVersion(property)
-            })
-            .then(version => {
-                config.cloneFrom.version = version;
-                return new Promise((resolve, reject) => {
-                    //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
-                    
-                    let request = {
-                        method: 'GET',
-                        path: `/papi/v0/properties/${config.cloneFrom.propertyId}/versions/${config.cloneFrom.version}?contractId=${config.contractId}&groupId=${config.groupId}`,
-                        followRedirect: false
-                    };
-                    this._edge.auth(request);
+            let request = {
+                method: 'GET',
+                path: `/papi/v0/products?contractId=${config.contractId}&groupId=${config.groupId}`,
+                followRedirect: false,
+                followAllRedirects: false
+            };
+            this._edge.auth(request);
 
-                    this._edge.send(function(data, response) {
-                        if (response.statusCode >= 200 && response.statusCode  < 400) {
-                            let parsed = JSON.parse(response.body);
-                            config.cloneFrom.cloneFromVersionEtag = parsed.versions.items[0]["etag"];
-                            console.log(config);
+            this._edge.send(function(data, response) {
+                if (response.statusCode >= 200 && response.statusCode  < 400) {
+                    let parsed = JSON.parse(response.body);
+                    parsed.products.items.map(item => {
+                        if (item.productId == "prd_SPM") {
+                            config.productId = "prd_SPM";
+                            config.productName = "SPM";
                             resolve(config);
                         }
+                    });
+                } else {
+                    reject(response);
+                }
+                resolve(config);
+            });
+        });
+    };
+
+    _getProperty(propertyLookup, hostnameEnvironment = LATEST_VERSION.STAGING) {
+        if (propertyLookup && propertyLookup.groupId && propertyLookup.propertyId && propertyLookup.contractId)
+            return Promise.resolve(propertyLookup);
+        return this._init()
+            .then(() => {
+                let prop = this._propertyById[propertyLookup] || this._propertyByName[propertyLookup];
+                if (!prop) {
+                    let host = this._propertyByHost[propertyLookup];
+                    if (host)
+                        prop = hostnameEnvironment === LATEST_VERSION.STAGING ? host.staging : host.production;
+                } 
+
+                if (!prop)
+                    return Promise.reject(Error(`Cannot find property: ${propertyLookup}`));
+                return Promise.resolve(prop);
+            });
+    };
+
+    _getPropertyList(contractId, groupId) {
+        return new Promise((resolve, reject) => {
+            //console.info('... retrieving list of properties {%s : %s}', contractId, groupId);
+
+            let request = {
+                method: 'GET',
+                path:  `/papi/v0/properties?contractId=${contractId}&groupId=${groupId}`,
+            };
+            this._edge.auth(request);
+
+            this._edge.send(function(data, response) {
+                if (response.statusCode >= 200 && response.statusCode  < 400) {
+                    let parsed = JSON.parse(response.body);
+                    resolve(parsed);
+                }
+                else {
+                    reject(response);
+                }
+            });
+        });
+    };
+
+    _getPropertyRules(propertyLookup, version) {
+        return this._getProperty(propertyLookup)
+            .then((data) => {
+                //set basic data like contract & group
+                const contractId = data.contractId;
+                const groupId = data.groupId;
+                const propertyId = data.propertyId;
+                return new Promise((resolve, reject) => {
+                    console.time('... retrieving');
+                    console.info(`... retrieving property (${propertyLookup}) v${version}`);
+                    let request = {
+                        method: 'GET',
+                        path: `/papi/v0/properties/${propertyId}/versions/${version}/rules?contractId=${contractId}&groupId=${groupId}`,
+                    };
+
+                    this._edge.auth(request);
+
+                    this._edge.send((data, response) => {
+                        console.timeEnd('... retrieving');
+                        if (response.statusCode >= 200 && response.statusCode < 400) {
+                            let parsed = JSON.parse(response.body);
+                            resolve(parsed);
+                        } 
                         else {
                             reject(response);
                         }
@@ -341,14 +365,15 @@ class WebSite {
                 });
             });
     };
-
     static _getLatestVersion(property, env = LATEST_VERSION) {
         if (env === LATEST_VERSION.PRODUCTION)
             return property.productionVersion;
         else if (env === LATEST_VERSION.STAGING)
             return property.stagingVersion;
-        else
+        else if (property.latestVersion) 
             return property.latestVersion;
+        else
+            return 1;
     };
 
     _copyPropertyVersion(propertyLookup, versionId) {
@@ -392,37 +417,73 @@ class WebSite {
                 });
             });
     };
+    _createProperty(property) {
+        return new Promise((resolve, reject) => {
+                let contractId = property.contractId;
+                let groupId = property.groupId;
+                console.time('... creating');
+                console.info(`... creating property ${property.propertyName}`);
 
-    _getPropertyRules(propertyLookup, version) {
-        return this._getProperty(propertyLookup)
-            .then((data) => {
-                //set basic data like contract & group
-                const contractId = data.contractId;
-                const groupId = data.groupId;
-                const propertyId = data.propertyId;
-                return new Promise((resolve, reject) => {
-                    console.time('... retrieving');
-                    console.info(`... retrieving property (${propertyLookup}) v${version}`);
-                    let request = {
-                        method: 'GET',
-                        path: `/papi/v0/properties/${propertyId}/versions/${version}/rules?contractId=${contractId}&groupId=${groupId}`,
-                    };
+                let propertyObj = {"cloneFrom":property.cloneFrom,
+                                   "productId":property.productId,
+                                   "propertyName":property.propertyName}
+                delete property.cloneFrom;
 
-                    this._edge.auth(request);
+                let request = {
+                    method: 'POST',
+                    path: `/papi/v0/properties/?contractId=${contractId}&groupId=${groupId}`,
+                    body: propertyObj
+                };
 
-                    this._edge.send((data, response) => {
-                        console.timeEnd('... retrieving');
-                        if (response.statusCode >= 200 && response.statusCode < 400) {
-                            let parsed = JSON.parse(response.body);
-                            resolve(parsed);
-                        } 
-                        else {
-                            reject(response);
-                        }
-                    });
+                this._edge.auth(request);
+
+                this._edge.send(function (data, response) {
+                    console.timeEnd('... creating');
+                    if (response.statusCode >= 200 && response.statusCode < 400) {
+                        let propertyResponse = JSON.parse(response.body);
+                        response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
+                        property.propertyId = response;
+                        resolve(property);
+                    }
+                    else {
+                        console.log(response);
+                        reject(response);
+                    }
                 });
-            });
-    };
+            })
+    }
+    _updatePropertyBehaviors(property) {
+        return new Promise((resolve, reject) => {
+            let behaviors = [];
+            let children_behaviors = [];
+
+            property.rules.behaviors.map(behavior => {
+                if (behavior.name == "origin") {
+                    behavior.options.hostname = "origin-" + property.propertyName
+                }
+                if (behavior.name == "cpCode") {
+                    behavior.options.cpcode = property.cpcode;
+                    delete property.cpcode;
+                }
+                behaviors.push(behavior);
+            })
+            property.rules.behaviors = behaviors;
+
+            property.rules.children.map(child => {
+                child.behaviors.map(behavior => {
+                    if (behavior.name == "sureRoute") {
+                        behavior.options.sr_stat_key_mode = "default";
+                        behavior.options.sr_test_object_url = "/akamai/sureroute-testobject.html"
+                    }
+                    children_behaviors.push(behavior);
+                })
+            })
+            property.rules.children.behaviors = children_behaviors;
+
+            delete property.errors;
+            resolve(property);
+        })
+    }
 
     _updatePropertyRules(propertyLookup, version, rules) {
         return this._getProperty(propertyLookup)
@@ -456,6 +517,190 @@ class WebSite {
                 });
             });
     };
+
+        _createCPCode(property) {
+        return new Promise((resolve, reject) => {
+            console.info('Creating new CPCode for property');
+            console.time('... creating new CPCode');
+            let cpCode = {
+                 "productId": property.productId,
+                 "cpcodeName": property.propertyName
+            }
+            let request = {
+                method: 'POST',
+                path: `/papi/v0/cpcodes?contractId=${property.contractId}&groupId=${property.groupId}`,
+                body: cpCode
+            };
+
+            this._edge.auth(request);
+
+            this._edge.send((data, response) => {
+                console.timeEnd('... creating new CPCode');
+                if (response.statusCode >= 200 && response.statusCode < 400) {        
+                    let parsed = JSON.parse(response.body);
+                    property.cpcode = parsed["cpcodeLink"].split('?')[0].split("/")[4].split('_')[1];
+                    resolve(property);
+                } else {
+                    reject(response);
+                }
+            });
+        });
+    }
+
+    //TODO: move above, rename to _retrieve
+    //TODO: expose an public creatCPCode method
+    _retrieveCPCode(property) {
+        return new Promise((resolve, reject) => {
+            let cpcode = property.cpcode;
+            console.info('Retrieving information for cpcode:'+ cpcode);
+            console.time('... retrieving CPCode info');
+            let request = {
+                method: 'GET',
+                path: `/papi/v0/cpcodes/cpc_${cpcode}?contractId=${property.contractId}&groupId=${property.groupId}`,
+            };
+
+            this._edge.auth(request);
+
+            this._edge.send((data, response) => {
+                console.timeEnd('... retrieving CPCode info');
+                if (response.statusCode >= 200 && response.statusCode < 400) {                        
+                    let parsed = JSON.parse(response.body);
+                    let cpCodeInfo = parsed.cpcodes.items[0];
+                    let datestring = cpCodeInfo.createdDate;
+                    property.cpcode = {
+                        "id": cpcode,
+                    //    "description":cpCodeInfo.cpcodeName,
+                     //   "name":cpCodeInfo.cpcodeName,
+                    //    "products":[property.productName],
+                    //    "createdDate":datestring
+                    };
+                    resolve(property);
+                } else {
+                    reject(config);
+                }
+            })
+        });
+    }
+
+    _assignHostname(property) {
+        return new Promise((resolve, reject) => {
+            console.info('Assigning hostname to property');
+            console.time('... assigning hostname');
+
+            let assignHostnameObj =  [{
+                "cnameType": "EDGE_HOSTNAME",
+                "edgeHostnameId": property.edgeHostnameId,
+                "cnameFrom": property.propertyName
+            }]
+
+            let request = {
+                method: 'PUT',
+                path: `/papi/v0/properties/${property.propertyId}/versions/1/hostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
+                body: assignHostnameObj
+             }
+
+            this._edge.auth(request);
+            this._edge.send((data, response) => {
+                console.timeEnd('... assigning hostname');
+                if (response.statusCode >= 200 && response.statusCode < 400) {
+                    response = JSON.parse(response.body);
+                    resolve(response);
+                } else {
+                    reject(response);
+                }
+ 
+            })
+        })
+    }
+
+    //TODO: how is this different than above?
+    //TODO: move
+    _getEdgeHostnames(property) {
+        return new Promise((resolve, reject) => {
+            console.info('Checking for existing edge hostname');
+            console.time('... checking edge hostnames');
+            let request = {
+                method: 'GET',
+                path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`
+            }
+
+            this._edge.auth(request);
+            this._edge.send((data, response) => {
+                console.timeEnd('... checking edge hostnames');
+                if (response.statusCode >= 200 && response.statusCode < 400) {
+                    response = JSON.parse(response.body);
+                    resolve(response);
+                } else {
+                    reject(response);
+                }
+ 
+            })
+        })
+    }
+
+    //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
+    //TODO: should use the internal cache for the hostnames
+    //TODO: move
+    _createHostname(property) {
+            return this._getEdgeHostnames(property)
+            .then( edgeHostnames => {
+                edgeHostnames.edgeHostnames.items.map(item => {
+                    if (item["domainPrefix"] === property.propertyName) {
+                        console.info("Hostname already exists");
+                        property.edgeHostnameId = item["edgeHostnameId"];
+                        return Promise.resolve(property.edgeHostnameId);
+                    }
+                });
+                return Promise.resolve();
+            })
+            .then(edgeHostnameId => {
+                if (edgeHostnameId) {
+                    return Promise.resolve(edgeHostnameId);
+                } else {
+                    return new Promise((resolve, reject) => {
+    
+                        console.info('Creating edge hostname for property:'+ property.propertyId);
+                        console.time('... creating hostname');
+                        let hostnameObj = {
+                            "productId": property.productId,
+                                "domainPrefix": property.propertyName,
+                                "domainSuffix": "edgesuite.net",
+                                "secure": false,
+                                "ipVersionBehavior": "IPV4",
+                        };
+
+                        let request = {
+                            method: 'POST',
+                            path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
+                            body: hostnameObj
+                        };
+
+                        this._edge.auth(request);
+
+                        this._edge.send((data, response) => {
+                            console.timeEnd('... creating hostname');
+                            if (response.statusCode >= 200 && response.statusCode < 400) {
+                                //TODO: make response more robust
+                                let hostnameResponse = JSON.parse(response.body);
+                                response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
+                                resolve(response);
+                            } else {
+                                console.log(response.body);
+                                reject(response);
+                            }
+                        })
+                    })
+                }
+        })
+    }
+    /**
+     * Delete a website configuration on Akamai with a hostname
+     *
+     * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+     * @returns {Promise} with an empty result
+     */
+ 
 
     /**
      * Internal function to activate a property
@@ -602,7 +847,6 @@ class WebSite {
                 const groupId = data.groupId;
                 const propertyId = data.propertyId;
                 return new Promise((resolve, reject) => {
-//                    console.info('... polling property {%s : %s}', propertyId, activationID);
 
                     let request = {
                         method: 'GET',
@@ -645,6 +889,29 @@ class WebSite {
             });
     };
 
+    _deleteConfig(property) {
+    return new Promise((resolve, reject) => {
+        console.time('... deleting property');
+        let request = {
+            method: 'DELETE',
+            path: `/papi/v0/properties/${property.propertyId}?contractId=${property.contractId}&groupId=${property.groupId}`
+        }
+        this._edge.auth(request);
+        this._edge.send((data, response) => {
+            console.timeEnd('... deleting property');
+            if (response.statusCode >= 200 && response.statusCode < 400) {        
+                let parsed = JSON.parse(response.body);
+                console.log(parsed);
+                resolve(parsed);
+            } else {
+                reject(parsed);
+            }
+        })
+    })
+}
+
+
+
     /**
      * Lookup the PropertyId using the associated Host name. Provide the environment if the Hostname association is
      * moving between configurations.
@@ -656,7 +923,6 @@ class WebSite {
     lookupPropertyIdFromHost(hostname, env = LATEST_VERSION.PRODUCTION) {
         return this._getProperty(hostname, env);
     }
-
 
     /**
      * Retrieve the configuration rules for a given property. Use either Host or PropertyId to use as the lookup
@@ -709,7 +975,6 @@ class WebSite {
                 }
             });
     }
-
 
     /**
      *
@@ -782,27 +1047,12 @@ class WebSite {
      */
     //TODO: remove config dependencies
     //TODO: expose two constructors: `create(hostnames[], configName=null, contract=null)` and `create(srcProperty, srcVersion, cloneHostname=false, configName=null, contract=null)`
-    createProperty(config) {
-        return this.create(config);
-    }
-
-    //TODO: remove config dependencies
-    setConfig(configFile) {
-        let config = {};
-        return new Promise((resolve, reject) => {
-            fs.stat(untildify(configFile), function(err, stat) {
-                if (err==null) {
-                    fs.readFile(untildify(configFile), (err, data) => {
-                    if (err)
-                        reject(err);
-                    else
-                        resolve(JSON.parse(data));
-                    });
-                } else if (err.code == "ENOENT") {
-                     resolve(config);
-                }
-            })
-        })
+    createProperty(options) {
+        if (options.srcProperty) {
+            return this.clone(options);
+        } else {
+            return this.create(options);
+        }
     }
 
     /**
@@ -926,211 +1176,14 @@ class WebSite {
             })
     }
 
-    /**
-     * TODO collapse deletePRoperty and property; property is a reserved word
-     */
+    // TODO: move to model (internal) method and move above
+    // TODO: use crud naming. rename getNew to _create
+
     deleteProperty(propertyLookup) {
         return this._getProperty(propertyLookup)
             .then(property => {
                 console.info(`Deleting ${propertyLookup}`);
-                return this.delete(property)
-            })
-    }
-
-    // TODO: move to an internal (model) method and move above)
-    delete(property) {
-        return new Promise((resolve, reject) => {
-            console.time('... deleting property');
-            let request = {
-                method: 'DELETE',
-                path: `/papi/v0/properties/${property.propertyId}?contractId=${property.contractId}&groupId=${property.groupId}`
-            }
-            this._edge.auth(request);
-            this._edge.send((data, response) => {
-                console.timeEnd('... deleting property');
-                if (response.statusCode >= 200 && response.statusCode < 400) {        
-                    let parsed = JSON.parse(response.body);
-                    console.log(parsed);
-                    resolve(parsed);
-                } else {
-                    reject(parsed);
-                }
-            })
-        })
-    }
-
-    // TODO: move to model (internal) method and move above
-    // TODO: use crud naming. rename getNew to _create
-    _getNewCPCode(config) {
-        return new Promise((resolve, reject) => {
-            console.info('Creating new CPCode for property');
-            console.time('... creating new CPCode');
-            let cpCode = {
-                 "productId": config.productId,
-                 "cpcodeName": config.propertyName
-            }
-            let request = {
-                method: 'POST',
-                path: `/papi/v0/cpcodes?contractId=${config.contractId}&groupId=${config.groupId}`,
-                body: cpCode
-            };
-
-            this._edge.auth(request);
-
-            this._edge.send((data, response) => {
-                console.timeEnd('... creating new CPCode');
-                if (response.statusCode >= 200 && response.statusCode < 400) {        
-                    let parsed = JSON.parse(response.body);
-                    config.cpcode = parsed["cpcodeLink"].split('?')[0].split("/")[4].split('_')[1];
-                    resolve(config);
-                } else {
-                    reject(response);
-                }
-            });
-        });
-    }
-
-    //TODO: move above, rename to _retrieve
-    //TODO: expose an public creatCPCode method
-    _populateCPCode(config) {
-        return new Promise((resolve, reject) => {
-            let cpcode = config.cpcode;
-            console.info('Retrieving information for cpcode:'+ config.cpcode);
-            console.time('... retrieving CPCode info');
-            let request = {
-                method: 'GET',
-                path: `/papi/v0/cpcodes/cpc_${cpcode}?contractId=${config.contractId}&groupId=${config.groupId}`,
-            };
-
-            this._edge.auth(request);
-
-            this._edge.send((data, response) => {
-                console.timeEnd('... retrieving CPCode info');
-                if (response.statusCode >= 200 && response.statusCode < 400) {                        
-                    let parsed = JSON.parse(response.body);
-                    let cpCodeInfo = parsed.cpcodes.items[0];
-                    let datestring = cpCodeInfo.createdDate;
-                    config.cpcode = {
-                        "id": cpcode,
-                        "description":cpCodeInfo.cpcodeName,
-                        "name":cpCodeInfo.cpcodeName,
-                        "products":[config.productName],
-                        "createdDate":datestring
-                    };
-                    resolve(config);
-                } else {
-                    reject(config);
-                }
-            })
-        });
-    }
-
-    _assignHostname(property) {
-        return new Promise((resolve, reject) => {
-            console.info('Assigning hostname to property');
-            console.time('... assigning hostname');
-
-            let assignHostnameObj =  [{
-                "cnameType": "EDGE_HOSTNAME",
-                "edgeHostnameId": property.edgeHostnameId,
-                "cnameFrom": property.propertyName
-            }]
-
-            let request = {
-                method: 'PUT',
-                path: `/papi/v0/properties/${property.propertyId}/versions/1/hostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
-                body: assignHostnameObj
-             }
-
-            this._edge.auth(request);
-            this._edge.send((data, response) => {
-                console.timeEnd('... assigning hostname');
-                if (response.statusCode >= 200 && response.statusCode < 400) {
-                    response = JSON.parse(response.body);
-                    resolve(response);
-                } else {
-                    reject(response);
-                }
- 
-            })
-        })
-    }
-
-    //TODO: how is this different than above?
-    //TODO: move
-    _getEdgeHostnames(property) {
-        return new Promise((resolve, reject) => {
-            console.info('Checking for existing edge hostname');
-            console.time('... checking edge hostnames');
-            let request = {
-                method: 'GET',
-                path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`
-            }
-
-            this._edge.auth(request);
-            this._edge.send((data, response) => {
-                console.timeEnd('... checking edge hostnames');
-                if (response.statusCode >= 200 && response.statusCode < 400) {
-                    response = JSON.parse(response.body);
-                    resolve(response);
-                } else {
-                    reject(response);
-                }
- 
-            })
-        })
-    }
-
-    //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
-    //TODO: should use the internal cache for the hostnames
-    //TODO: move
-    _createHostname(property) {
-        return this._getEdgeHostnames(property)
-            .then( edgeHostnames => {
-                edgeHostnames.edgeHostnames.items.map(item => {
-                    if (item["domainPrefix"] === property.propertyName) {
-                        console.info("Hostname already exists");
-                        property.edgeHostnameId = item["edgeHostnameId"];
-                    }
-                });
-                return Promise.resolve(property);
-            })
-            .then(property => {
-                if (property.edgeHostnameId) {
-                    return Promise.resolve(property);
-                } else {
-                    console.info('Creating edge hostname for property:'+ property.propertyId);
-                    console.time('... creating hostname');
-                    let hostnameObj = {
-                        "productId": property.productId,
-                            "domainPrefix": property.propertyName,
-                            "domainSuffix": "edgesuite.net",
-                            "secure": false,
-                            "ipVersionBehavior": "IPV4",
-                    };
-
-                    let request = {
-                        method: 'POST',
-                        path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
-                        body: hostnameObj
-                    };
-
-                    this._edge.auth(request);
-
-                    this._edge.send((data, response) => {
-                        console.timeEnd('... creating hostname');
-                        if (response.statusCode >= 200 && response.statusCode < 400) {
-                            //TODO: make response more robust
-                            let hostnameResponse = JSON.parse(response.body);
-                            response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
-
-                            return Promise.resolve(response);
-                        } else {
-                            console.log(response.body);
-                            return Promise.reject(response);
-                        }
-                    })
-                }
+                return this._deleteConfig(property)
             })
     }
 
@@ -1146,131 +1199,128 @@ class WebSite {
     //TODO: exception should be thrown if more than one ctract exists and null passed
     //TODO: refactor to separate controller and model
     //TODO: move and convert to internal
-    create(config) {
-	    let property = new WebSite({path:"~/.edgerc", section: "papi"});
-        let contractId, groupId;
-        
-        return property._getGroupList(config)
-           .then(data => {
-               if (config.contractId && config.groupId) {
-                   Promise.resolve(config);
-               }
-               return new Promise((resolve, reject) => {
-                  data.groups.items.map(item => {
-                    let queryObj = {};
-                    item.contractIds.map(contract => {
-                        if (!item.parentGroupId) {
-                            config.contractId = contract;
-                            config.groupId = item.groupId;
-                            resolve (config);
+    _getContractAndGroup (data) {
+        return new Promise((resolve, reject) => {
+            data.groups.items.map(item => {
+                let queryObj = {};
+                item.contractIds.map(contract => {
+                    if (!item.parentGroupId) {
+                        data.contractId = contract;
+                        data.groupId = item.groupId;
+                        resolve (data);
                     }
-               })
-              });
-           })
-        }).then(config => {
-            return this._getMainProduct(config);
-        }).then(config => {
-            if (config.srcProperty) {
-                return this._getCloneConfig(config);
-            } else {
-                return Promise.resolve(config);
-            }
-        }).then(config => {
-            return new Promise((resolve, reject) => {
-                contractId = config.contractId;
-                groupId = config.groupId;
-                console.time('... creating');
-                console.info(`... creating property ${config.propertyName}`);
-
-                let request = {
-                    method: 'POST',
-                    path: `/papi/v0/properties/?contractId=${contractId}&groupId=${groupId}`,
-                    body: config
-                };
-
-                this._edge.auth(request);
-
-                this._edge.send(function (data, response) {
-                    console.timeEnd('... creating');
-                    if (response.statusCode >= 200 && response.statusCode < 400) {
-                        let propertyResponse = JSON.parse(response.body);
-                        response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
-                        config.propertyId = response;
-                        resolve(config);
-                    }
-                    else {
-                        console.log(response);
-                        reject(response);
-                    }
-                });
-            })
-        })
-        .then(config => {
-            config.cpcode = 548751;
-            if (config.cpcode) {
-                return Promise.resolve(config);
-            } else {
-                return this._getNewCPCode(config);
-            }
-        }).then(config => {
-            return this._populateCPCode(config);
-        })
-        .then(config => {
-            // If we're not cloning we need to grab the rules
-            if (!config.srcProperty) {
-                console.info(`... retrieving rules for ${config.propertyName}`);
-                return this.retrieve(config.propertyName)
-            } else {
-                return Promise.resolve();
-            }
-        })
-        .then(property => {
-            // If we're cloning we can just skip this step
-            if (!property) return Promise.resolve();
-            let behaviors = [];
-            let children_behaviors = [];
-
-            property.accountId = this._accountId;
-            property.contractId = config.contractId;
-            property.groupId = config.groupId;
-            property.propertyId = config.propertyId;
-            property.propertyName = config.propertyName;
-            property.rules.behaviors.map(behavior => {
-                if (behavior.name == "origin") {
-                    behavior.options.hostname = "origin-" + property.propertyName
-                }
-                if (behavior.name == "cpCode") {
-                    behavior.options.cpcode = config.cpcode;
-                    delete config.cpcode;
-                }
-                behaviors.push(behavior);
-            })
-            property.rules.behaviors = behaviors;
-
-            property.rules.children.map(child => {
-                child.behaviors.map(behavior => {
-                    if (behavior.name == "sureRoute") {
-                        behavior.options.sr_stat_key_mode = "default";
-                        behavior.options.sr_test_object_url = "/akamai/sureroute-testobject.html"
-                    }
-                    children_behaviors.push(behavior);
                 })
-            })
-            property.rules.children.behaviors = children_behaviors;
+            });
+        })
+    }
+    
+    create(options) {
+        let path = options.path ? options.path : "~/.edgerc";
+        let section = options.section ? options.section : "papi";
 
-            delete property.errors;
+	    let property = new WebSite({path:path, section: section});
+        let contractId, groupId;
+        property.propertyName = options.propertyName;
+        
+        return property._getGroupList()
+           .then(data => {
+               return property._getContractAndGroup(data);
+        }).then(data => {
+            property.contractId = data.contractId;
+            property.groupId = data.groupId;
+            return this._getMainProduct(property);
+        }).then(data => {
+            property.productId = data.productId;
+            property.productName = data.productName;
+            return this._createProperty(property);
+        })
+        .then(data => {
+            property.propertyId = data.propertyId;
+            property.cpcode = 548751;
+            if (property.cpcode) {
+                return Promise.resolve(property);
+            } else {
+                return this._createCPCode(property);
+            }
+        }).then(data => {
+            return this._retrieveCPCode(property);
+        })
+        .then(data => {
+            property.cpcode = data.cpcode;
+            
+            console.info(`... retrieving rules for ${property.propertyName}`);
+            return this.retrieve(property)
+        })
+        .then(data => {
+            return this._updatePropertyBehaviors(data);
+        })
+        .then(data => {
+            property.rules = data.rules;
             return this._updatePropertyRules(property, 1, property);
         })
-        .then(property => {
-            property.productId = config.productId;
-            return property;
-        })
-        .then(property => {
+        .then((data) => {
             return this._createHostname(property);
         })
-        .then(property => {
+        .then(data => {
+            property.edgeHostnameId = data;
             return this._assignHostname(property);
         })
+    }
+
+    clone(options) {
+        let path = options.path ? options.path : "~/.edgerc";
+        let section = options.section ? options.section : "papi";
+	    let property = new WebSite({path: path, section: section});
+        let contractId, groupId;
+        
+        return property._getGroupList()
+            .then(data => {
+               return property._getContractAndGroup(data);
+            })
+            .then(data => {
+                property.groupId = data.groupId;
+                property.contractId = data.contractId;
+                return this._getMainProduct(property);
+            })
+            .then(data => {
+                property.productId = data.productId;
+                property.productName = data.productName;
+                return this._getCloneConfig(property);
+            })
+            .then(data => {
+                property.cloneFrom = data.cloneFrom;
+                return this._createProperty(property);
+            })
+            .then(data => {
+                property.propertyId = data.propertyId;
+                property.cpcode = 548751;
+                if (property.cpcode) {
+                    return Promise.resolve(property);
+                } else {
+                    return this._createCPCode(property);
+                }
+            })
+            .then(data => {
+                return this._retrieveCPCode(property);
+            })
+            .then(data => {
+                property.cpcode = data.cpcode;
+                return this.retrieve(property.propertyName)
+            })
+            .then(data => {
+                return this._updatePropertyBehaviors(data);
+            })
+            .then(data => {
+                property.rules = data.rules;
+                return this._updatePropertyRules(property, 1, property);
+            })
+            .then(data => {
+                return this._createHostname(property);
+            })
+            .then(data => {
+                property.edgeHostnameId = data;
+                return this._assignHostname(property);
+            })
     }
 }
 WebSite.AKAMAI_ENV = Object.freeze(AKAMAI_ENV);

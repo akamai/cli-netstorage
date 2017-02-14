@@ -132,8 +132,7 @@ function main()
         email,
         create,
         clone,
-        deleteProp,
-        configFile = "";
+        deleteProp;
 
     let lastValue = null;
     for (const value of process.argv.slice(2)) {
@@ -179,9 +178,6 @@ function main()
                     clone = true;
                     srcProperty = value;
                     break;
-                case "--config_file":
-                    configFile = value;
-                    break;
                 case "--delete":
                     deleteProp = value;
                 case "--email":
@@ -191,22 +187,16 @@ function main()
         }
     }
 
-    if (create || clone) {
-        if (create && !destProperty && !configFile) help();
-        if (clone && (!srcProperty||!destProperty) && !configFile) help();
-        
+    if (create) {
+        if (!destProperty) help();
+        let options = {};
         let property = new WebSite({path:"~/.edgerc", section: "papi"});
         let app = appName();
         console.time(app);
-
-         Promise.resolve()
-            .then(() => property.setConfig(configFile)
-            .then((config) => {
-                if (srcProperty) {
-                    config.srcProperty = srcProperty;
-                }
-                config.propertyName = destProperty;
-                return property.createProperty(config);
+        Promise.resolve()
+            .then(() => {
+                options.propertyName = destProperty;
+                return property.createProperty(options);
             })
             .then(() => {
                 console.timeEnd(app);
@@ -216,7 +206,30 @@ function main()
                 console.timeEnd(app);
                 console.error("ERROR: ", error.body || JSON.stringify(error));
                 if (error.stack) console.log(error.stack);
-            }))
+            })
+    } else if (clone) {
+        let options;
+        if (!srcProperty||!destProperty) help();
+        
+        let property = new WebSite({path:"~/.edgerc", section: "papi"});
+        let app = appName();
+        console.time(app);
+
+         Promise.resolve()
+            .then(() => {
+                options.srcProperty = srcProperty;
+                options.propertyName = destProperty;
+                return property.createProperty(options);
+            })
+            .then(() => {
+                console.timeEnd(app);
+                console.info("Created property");
+            })
+            .catch((error) => {
+                console.timeEnd(app);
+                console.error("ERROR: ", error.body || JSON.stringify(error));
+                if (error.stack) console.log(error.stack);
+            })
     } else if (deleteProp) {
         let property = new WebSite();
         return property.deleteProperty(deleteProp);
