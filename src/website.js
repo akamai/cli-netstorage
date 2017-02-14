@@ -665,6 +665,20 @@ class WebSite {
     };
 
     /**
+     *
+     * @param oldRules
+     * @param newRules
+     * @returns {*}
+     */
+    static mergeAdvancedUUIDRules(oldRules, newRules) {
+        //TODO: find behavior: {name:"advanced"} and "match": { name: "matchAdvanced"}
+        //TODO: create md5 tree of ancestry ruleUUID
+        //TODO: merge over other rule matches and other behaviors
+        //TODO: flag changes that can't be promoted automatically
+        return newRules;
+    }
+
+    /**
      * Lookup the PropertyId using the associated Host name. Provide the environment if the Hostname association is
      * moving between configurations.
      *
@@ -753,7 +767,7 @@ class WebSite {
             .then(oldRules => {
                 let updatedRules = newRules;
                 // fallback in case the object is just the rules and not the full proeprty manager response
-                updatedRules.rules = newRules.rules ? newRules.rules : newRules;
+                updatedRules.rules = WebSite.mergeAdvancedUUIDRules(oldRules.rules, newRules.rules ? newRules.rules : newRules);
                 return this._updatePropertyRules(property, oldRules.propertyVersion, updatedRules);
             });
     }
