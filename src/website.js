@@ -49,7 +49,7 @@ class WebSite {
      * @param auth {Object} providing the `path`, and `section` for the authentication. Alternatively, you can pass in
      *     `clientToken`, `clientSecret`, `accessToken`, and `host` directly.
      */
-    constructor(auth = {path: "~/.edgerc", section: "papi"}) {
+    constructor(auth = {path: "~/.edgerc", section: "default"}) {
 
         if (auth.clientToken && auth.clientSecret && auth.accessToken && auth.host)
             this._edge = new EdgeGrid(auth.clientToken.auth.clientSecret, auth.accessToken, auth.host, auth.debug);
@@ -93,7 +93,7 @@ class WebSite {
                 })
             })
             .then(data => {
-                this._propertyHostnameList = data.propertyHostnameList;
+                this._propertyHostnameList = data.propertyHostnameList || {};
                 this._accountId = data.accountId;
                 if (data.groups && data.groups.items)
                     data.groups.items.map(item => {
@@ -116,6 +116,7 @@ class WebSite {
                 let promiseList = [];
 
                 propList.map(v => {
+                    if (!v || !v.properties || !v.properties.items) return;
                     return v.properties.items.map(item => {
 
                         //TODO: should use toJSON() instead of the primative toString()
@@ -138,6 +139,10 @@ class WebSite {
             })
             .then(hostListList => {
                 hostListList.map(hostList => {
+                    if (!hostList || !hostList.propertyId || !hostList.propertyVersion) {
+                        console.log("ignoring: ", hostList);
+                        return;
+                    }
                     let prop = this._propertyById[hostList.propertyId];
                     let version = hostList.propertyVersion;
                     if (!this._propertyHostnameList[hostList.propertyId]) {
@@ -264,6 +269,10 @@ class WebSite {
                 if (response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
+                }
+                else if (response.statusCode == 403) {
+                    console.info('... ignoring  {%s : %s}', contractId, groupId);
+                    resolve(null);
                 }
                 else {
                     reject(response);
