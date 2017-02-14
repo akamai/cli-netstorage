@@ -218,7 +218,7 @@ function main()
                 if (error.stack) console.log(error.stack);
             }))
     } else if (deleteProp) {
-        let property = new WebSite();
+        let property = new WebSite({path:"~/.edgerc", section: "papi"});
         return property.deleteProperty(deleteProp);
     } else {
         if (!srcProperty) help();
