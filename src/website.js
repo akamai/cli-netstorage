@@ -16,6 +16,7 @@
 
 let EdgeGrid = require('edgegrid');
 let untildify = require('untildify');
+let md5 = require('md5');
 let fs = require('fs');
 
 //export
@@ -675,6 +676,51 @@ class WebSite {
         //TODO: create md5 tree of ancestry ruleUUID
         //TODO: merge over other rule matches and other behaviors
         //TODO: flag changes that can't be promoted automatically
+
+        let search = (ruleNode, parentRules = [], found = {}) => {
+            ruleNode.behaviors.forEach(behavior => {
+
+                //look for "advanced" behaviors
+                if (behavior.name === "advanced") {
+                    parentRules.push(ruleNode);
+                    let foundNode = {
+                        uuid: behavior.uuid,
+                        xml: behavior.opions.xml,
+                        behavior: behavior,
+                        parentRules: parentRules,
+                        md5: md5(behavior.options.xml)
+                    };
+                    //should we allow for multiple uses of the same hash?
+                    //if (!found[advancedMD5]) found[advancedMD5] = [];
+                    found[foundNode.md5] = foundNode;
+                    console.log("Found: %s with %s parents", foundNode.xml, foundNode.parentRules.length);
+                }
+            });
+            let newParentRules = parentRules.slice(0);
+            newParentRules.push(ruleNode);
+            ruleNode.children.forEach(childRule => {
+                search(childRule, newParentRules, found);
+            });
+            return found;
+        };
+
+        let oldAdvMtdBehaviors = search(oldRules);
+        let newAdvMtdBehaviors = search(newRules);
+        for (const key in oldAdvMtdBehaviors) {
+            let newAdvObject = newAdvMtdBehaviors[key];
+            let oldAdvObject = oldAdvMtdBehaviors[key];
+            if (newAdvObject && newAdvObject.parentRules.length === oldAdvObject.parentRules.length) {
+                //copy the chain of rules UUIDs over
+                for(let i = 0; i < newAdvObject.parentRules.length; i++) {
+                    newAdvObject.parentRules[i].uuid = oldAdvObject.parentRules[i].uuid;
+                }
+                // copy the behavior UUID
+                newAdvObject.behavior.uuid = oldAdvObject.behavior.uuid;
+            } else {
+                throw Error("Cannot find Advanced Metadata in the destination rules. For safety, the Advanced behavior has to have been previously pushed on the destination config: " + newAdvObject.xml);
+            }
+        }
+
         return newRules;
     }
 
