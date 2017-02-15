@@ -16,6 +16,7 @@
 let EdgeGrid = require('edgegrid');
 let untildify = require('untildify');
 let fs = require('fs');
+let tmpDir = require('os').tmpdir()
 
 //export
 const LATEST_VERSION = {
@@ -67,6 +68,7 @@ class WebSite {
         this._initComplete = false;
         this._propertyHostnameList = {};
         this._accountId = "";
+        this._cacheFile = "";
         if (auth.create) {
             this._initComplete = true;
         }
@@ -86,10 +88,11 @@ class WebSite {
         return this._getGroupList()
             .then(data => {
                 return new Promise((resolve, reject) => {
-
+                    this._accountId = data.accountId;
                     //TODO: move this to use system tmp or cache dirs
-                    if (fs.existsSync("hostlist.json")) {
-                        fs.readFile("hostlist.json", function(err, hostlist) {
+                    this.cacheFile = tmpDir + data.accountId + ".json";
+                    if (fs.existsSync(this.cacheFile)) {
+                        fs.readFile(this.cacheFile, function(err, hostlist) {
                             data.propertyHostnameList = JSON.parse(hostlist);
                             return resolve(data);
                         })
@@ -100,7 +103,6 @@ class WebSite {
             })
             .then(data => {
                 this._propertyHostnameList = data.propertyHostnameList || {};
-                this._accountId = data.accountId;
                 if (data.groups && data.groups.items)
                     data.groups.items.map(item => {
                         if (item.contractIds)
@@ -153,10 +155,14 @@ class WebSite {
                     }
                     let prop = this._propertyById[hostList.propertyId];
                     let version = hostList.propertyVersion;
-                    if (!this._propertyHostnameList[hostList.propertyId]) {
-                        this._propertyHostnameList[hostList.propertyId] = {}
+                    if (prop.latestVersion != version || 
+                        prop.latestVersion == prop.stagingVersion ||
+                        prop.latestVersion == prop.productionVersion) {
+                        if (!this._propertyHostnameList[hostList.propertyId]) {
+                            this._propertyHostnameList[hostList.propertyId] = {}
+                        }
+                        this._propertyHostnameList[hostList.propertyId][version] = hostList;
                     }
-                    this._propertyHostnameList[hostList.propertyId][version] = hostList;
 
                     if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
                         prop.stagingHosts = hostList.hostnames.items;
@@ -175,7 +181,7 @@ class WebSite {
                 });
                 console.timeEnd('Init PropertyManager cache');
                 return new Promise((resolve, reject) => {
-                    fs.writeFile("hostlist.json", JSON.stringify(this._propertyHostnameList, null, ' '), (err) => {
+                    fs.writeFile(this.cacheFile, JSON.stringify(this._propertyHostnameList, null, ' '), (err) => {
                         if (err)
                             reject(err);
                         else
@@ -603,7 +609,7 @@ class WebSite {
         });
     }
 
-    _retrieveCPCode(property) {
+   _retrieveCPCode(property) {
         return new Promise((resolve, reject) => {
             let cpcode = property.cpcode;
             console.info('Retrieving information for cpcode:' + cpcode);
@@ -668,63 +674,57 @@ class WebSite {
     }
 
     //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
-    //TODO: should use the internal cache for the hostnames
-    //TODO: move
     _createHostname(property) {
         return this._getEdgeHostnames(property)
-            .then(edgeHostnames => {
-                edgeHostnames.edgeHostnames.items.map(item => {
-                    if (item["domainPrefix"] === property.propertyName) {
+        .then(edgeHostnames => {
+            edgeHostnames.edgeHostnames.items.map(item => {
+                if (item["domainPrefix"] === property.propertyName) {
                         console.info("Hostname already exists");
                         property.edgeHostnameId = item["edgeHostnameId"];
                         return Promise.resolve(property);
-                    }
-                });
-                return Promise.resolve(property);
+                }
             })
-            .then(property => {
+            return Promise.resolve(property);
 
-                return new Promise((resolve, reject) => {
-                    if (property.edgeHostnameId) {
-                        resolve(property);
-                    } else {
-                        console.info('Creating edge hostname for property:' + property.propertyId);
-                        console.time('... creating hostname');
-                        let hostnameObj = {
-                            "productId": property.productId,
-                            "domainPrefix": property.propertyName,
-                            "domainSuffix": "edgesuite.net",
-                            "secure": false,
-                            "ipVersionBehavior": "IPV4",
-                        };
+        })
+        .then(property => {
+            return new Promise((resolve, reject) => {
+                if (property.edgeHostnameId) {
+                    resolve(property);
+                } else {
+                    console.info('Creating edge hostname for property:' + property.propertyId);
+                    console.time('... creating hostname');
+                    let hostnameObj = {
+                        "productId": property.productId,
+                        "domainPrefix": property.propertyName,
+                        "domainSuffix": "edgesuite.net",
+                        "secure": false,
+                        "ipVersionBehavior": "IPV4",
+                    };
 
-                        console.info(hostnameObj);
-                        console.info("======================")
+                    let request = {
+                        method: 'POST',
+                        path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
+                        body: hostnameObj
+                    };
 
-                        let request = {
-                            method: 'POST',
-                            path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
-                            body: hostnameObj
-                        };
+                    this._edge.auth(request);
 
-                        this._edge.auth(request);
-
-                        this._edge.send((data, response) => {
-                            console.timeEnd('... creating hostname');
-                            if (response.statusCode >= 200 && response.statusCode < 400) {
-                                //TODO: make response more robust
-                                let hostnameResponse = JSON.parse(response.body);
-                                response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
-                                property.edgeHostnameId = response;
-                                resolve(property);
-                            } else {
-                                console.log(response.body);
-                                reject(response);
-                            }
-                        })
-                    }
-                })
+                    this._edge.send((data, response) => {
+                        console.timeEnd('... creating hostname');
+                        if (response.statusCode >= 200 && response.statusCode < 400) {
+                            let hostnameResponse = JSON.parse(response.body);
+                            response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
+                            property.edgeHostnameId = response;
+                            resolve(property);
+                        } else {
+                            console.log(response.body);
+                            reject(response);
+                        }
+                    })
+                }
             })
+        })
     }
 
     /**
@@ -1039,21 +1039,9 @@ class WebSite {
         })
     }
 
-
-    /**
-     *
-     * @param oldRules
-     * @param newRules
-     * @returns {*}
-     */
-    static mergeAdvancedUUIDRules(oldRules, newRules) {
-        //TODO: find behavior: {name:"advanced"} and "match": { name: "matchAdvanced"}
-        //TODO: create md5 tree of ancestry ruleUUID
-        //TODO: merge over other rule matches and other behaviors
-        //TODO: flag changes that can't be promoted automatically
-        return newRules;
+    createCPCode(property) {
+        return this._createCPCode(property);
     }
-
 
     /**
      *
@@ -1321,12 +1309,12 @@ class WebSite {
                 return Promise.resolve(activationId);
             })
     }
-        /**
-         * Deletes the specified property from the contract
-         *
-         * @param {string} property Lookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
-         *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-         */
+    /**
+     * Deletes the specified property from the contract
+     *
+     * @param {string} property Lookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+     */
     deleteProperty(propertyLookup) {
         return this._getProperty(propertyLookup)
             .then(property => {
