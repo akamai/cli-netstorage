@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 'use strict';
 
 let EdgeGrid = require('edgegrid');
@@ -49,12 +48,19 @@ class WebSite {
      * @param auth {Object} providing the `path`, and `section` for the authentication. Alternatively, you can pass in
      *     `clientToken`, `clientSecret`, `accessToken`, and `host` directly.
      */
-    constructor(auth = {path: "~/.edgerc", section: "default"}) {
+    constructor(auth = {
+        path: "~/.edgerc",
+        section: "default"
+    }) {
 
         if (auth.clientToken && auth.clientSecret && auth.accessToken && auth.host)
-            this._edge = new EdgeGrid(auth.clientToken,auth.clientSecret, auth.accessToken, auth.host, auth.debug);
+            this._edge = new EdgeGrid(auth.clientToken, auth.clientSecret, auth.accessToken, auth.host, auth.debug);
         else
-            this._edge = new EdgeGrid({path: untildify(auth.path), section: auth.section, debug: auth.debug});
+            this._edge = new EdgeGrid({
+                path: untildify(auth.path),
+                section: auth.section,
+                debug: auth.debug
+            });
         this._propertyById = {};
         this._propertyByName = {};
         this._propertyByHost = {};
@@ -83,7 +89,7 @@ class WebSite {
 
                     //TODO: move this to use system tmp or cache dirs
                     if (fs.existsSync("hostlist.json")) {
-                        fs.readFile("hostlist.json", function (err, hostlist) {
+                        fs.readFile("hostlist.json", function(err, hostlist) {
                             data.propertyHostnameList = JSON.parse(hostlist);
                             return resolve(data);
                         })
@@ -101,9 +107,11 @@ class WebSite {
                             item.contractIds.map(contractId => {
                                 // if we have filtered out the contract and group already through the constructor, limit the list appropriately
                                 //TODO: clean this logic
-                                if ((!this._groupId || this._groupId === item.groupId)
-                                    && (!this._contractId || this._contractId === contractId))
-                                    groupcontractList.push({contractId: contractId, groupId: item.groupId});
+                                if ((!this._groupId || this._groupId === item.groupId) && (!this._contractId || this._contractId === contractId))
+                                    groupcontractList.push({
+                                        contractId: contractId,
+                                        groupId: item.groupId
+                                    });
                             });
                     });
                 // get the  list of all properties for the known list of contracts and groups now
@@ -120,7 +128,7 @@ class WebSite {
                     return v.properties.items.map(item => {
 
                         //TODO: should use toJSON() instead of the primative toString()
-                        item.toString = function () {
+                        item.toString = function() {
                             return this.propertyName;
                         };
                         this._propertyByName[item.propertyName] = item;
@@ -188,7 +196,7 @@ class WebSite {
                 property.cloneFrom.version = version;
                 return new Promise((resolve, reject) => {
                     //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
-                    
+
                     let request = {
                         method: 'GET',
                         path: `/papi/v0/properties/${property.propertyId}/versions/${property.cloneFrom.version}?contractId=${config.contractId}&groupId=${config.groupId}`,
@@ -197,12 +205,11 @@ class WebSite {
                     this._edge.auth(request);
 
                     this._edge.send(function(data, response) {
-                        if (response.statusCode >= 200 && response.statusCode  < 400) {
+                        if (response.statusCode >= 200 && response.statusCode < 400) {
                             let parsed = JSON.parse(response.body);
                             property.cloneFrom.cloneFromVersionEtag = parsed.versions.items[0]["etag"];
                             resolve(property);
-                        }
-                        else {
+                        } else {
                             reject(response);
                         }
                     });
@@ -222,12 +229,11 @@ class WebSite {
             };
             this._edge.auth(request);
 
-            this._edge.send(function (data, response) {
+            this._edge.send(function(data, response) {
                 if (response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
-                }
-                else {
+                } else {
                     reject(response);
                 }
             });
@@ -249,8 +255,8 @@ class WebSite {
                     if (version == null) {
                         version = 1;
                     }
-                    if (this._propertyHostnameList && 
-                        this._propertyHostnameList[propertyId] && 
+                    if (this._propertyHostnameList &&
+                        this._propertyHostnameList[propertyId] &&
                         this._propertyHostnameList[propertyId][version]) {
                         resolve(this._propertyHostnameList[propertyId][version]);
                     } else {
@@ -263,19 +269,19 @@ class WebSite {
                         this._edge.auth(request);
 
                         this._edge.send(function(data, response) {
-                            if (response && response.statusCode >= 200 && response.statusCode  < 400) {
+                            if (response && response.statusCode >= 200 && response.statusCode < 400) {
                                 let parsed = JSON.parse(response.body);
                                 resolve(parsed);
-                            }
-                            else {
+                            } else {
                                 console.log(response);
                                 reject(response);
                             }
-                        })}
-                    });
+                        })
+                    }
                 });
-            };
-   
+            });
+    };
+
     _getMainProduct(config) {
         return new Promise((resolve, reject) => {
             console.info('... retrieving list of Products for this contract');
@@ -288,7 +294,7 @@ class WebSite {
             };
             this._edge.auth(request);
 
-            this._edge.send(function (data, response) {
+            this._edge.send(function(data, response) {
                 if (response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     parsed.products.items.map(item => {
@@ -316,7 +322,7 @@ class WebSite {
                     let host = this._propertyByHost[propertyLookup];
                     if (host)
                         prop = hostnameEnvironment === LATEST_VERSION.STAGING ? host.staging : host.production;
-                } 
+                }
 
                 if (!prop)
                     return Promise.reject(Error(`Cannot find property: ${propertyLookup}`));
@@ -334,16 +340,14 @@ class WebSite {
             };
             this._edge.auth(request);
 
-            this._edge.send(function (data, response) {
+            this._edge.send(function(data, response) {
                 if (response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
-                }
-                else if (response.statusCode == 403) {
+                } else if (response.statusCode == 403) {
                     console.info('... ignoring  {%s : %s}', contractId, groupId);
                     resolve(null);
-                }
-                else {
+                } else {
                     reject(response);
                 }
             });
@@ -365,7 +369,7 @@ class WebSite {
                     if (version == null) {
                         version = 1;
                     }
-                    
+
                     let request = {
                         method: 'GET',
                         path: `/papi/v0/properties/${propertyId}/versions/${version}/rules?contractId=${contractId}&groupId=${groupId}`,
@@ -373,13 +377,12 @@ class WebSite {
                     };
                     this._edge.auth(request);
 
-                    this._edge.send(function (data, response) {
+                    this._edge.send(function(data, response) {
                         console.timeEnd('... retrieving');
                         if (response && response.statusCode >= 200 && response.statusCode < 400) {
                             let parsed = JSON.parse(response.body);
                             resolve(parsed);
-                        }
-                        else {
+                        } else {
                             console.log(response);
                             reject(response);
                         }
@@ -393,7 +396,7 @@ class WebSite {
         return this._getProperty(config.srcProperty)
             .then(property => {
                 config.cloneFrom.propertyId = property.propertyId;
-                Promise.resolve( WebSite._getLatestVersion(property))
+                Promise.resolve(WebSite._getLatestVersion(property))
             })
             .then(version => {
                 config.cloneFrom.version = version;
@@ -413,8 +416,7 @@ class WebSite {
                         if (response.statusCode >= 200 && response.statusCode < 400) {
                             let parsed = JSON.parse(response.body);
                             resolve(parsed);
-                        } 
-                        else {
+                        } else {
                             reject(response);
                         }
                     });
@@ -426,7 +428,7 @@ class WebSite {
             return property.productionVersion;
         else if (env === LATEST_VERSION.STAGING)
             return property.stagingVersion;
-        else if (property.latestVersion) 
+        else if (property.latestVersion)
             return property.latestVersion;
         else
             return 1;
@@ -452,7 +454,7 @@ class WebSite {
 
                     this._edge.auth(request);
 
-                    this._edge.send(function (data, response) {
+                    this._edge.send(function(data, response) {
                         console.timeEnd('... copy');
                         if (/application\/json/.test(response.headers['content-type'])) {
                             let parsed = JSON.parse(response.body);
@@ -462,11 +464,9 @@ class WebSite {
                             } else {
                                 resolve(matches[1]);
                             }
-                        }
-                        else if (response.statusCode === 404) {
+                        } else if (response.statusCode === 404) {
                             resolve({});
-                        }
-                        else {
+                        } else {
                             reject(response);
                         }
                     });
@@ -475,38 +475,39 @@ class WebSite {
     };
     _createProperty(property) {
         return new Promise((resolve, reject) => {
-                let contractId = property.contractId;
-                let groupId = property.groupId;
-                console.time('... creating');
-                console.info(`... creating property ${property.propertyName}`);
+            let contractId = property.contractId;
+            let groupId = property.groupId;
+            console.time('... creating');
+            console.info(`... creating property ${property.propertyName}`);
 
-                let propertyObj = {"cloneFrom":property.cloneFrom,
-                                   "productId":property.productId,
-                                   "propertyName":property.propertyName}
-                delete property.cloneFrom;
+            let propertyObj = {
+                "cloneFrom": property.cloneFrom,
+                "productId": property.productId,
+                "propertyName": property.propertyName
+            }
+            delete property.cloneFrom;
 
-                let request = {
-                    method: 'POST',
-                    path: `/papi/v0/properties/?contractId=${contractId}&groupId=${groupId}`,
-                    body: propertyObj
-                };
+            let request = {
+                method: 'POST',
+                path: `/papi/v0/properties/?contractId=${contractId}&groupId=${groupId}`,
+                body: propertyObj
+            };
 
-                this._edge.auth(request);
+            this._edge.auth(request);
 
-                this._edge.send(function (data, response) {
-                    console.timeEnd('... creating');
-                    if (response.statusCode >= 200 && response.statusCode < 400) {
-                        let propertyResponse = JSON.parse(response.body);
-                        response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
-                        property.propertyId = response;
-                        resolve(property);
-                    }
-                    else {
-                        console.log(response);
-                        reject(response);
-                    }
-                });
-            })
+            this._edge.send(function(data, response) {
+                console.timeEnd('... creating');
+                if (response.statusCode >= 200 && response.statusCode < 400) {
+                    let propertyResponse = JSON.parse(response.body);
+                    response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
+                    property.propertyId = response;
+                    resolve(property);
+                } else {
+                    console.log(response);
+                    reject(response);
+                }
+            });
+        })
     }
     _updatePropertyBehaviors(property) {
         return new Promise((resolve, reject) => {
@@ -560,13 +561,12 @@ class WebSite {
 
                     this._edge.auth(request);
 
-                    this._edge.send(function (data, response) {
+                    this._edge.send(function(data, response) {
                         console.timeEnd('... updating');
                         if (response.statusCode >= 200 && response.statusCode < 400) {
                             let newRules = JSON.parse(response.body);
                             resolve(newRules);
-                        }
-                        else {
+                        } else {
                             reject(response);
                         }
                     });
@@ -574,13 +574,13 @@ class WebSite {
             });
     };
 
-        _createCPCode(property) {
+    _createCPCode(property) {
         return new Promise((resolve, reject) => {
             console.info('Creating new CPCode for property');
             console.time('... creating new CPCode');
             let cpCode = {
-                 "productId": property.productId,
-                 "cpcodeName": property.propertyName
+                "productId": property.productId,
+                "cpcodeName": property.propertyName
             }
             let request = {
                 method: 'POST',
@@ -592,7 +592,7 @@ class WebSite {
 
             this._edge.send((data, response) => {
                 console.timeEnd('... creating new CPCode');
-                if (response.statusCode >= 200 && response.statusCode < 400) {        
+                if (response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     property.cpcode = parsed["cpcodeLink"].split('?')[0].split("/")[4].split('_')[1];
                     resolve(property);
@@ -603,12 +603,10 @@ class WebSite {
         });
     }
 
-    //TODO: move above, rename to _retrieve
-    //TODO: expose an public creatCPCode method
     _retrieveCPCode(property) {
         return new Promise((resolve, reject) => {
             let cpcode = property.cpcode;
-            console.info('Retrieving information for cpcode:'+ cpcode);
+            console.info('Retrieving information for cpcode:' + cpcode);
             console.time('... retrieving CPCode info');
             let request = {
                 method: 'GET',
@@ -619,16 +617,16 @@ class WebSite {
 
             this._edge.send((data, response) => {
                 console.timeEnd('... retrieving CPCode info');
-                if (response.statusCode >= 200 && response.statusCode < 400) {                        
+                if (response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     let cpCodeInfo = parsed.cpcodes.items[0];
                     let datestring = cpCodeInfo.createdDate;
                     property.cpcode = {
                         "id": cpcode,
-                        "description":cpCodeInfo.cpcodeName,
-                        "name":cpCodeInfo.cpcodeName,
-                        "products":[property.productName],
-                        "createdDate":datestring
+                        "description": cpCodeInfo.cpcodeName,
+                        "name": cpCodeInfo.cpcodeName,
+                        "products": [property.productName],
+                        "createdDate": datestring
                     };
                     resolve(property);
                 } else {
@@ -643,7 +641,7 @@ class WebSite {
             console.info('Assigning hostname to property');
             console.time('... assigning hostname');
 
-            let assignHostnameObj =  [{
+            let assignHostnameObj = [{
                 "cnameType": "EDGE_HOSTNAME",
                 "edgeHostnameId": property.edgeHostnameId,
                 "cnameFrom": property.propertyName
@@ -653,7 +651,7 @@ class WebSite {
                 method: 'PUT',
                 path: `/papi/v0/properties/${property.propertyId}/versions/1/hostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
                 body: assignHostnameObj
-             }
+            }
 
             this._edge.auth(request);
             this._edge.send((data, response) => {
@@ -664,32 +662,7 @@ class WebSite {
                 } else {
                     reject(response);
                 }
- 
-            })
-        })
-    }
 
-    //TODO: how is this different than above?
-    //TODO: move
-    _getEdgeHostnames(property) {
-        return new Promise((resolve, reject) => {
-            console.info('Checking for existing edge hostname');
-            console.time('... checking edge hostnames');
-            let request = {
-                method: 'GET',
-                path: `/papi/v0/edgehostnames?contractId=${property.contractId}&groupId=${property.groupId}`
-            }
-
-            this._edge.auth(request);
-            this._edge.send((data, response) => {
-                console.timeEnd('... checking edge hostnames');
-                if (response.statusCode >= 200 && response.statusCode < 400) {
-                    response = JSON.parse(response.body);
-                    resolve(response);
-                } else {
-                    reject(response);
-                }
- 
             })
         })
     }
@@ -698,8 +671,8 @@ class WebSite {
     //TODO: should use the internal cache for the hostnames
     //TODO: move
     _createHostname(property) {
-            return this._getEdgeHostnames(property)
-            .then( edgeHostnames => {
+        return this._getEdgeHostnames(property)
+            .then(edgeHostnames => {
                 edgeHostnames.edgeHostnames.items.map(item => {
                     if (item["domainPrefix"] === property.propertyName) {
                         console.info("Hostname already exists");
@@ -710,19 +683,19 @@ class WebSite {
                 return Promise.resolve(property);
             })
             .then(property => {
-                
+
                 return new Promise((resolve, reject) => {
                     if (property.edgeHostnameId) {
                         resolve(property);
                     } else {
-                        console.info('Creating edge hostname for property:'+ property.propertyId);
+                        console.info('Creating edge hostname for property:' + property.propertyId);
                         console.time('... creating hostname');
                         let hostnameObj = {
                             "productId": property.productId,
-                                "domainPrefix": property.propertyName,
-                                "domainSuffix": "edgesuite.net",
-                                "secure": false,
-                                "ipVersionBehavior": "IPV4",
+                            "domainPrefix": property.propertyName,
+                            "domainSuffix": "edgesuite.net",
+                            "secure": false,
+                            "ipVersionBehavior": "IPV4",
                         };
 
                         console.info(hostnameObj);
@@ -738,7 +711,6 @@ class WebSite {
 
                         this._edge.send((data, response) => {
                             console.timeEnd('... creating hostname');
-                            console.info(response);
                             if (response.statusCode >= 200 && response.statusCode < 400) {
                                 //TODO: make response more robust
                                 let hostnameResponse = JSON.parse(response.body);
@@ -752,7 +724,7 @@ class WebSite {
                         })
                     }
                 })
-        })
+            })
     }
 
     /**
@@ -797,12 +769,11 @@ class WebSite {
 
                     this._edge.auth(request);
 
-                    this._edge.send(function (data, response) {
+                    this._edge.send(function(data, response) {
                         if (response.statusCode >= 200 && response.statusCode <= 400) {
                             let parsed = JSON.parse(response.body);
                             resolve(parsed);
-                        }
-                        else {
+                        } else {
                             reject(response.body);
                         }
                     });
@@ -821,21 +792,19 @@ class WebSite {
                     });
                     //TODO: check that this doesn't happen more than once...
                     return this._activateProperty(propertyLookup, versionId, env, notes, email, messages);
-                }
-                else
+                } else
                 //TODO what about errors?
                     return new Promise((resolve, reject) => {
-                        //TODO: chaise redirect?
-                        console.time('Activation Time');
-                        let matches = !body.activationLink ? null : body.activationLink.match('activations/([a-z0-9_]+)\\b');
+                    //TODO: chaise redirect?
+                    console.time('Activation Time');
+                    let matches = !body.activationLink ? null : body.activationLink.match('activations/([a-z0-9_]+)\\b');
 
-                        if (!matches) {
-                            reject(body);
-                        }
-                        else {
-                            resolve(matches[1])
-                        }
-                    });
+                    if (!matches) {
+                        reject(body);
+                    } else {
+                        resolve(matches[1])
+                    }
+                });
             });
     };
 
@@ -871,7 +840,7 @@ class WebSite {
 
                     this._edge.auth(request);
 
-                    this._edge.send(function (data, response) {
+                    this._edge.send(function(data, response) {
                         console.info(response.statusCode);
                         console.info(response.body);
                         if (response.statusCode >= 200 && response.statusCode <= 400) {
@@ -880,12 +849,10 @@ class WebSite {
 
                             if (!matches) {
                                 reject(parsed);
-                            }
-                            else {
+                            } else {
                                 resolve(matches[1])
                             }
-                        }
-                        else {
+                        } else {
                             reject(response.body);
                         }
                     });
@@ -909,16 +876,21 @@ class WebSite {
 
                     this._edge.auth(request);
 
-                    this._edge.send(function (data, response) {
+                    this._edge.send(function(data, response) {
                         if (response.statusCode === 200 && /application\/json/.test(response.headers['content-type'])) {
                             let parsed = JSON.parse(response.body);
                             resolve(parsed);
                         }
                         if (response.statusCode === 500) {
                             console.error('Activation caused a 500 response. Retrying...')
-                            resolve({activations: {items: [{status: 'PENDING'}]}});
-                        }
-                        else {
+                            resolve({
+                                activations: {
+                                    items: [{
+                                        status: 'PENDING'
+                                    }]
+                                }
+                            });
+                        } else {
                             reject(response);
                         }
                     });
@@ -936,8 +908,7 @@ class WebSite {
                     return sleep(30000).then(() => {
                         return this._pollActivation(propertyLookup, activationID);
                     });
-                }
-                else {
+                } else {
                     console.timeEnd('Activation Time');
                     return active ? Promise.resolve(true) : Promise.reject(data);
                 }
@@ -946,30 +917,26 @@ class WebSite {
     };
 
     _deleteConfig(property) {
-    return new Promise((resolve, reject) => {
-        console.time('... deleting property');
-        let request = {
-            method: 'DELETE',
-            path: `/papi/v0/properties/${property.propertyId}?contractId=${property.contractId}&groupId=${property.groupId}`
-        }
-        this._edge.auth(request);
-        this._edge.send((data, response) => {
-            console.timeEnd('... deleting property');
-            if (response.statusCode >= 200 && response.statusCode < 400) {        
-                let parsed = JSON.parse(response.body);
-                console.log(parsed);
-                resolve(parsed);
-            } else {
-                reject(parsed);
+        return new Promise((resolve, reject) => {
+            console.time('... deleting property');
+            let request = {
+                method: 'DELETE',
+                path: `/papi/v0/properties/${property.propertyId}?contractId=${property.contractId}&groupId=${property.groupId}`
             }
+            this._edge.auth(request);
+            this._edge.send((data, response) => {
+                console.timeEnd('... deleting property');
+                if (response.statusCode >= 200 && response.statusCode < 400) {
+                    let parsed = JSON.parse(response.body);
+                    console.log(parsed);
+                    resolve(parsed);
+                } else {
+                    reject(parsed);
+                }
+            })
         })
-    })
-}
+    }
 
-    
-
-    // TODO: move to model (internal) method and move above
-    // TODO: use crud naming. rename getNew to _create
     _createCPCode(config) {
         return new Promise((resolve, reject) => {
             console.info('Creating new CPCode for property');
@@ -996,41 +963,6 @@ class WebSite {
                     reject(response);
                 }
             });
-        });
-    }
-
-    //TODO: move above, rename to _retrieve
-    //TODO: expose an public creatCPCode method
-    _populateCPCode(config) {
-        return new Promise((resolve, reject) => {
-            let cpcode = config.cpcode;
-            console.info('Retrieving information for cpcode:' + config.cpcode);
-            console.time('... retrieving CPCode info');
-            let request = {
-                method: 'GET',
-                path: `/papi/v0/cpcodes/cpc_${cpcode}?contractId=${config.contractId}&groupId=${config.groupId}`,
-            };
-
-            this._edge.auth(request);
-
-            this._edge.send((data, response) => {
-                console.timeEnd('... retrieving CPCode info');
-                if (response.statusCode >= 200 && response.statusCode < 400) {
-                    let parsed = JSON.parse(response.body);
-                    let cpCodeInfo = parsed.cpcodes.items[0];
-                    let datestring = cpCodeInfo.createdDate;
-                    config.cpcode = {
-                        "id": cpcode,
-                        "description": cpCodeInfo.cpcodeName,
-                        "name": cpCodeInfo.cpcodeName,
-                        "products": [config.productName],
-                        "createdDate": datestring
-                    };
-                    resolve(config);
-                } else {
-                    reject(config);
-                }
-            })
         });
     }
 
@@ -1065,8 +997,6 @@ class WebSite {
         })
     }
 
-    //TODO: how is this different than above?
-    //TODO: move
     _getEdgeHostnames(property) {
         return new Promise((resolve, reject) => {
             console.info('Checking for existing edge hostname');
@@ -1092,11 +1022,9 @@ class WebSite {
 
     /**
      *
-     * @data which is the output from getGroupList 
+     * @param {object} data which is the output from getGroupList
      */
-    //TODO: exception should be thrown if more than one ctract exists and null passed
-    //TODO: refactor to separate controller and model
-    _getContractAndGroup (data) {
+    _getContractAndGroup(data) {
         return new Promise((resolve, reject) => {
             data.groups.items.map(item => {
                 let queryObj = {};
@@ -1104,15 +1032,15 @@ class WebSite {
                     if (!item.parentGroupId) {
                         data.contractId = contract;
                         data.groupId = item.groupId;
-                        resolve (data);
+                        resolve(data);
                     }
                 })
             });
         })
     }
-    
 
-     /**
+
+    /**
      *
      * @param oldRules
      * @param newRules
@@ -1191,8 +1119,7 @@ class WebSite {
                 if (toFile === '-') {
                     console.log(JSON.stringify(data));
                     return Promise.resolve(data);
-                }
-                else {
+                } else {
                     return new Promise((resolve, reject) => {
                         fs.writeFile(untildify(toFile), JSON.stringify(data), (err) => {
                             if (err)
@@ -1246,17 +1173,17 @@ class WebSite {
      */
     updateFromFile(propertyLookup, fromFile) {
         return new Promise((resolve, reject) => {
-            console.info(`Reading ${propertyLookup} rules from ${fromFile}`);
-            fs.readFile(untildify(fromFile), (err, data) => {
-                if (err)
-                    reject(err);
-                else
-                    resolve(JSON.parse(data));
+                console.info(`Reading ${propertyLookup} rules from ${fromFile}`);
+                fs.readFile(untildify(fromFile), (err, data) => {
+                    if (err)
+                        reject(err);
+                    else
+                        resolve(JSON.parse(data));
+                });
+            })
+            .then(rules => {
+                return this.update(propertyLookup, rules)
             });
-        })
-        .then(rules => {
-            return this.update(propertyLookup, rules)
-        });
     }
 
     /**
@@ -1394,12 +1321,12 @@ class WebSite {
                 return Promise.resolve(activationId);
             })
     }
-    /**
-     * Deletes the specified property from the contract
-     * 
-     * @param {string} property Lookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
-     *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
-     */
+        /**
+         * Deletes the specified property from the contract
+         *
+         * @param {string} property Lookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+         *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+         */
     deleteProperty(propertyLookup) {
         return this._getProperty(propertyLookup)
             .then(property => {
@@ -1410,66 +1337,66 @@ class WebSite {
 
     /**
      * Creates a new property from scratch
-     * 
+     *
      * @param {string} property Lookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
      */
 
     create(property) {
         let contractId, groupId;
-        
+
         return this._getGroupList()
-           .then(data => {
-               return this._getContractAndGroup(data);
-        }).then(data => {
-            property.contractId = data.contractId;
-            property.groupId = data.groupId;
-            return this._getMainProduct(property);
-        }).then(data => {
-            property.productId = data.productId;
-            property.productName = data.productName;
-            return this._createProperty(property);
-        })
-        .then(data => {
-            property.propertyId = data.propertyId;
-            property.cpcode = 548751;
-            if (property.cpcode) {
-                return Promise.resolve(property);
-            } else {
-                return this._createCPCode(property);
-            }
-        }).then(data => {
-            return this._retrieveCPCode(property);
-        })
-        .then(data => {
-            property.cpcode = data.cpcode;
-            
-            console.info(`... retrieving rules for ${property.propertyName}`);
-            return this.retrieve(property.propertyName)
-        })
-        .then(data => {
-            property.rules = data.rules;
-            return this._updatePropertyBehaviors(property);
-        })
-        .then(data => {
-            return this._updatePropertyRules(property, 1, property);
-        })
-        .then((data) => {
-            return this._createHostname(property);
-        })
-        .then(data => {
-            property = data;
-            return this._assignHostname(property);
-        })
+            .then(data => {
+                return this._getContractAndGroup(data);
+            }).then(data => {
+                property.contractId = data.contractId;
+                property.groupId = data.groupId;
+                return this._getMainProduct(property);
+            }).then(data => {
+                property.productId = data.productId;
+                property.productName = data.productName;
+                return this._createProperty(property);
+            })
+            .then(data => {
+                property.propertyId = data.propertyId;
+                property.cpcode = 548751;
+                if (property.cpcode) {
+                    return Promise.resolve(property);
+                } else {
+                    return this._createCPCode(property);
+                }
+            }).then(data => {
+                return this._retrieveCPCode(property);
+            })
+            .then(data => {
+                property.cpcode = data.cpcode;
+
+                console.info(`... retrieving rules for ${property.propertyName}`);
+                return this.retrieve(property.propertyName)
+            })
+            .then(data => {
+                property.rules = data.rules;
+                return this._updatePropertyBehaviors(property);
+            })
+            .then(data => {
+                return this._updatePropertyRules(property, 1, property);
+            })
+            .then((data) => {
+                return this._createHostname(property);
+            })
+            .then(data => {
+                property = data;
+                return this._assignHostname(property);
+            })
     }
 
-   
+
     clone(options) {
         let contractId, groupId;
-        
+
         return property._getGroupList()
             .then(data => {
-               return this._getContractAndGroup(data);
+                return this._getContractAndGroup(data);
             })
             .then(data => {
                 property.groupId = data.groupId;
