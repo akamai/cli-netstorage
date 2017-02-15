@@ -132,7 +132,7 @@ function main()
         email,
         create,
         clone,
-        deleteProp;
+        deleteProp
 
     let lastValue = null;
     for (const value of process.argv.slice(2)) {
@@ -187,10 +187,11 @@ function main()
         }
     }
 
+    let property = new WebSite({path:"~/.edgerc", section: "papi"});
+
     if (create) {
         if (!destProperty) help();
         let options = {};
-        let property = new WebSite({path:"~/.edgerc", section: "papi"});
         let app = appName();
         console.time(app);
         Promise.resolve()
@@ -211,15 +212,14 @@ function main()
         let options;
         if (!srcProperty||!destProperty) help();
         
-        let property = new WebSite({path:"~/.edgerc", section: "papi"});
         let app = appName();
         console.time(app);
 
          Promise.resolve()
             .then(() => {
-                options.srcProperty = srcProperty;
-                options.propertyName = destProperty;
-                return property.createProperty(options);
+                property.srcProperty = srcProperty;
+                property.propertyName = destProperty;
+                return property.createProperty(property);
             })
             .then(() => {
                 console.timeEnd(app);
@@ -231,7 +231,6 @@ function main()
                 if (error.stack) console.log(error.stack);
             })
     } else if (deleteProp) {
-        let property = new WebSite();
         return property.deleteProperty(deleteProp);
     } else {
         if (!srcProperty) help();
@@ -254,7 +253,6 @@ function main()
             email: email
         };
 
-        let property = new WebSite();
         let app = appName();
         console.time(app);
 
