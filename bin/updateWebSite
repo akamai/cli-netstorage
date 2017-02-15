@@ -132,8 +132,7 @@ function main()
         email,
         create,
         clone,
-        deleteProp,
-        configFile = "";
+        deleteProp
 
     let lastValue = null;
     for (const value of process.argv.slice(2)) {
@@ -179,9 +178,6 @@ function main()
                     clone = true;
                     srcProperty = value;
                     break;
-                case "--config_file":
-                    configFile = value;
-                    break;
                 case "--delete":
                     deleteProp = value;
                 case "--email":
@@ -191,22 +187,17 @@ function main()
         }
     }
 
-    if (create || clone) {
-        if (create && !destProperty && !configFile) help();
-        if (clone && (!srcProperty||!destProperty) && !configFile) help();
-        
-        let property = new WebSite({path:"~/.edgerc", section: "papi"});
+    let property = new WebSite({path:"~/.edgerc", section: "papi"});
+
+    if (create && !clone) {
+        if (!destProperty) help();
+        let options = {};
         let app = appName();
         console.time(app);
-
-         Promise.resolve()
-            .then(() => property.setConfig(configFile)
-            .then((config) => {
-                if (srcProperty) {
-                    config.srcProperty = srcProperty;
-                }
-                config.propertyName = destProperty;
-                return property.createProperty(config);
+        Promise.resolve()
+            .then(() => {
+                property.propertyName = destProperty;
+                return property.createProperty(property);
             })
             .then(() => {
                 console.timeEnd(app);
@@ -216,9 +207,30 @@ function main()
                 console.timeEnd(app);
                 console.error("ERROR: ", error.body || JSON.stringify(error));
                 if (error.stack) console.log(error.stack);
-            }))
+            })
+    } else if (clone) {
+        let options;
+        if (!srcProperty||!destProperty) help();
+        
+        let app = appName();
+        console.time(app);
+
+         Promise.resolve()
+            .then(() => {
+                property.srcProperty = srcProperty;
+                property.propertyName = destProperty;
+                return property.createProperty(property);
+            })
+            .then(() => {
+                console.timeEnd(app);
+                console.info("Created property");
+            })
+            .catch((error) => {
+                console.timeEnd(app);
+                console.error("ERROR: ", error.body || JSON.stringify(error));
+                if (error.stack) console.log(error.stack);
+            })
     } else if (deleteProp) {
-        let property = new WebSite({path:"~/.edgerc", section: "papi"});
         return property.deleteProperty(deleteProp);
     } else {
         if (!srcProperty) help();
@@ -241,7 +253,6 @@ function main()
             email: email
         };
 
-        let property = new WebSite();
         let app = appName();
         console.time(app);
 
