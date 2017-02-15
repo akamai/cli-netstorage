@@ -189,15 +189,15 @@ function main()
 
     let property = new WebSite({path:"~/.edgerc", section: "papi"});
 
-    if (create) {
+    if (create && !clone) {
         if (!destProperty) help();
         let options = {};
         let app = appName();
         console.time(app);
         Promise.resolve()
             .then(() => {
-                options.propertyName = destProperty;
-                return property.createProperty(options);
+                property.propertyName = destProperty;
+                return property.createProperty(property);
             })
             .then(() => {
                 console.timeEnd(app);

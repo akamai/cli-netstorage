@@ -194,18 +194,18 @@ class WebSite {
     _getCloneConfig(property) {
         property.cloneFrom = {};
         return this._getProperty(property.srcProperty)
-            .then(property => {
-                property.cloneFrom.propertyId = property.propertyId;
-                return WebSite._getLatestVersion(property)
+            .then(cloneFromProperty => {
+                property.cloneFrom = {propertyId : cloneFromProperty.propertyId};
+                return WebSite._getLatestVersion(cloneFromProperty)
             })
             .then(version => {
                 property.cloneFrom.version = version;
                 return new Promise((resolve, reject) => {
-                    //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
+                    console.info('... retrieving clone info');
 
                     let request = {
                         method: 'GET',
-                        path: `/papi/v0/properties/${property.propertyId}/versions/${property.cloneFrom.version}?contractId=${config.contractId}&groupId=${config.groupId}`,
+                        path: `/papi/v0/properties/${property.cloneFrom.propertyId}/versions/${property.cloneFrom.version}?contractId=${property.contractId}&groupId=${property.groupId}`,
                         followRedirect: false
                     };
                     this._edge.auth(request);
@@ -397,38 +397,6 @@ class WebSite {
             });
     }
 
-    _getCloneConfig(config) {
-        config.cloneFrom = {};
-        return this._getProperty(config.srcProperty)
-            .then(property => {
-                config.cloneFrom.propertyId = property.propertyId;
-                Promise.resolve(WebSite._getLatestVersion(property))
-            })
-            .then(version => {
-                config.cloneFrom.version = version;
-                return new Promise((resolve, reject) => {
-                    //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
-
-                    let request = {
-                        method: 'GET',
-                        path: `/papi/v0/properties/${propertyId}/versions/${version}/rules?contractId=${contractId}&groupId=${groupId}`,
-                    };
-
-                    this._edge.auth(request);
-
-                    this._edge.send((data, response) => {
-                        console.timeEnd('... retrieving');
-
-                        if (response.statusCode >= 200 && response.statusCode < 400) {
-                            let parsed = JSON.parse(response.body);
-                            resolve(parsed);
-                        } else {
-                            reject(response);
-                        }
-                    });
-                });
-            });
-    };
     static _getLatestVersion(property, env = LATEST_VERSION) {
         if (env === LATEST_VERSION.PRODUCTION)
             return property.productionVersion;
@@ -640,37 +608,6 @@ class WebSite {
                 }
             })
         });
-    }
-
-    _assignHostname(property) {
-        return new Promise((resolve, reject) => {
-            console.info('Assigning hostname to property');
-            console.time('... assigning hostname');
-
-            let assignHostnameObj = [{
-                "cnameType": "EDGE_HOSTNAME",
-                "edgeHostnameId": property.edgeHostnameId,
-                "cnameFrom": property.propertyName
-            }]
-
-            let request = {
-                method: 'PUT',
-                path: `/papi/v0/properties/${property.propertyId}/versions/1/hostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
-                body: assignHostnameObj
-            }
-
-            this._edge.auth(request);
-            this._edge.send((data, response) => {
-                console.timeEnd('... assigning hostname');
-                if (response.statusCode >= 200 && response.statusCode < 400) {
-                    response = JSON.parse(response.body);
-                    resolve(response);
-                } else {
-                    reject(response);
-                }
-
-            })
-        })
     }
 
     //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
@@ -977,7 +914,7 @@ class WebSite {
                 "cnameFrom": property.propertyName
             }]
 
-            let request = {
+             let request = {
                 method: 'PUT',
                 path: `/papi/v0/properties/${property.propertyId}/versions/1/hostnames?contractId=${property.contractId}&groupId=${property.groupId}`,
                 body: assignHostnameObj
@@ -1379,7 +1316,7 @@ class WebSite {
     }
 
 
-    clone(options) {
+    clone(property) {
         let contractId, groupId;
 
         return property._getGroupList()
@@ -1402,32 +1339,10 @@ class WebSite {
             })
             .then(data => {
                 property.propertyId = data.propertyId;
-                property.cpcode = 548751;
-                if (property.cpcode) {
-                    return Promise.resolve(property);
-                } else {
-                    return this._createCPCode(property);
-                }
-            })
-            .then(data => {
-                return this._retrieveCPCode(property);
-            })
-            .then(data => {
-                property.cpcode = data.cpcode;
-                return this.retrieve(property.propertyName)
-            })
-            .then(data => {
-                return this._updatePropertyBehaviors(property);
-            })
-            .then(data => {
-                property.rules = data.rules;
-                return this._updatePropertyRules(property, 1, property);
-            })
-            .then(data => {
                 return this._createHostname(property);
             })
             .then(data => {
-                property.edgeHostnameId = data;
+                property = data;
                 return this._assignHostname(property);
             })
     }
