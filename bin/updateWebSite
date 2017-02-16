@@ -49,7 +49,6 @@ SRC_CONFIG           is the source configuration name. Use either hostnames (eg:
 --delete PROP        delete property from the system
 --create PROP        create new version, pass -src to clone
 --clone PROP         property to clone for the new property
---config_file        config file for create or clone
 `);
     process.exit(0);
 }
@@ -60,6 +59,20 @@ function updateProperty(property, options) {
     if (options.destProperty)
         return property.copy(options.srcProperty, options.srcVersion, options.destProperty);
     return Promise.resolve();
+}
+
+function createProperty(property, options) {
+    if (!options.create && !options.clone)
+        return Promise.resolve;
+
+    return property.createProperty(property, options);
+}
+
+function deleteProperty(property, options) {
+    if (!options.deleteProperty)
+        return Promise.resolve;
+
+    return property.deleteProperty(options.deleteProperty);
 }
 
 function retrieveProperty(property, options) {
@@ -100,14 +113,9 @@ function deactivateProperty(property, options, data) {
 
     let env = options.deactivateNetwork;
     return Promise.resolve()
-        // .then(() => {
-        //     if (data && data.propertyVersion)
-        //         return Promise.resolve(data);
-        //     return property.lookupPropertyIdFromHost(options.deactivateProperty);
-        // })
         .then(data => {
             if ("BOTH" === env || env.startsWith("STAG"))
-                return property.deactivate(options.deactivateProperty, WebSite.AKAMAI_ENV.STAGING,
+               return property.deactivate(options.deactivateProperty, WebSite.AKAMAI_ENV.STAGING,
                     "Automatically deactivating on staging.", options.email);
             return Promise.resolve(data);
         })
@@ -186,56 +194,11 @@ function main()
             lastValue = lastValue ? null : value;
         }
     }
-
-    let property = new WebSite({path:"~/.edgerc", section: "papi"});
-
-    if (create && !clone) {
-        if (!destProperty) help();
-        let options = {};
-        let app = appName();
-        console.time(app);
-        Promise.resolve()
-            .then(() => {
-                property.propertyName = destProperty;
-                return property.createProperty(property);
-            })
-            .then(() => {
-                console.timeEnd(app);
-                console.info("Created property");
-            })
-            .catch((error) => {
-                console.timeEnd(app);
-                console.error("ERROR: ", error.body || JSON.stringify(error));
-                if (error.stack) console.log(error.stack);
-            })
-    } else if (clone) {
-        let options;
-        if (!srcProperty||!destProperty) help();
         
-        let app = appName();
-        console.time(app);
-
-         Promise.resolve()
-            .then(() => {
-                property.srcProperty = srcProperty;
-                property.propertyName = destProperty;
-                return property.createProperty(property);
-            })
-            .then(() => {
-                console.timeEnd(app);
-                console.info("Created property");
-            })
-            .catch((error) => {
-                console.timeEnd(app);
-                console.error("ERROR: ", error.body || JSON.stringify(error));
-                if (error.stack) console.log(error.stack);
-            })
-    } else if (deleteProp) {
-        return property.deleteProperty(deleteProp);
-    } else {
-        if (!srcProperty) help();
+        let property = new WebSite({path:"~/.edgerc", section: "papi"});
+        if (!srcProperty && !deleteProp) help();
         if (destProperty && fromFile) help();
-        if (!destProperty && !fromFile && !env && !toFile) help();
+        if (!destProperty && !fromFile && !env && !toFile && !deleteProp) help();
         let options = {
             srcProperty: srcProperty,
             srcFile: fromFile,
@@ -252,15 +215,17 @@ function main()
             deactivateProperty: (destProperty || srcProperty),
             email: email
         };
-
+        
         let app = appName();
         console.time(app);
-
+        
         Promise.resolve()
             .then(() => updateProperty(property, options))
+            .then(data => createProperty(property, options, data))
             .then(data => activateProperty(property, options, data))
             .then(data => deactivateProperty(property, options, data))
             .then(data => retrieveProperty(property, options))
+            .then(data => deleteProperty(property, options))
             .then(() => {
                 console.timeEnd(app);
                 console.info("Success!");
@@ -271,6 +236,5 @@ function main()
                 if (error.stack) console.log(error.stack);
             });
     }
-}
 
 main();
