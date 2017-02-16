@@ -186,6 +186,7 @@ class WebSite {
                         if (err)
                             reject(err);
                         else
+                            console.info("Created on-disk cache for hostnames")
                             resolve(true);
                     });
                 });
@@ -456,7 +457,7 @@ class WebSite {
             let contractId = property.contractId;
             let groupId = property.groupId;
             console.time('... creating');
-            console.info(`... creating property ${property.propertyName}`);
+            console.info(`Creating property ${property.propertyName}`);
 
             let propertyObj = {
                 "cloneFrom": property.cloneFrom,
@@ -479,6 +480,8 @@ class WebSite {
                     let propertyResponse = JSON.parse(response.body);
                     response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
                     property.propertyId = response;
+                    console.log("resolving");
+                    console.log(property);
                     resolve(property);
                 } else {
                     console.log(response);
@@ -779,6 +782,8 @@ class WebSite {
                         body: activationData
                     };
 
+                    console.log(request);
+
                     this._edge.auth(request);
 
                     this._edge.send(function(data, response) {
@@ -867,8 +872,8 @@ class WebSite {
             this._edge.auth(request);
             this._edge.send((data, response) => {
                 console.timeEnd('... deleting property');
+                let parsed = JSON.parse(response.body);
                 if (response.statusCode >= 200 && response.statusCode < 400) {
-                    let parsed = JSON.parse(response.body);
                     console.log(parsed);
                     resolve(parsed);
                 } else {
@@ -929,6 +934,7 @@ class WebSite {
                 console.timeEnd('... assigning hostname');
                 if (response.statusCode >= 200 && response.statusCode < 400) {
                     response = JSON.parse(response.body);
+                    console.log(response);
                     resolve(response);
                 } else {
                     reject(response);
@@ -1185,13 +1191,11 @@ class WebSite {
      * @param {object} options - srcProperty and propertyName
      *
      */
-    //TODO: remove config dependencies
-    //TODO: expose two constructors: `create(hostnames[], configName=null, contract=null)` and `create(srcProperty, srcVersion, cloneHostname=false, configName=null, contract=null)`
-    createProperty(options) {
+    createProperty(property, options) {
         if (options.srcProperty) {
-            return this.clone(options);
+            return this.clone(property);
         } else {
-            return this.create(options);
+            return this.create(property);
         }
     }
     /**
@@ -1295,13 +1299,13 @@ class WebSite {
     deactivate(propertyLookup, networkEnv = AKAMAI_ENV.STAGING, notes = '', email = ['test@example.com'], wait = true) {
         if (!Array.isArray(email))
             email = [email];
+        let property;
 
-        let property = propertyLookup;
         return this._getProperty(propertyLookup)
             .then(data => {
                 property = data;
                 console.info(`Deactivating ${propertyLookup} to ${networkEnv}`);
-                let deactivationVersion = WebSite._getLatestVersion(property, networkEnv == AKAMAI_ENV.STAGING ? LATEST_VERSION.STAGING : LATEST_VERSION.PRODUCTION);
+                let deactivationVersion = WebSite._getLatestVersion(property, networkEnv == AKAMAI_ENV.STAGING ? LATEST_VERSION.STAGING : LATEST_VERSION.PRODUCTION) || 1;
                 return this._deactivateProperty(property, deactivationVersion, networkEnv, notes, email)
             })
             .then(activationId => {
@@ -1336,12 +1340,11 @@ class WebSite {
      */
 
     create(property) {
-        let contractId, groupId;
-
         return this._getGroupList()
             .then(data => {
                 return this._getContractAndGroup(data);
             }).then(data => {
+                property.latestVersion = 1;
                 property.contractId = data.contractId;
                 property.groupId = data.groupId;
                 return this._getMainProduct(property);
@@ -1385,8 +1388,6 @@ class WebSite {
 
 
     clone(property) {
-        let contractId, groupId;
-
         return property._getGroupList()
             .then(data => {
                 return this._getContractAndGroup(data);
