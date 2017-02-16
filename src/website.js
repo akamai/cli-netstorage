@@ -15,6 +15,7 @@
 
 let EdgeGrid = require('edgegrid');
 let untildify = require('untildify');
+let md5 = require('md5');
 let fs = require('fs');
 let tmpDir = require('os').tmpdir()
 
@@ -247,7 +248,7 @@ class WebSite {
         });
     };
 
-    //TODO: this will only be called for LATEST, CURRENT_PROD and CURRENT_STAGE. How do we handle collecting hostnames fo different versions?
+    //TODO: this will only be called for LATEST, CURRENT_PROD and CURRENT_STAGE. How do we handle collecting hostnames of different versions?
     _getHostnameList(propertyId, version) {
 
         return this._getProperty(propertyId)
@@ -279,9 +280,12 @@ class WebSite {
                             if (response && response.statusCode >= 200 && response.statusCode < 400) {
                                 let parsed = JSON.parse(response.body);
                                 resolve(parsed);
-                            } else {
+                            } else if (response.statusCode === 500) {
                                 console.log(response);
-                                reject(response);
+
+                            } else {
+                                    console.log(response);
+                                    reject(response);
                             }
                         })
                     }
@@ -997,6 +1001,54 @@ class WebSite {
         //TODO: create md5 tree of ancestry ruleUUID
         //TODO: merge over other rule matches and other behaviors
         //TODO: flag changes that can't be promoted automatically
+
+        let search = (ruleNode, parentRules = [], found = {}) => {
+            ruleNode.behaviors.forEach(behavior => {
+                //look for "advanced" behaviors
+                if (behavior.name === "advanced") {
+                    let foundNode = {
+                        uuid: behavior.uuid,
+                        xml: behavior.options.xml,
+                        behavior: behavior,
+                        parentRules: parentRules,
+                        md5: md5(behavior.options.xml)
+                    };
+                    //should we allow for multiple uses of the same hash?
+                    //if (!found[advancedMD5]) found[advancedMD5] = [];
+                    found[foundNode.md5] = foundNode;
+                    console.log("Found: %s with %s parents", foundNode.md5, parentRules.length);
+                }
+            });
+
+            if (ruleNode.children) {
+                let newParentRules = ruleNode.uuid !== "default" ? parentRules.concat([ruleNode]) : parentRules;
+                ruleNode.children.forEach(childRule => {
+                    search(childRule, newParentRules, found);
+                });
+            }
+            return found;
+        };
+
+        let oldAdvMtdBehaviors = search(oldRules);
+        let newAdvMtdBehaviors = search(newRules);
+        for (const key in newAdvMtdBehaviors) {
+            let newAdvObject = newAdvMtdBehaviors[key];
+            let oldAdvObject = oldAdvMtdBehaviors[key];
+            if (oldAdvObject && newAdvObject.parentRules.length === oldAdvObject.parentRules.length) {
+                //copy the chain of rules UUIDs over
+                for(let i = 0; i < newAdvObject.parentRules.length; i++) {
+//                    console.log("Moving Rule UUID: %s --> %s", oldAdvObject.parentRules[i].uuid, newAdvObject.parentRules[i].uuid);
+
+                    newAdvObject.parentRules[i].uuid = oldAdvObject.parentRules[i].uuid;
+                }
+                // copy the behavior UUID
+//                console.log("Moving Behavior UUID: %s --> %s", newAdvObject.behavior.uuid, oldAdvObject.behavior.uuid);
+                newAdvObject.behavior.uuid = oldAdvObject.behavior.uuid;
+            } else {
+                throw Error("Cannot find Advanced Metadata in the destination rules. For safety, the Advanced behavior has to have been previously pushed on the destination config: " + newAdvObject.xml);
+            }
+        }
+
         return newRules;
     }
 
