@@ -317,13 +317,17 @@ class WebSite {
                         if (item.productId == "prd_SPM") {
                             productInfo = {
                                 productId: "prd_SPM",
-                                productName: "SPM"
-                            };
+                                productName: "SPM",
+                                groupId: groupId,
+                                contractId: contractId
+                           };
                             resolve(productInfo);
                         } else if (item.productId == "prd_Dynamic_Site_Del") {
                             productInfo = {
                                 productId: "prd_Dynamic_Site_Del",
-                                productName: "Dynamic_Site_Del"
+                                productName: "Dynamic_Site_Del",
+                                groupId: groupId,
+                                contractId: contractId
                             }
                         }
                     });
@@ -948,6 +952,25 @@ class WebSite {
         })
     }
 
+       _getConfigAndHostname(configName, hostnames) {
+            if (!configName && typeof hostnames != "string") {
+                configName = hostnames[0];
+            } else if (typeof hostnames == "string") {
+                hostnames = [hostnames];
+                if (!configName) 
+                    configName = hostnames
+            } else if (hostnames.length == 0) {
+                hostnames = [configName]
+            }
+            let letters = "/^[0-9a-zA-Z\\_\\-\\.]+$/";
+            if (!configName.match(letters)) {
+                configName = configName.replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_')
+            }
+
+            return ([configName, hostnames])
+        }
+
+
     _setRules(groupId, contractId, productId, configName, cpcode=null) {
         return new Promise((resolve, reject) => {
             if (cpcode) {
@@ -970,11 +993,22 @@ class WebSite {
         })
     }
 
+    _getPropertyInfo(contractId) {
+        return this._getGroupList()
+            .then(data => {
+                return this._getContractAndGroup(data, contractId);
+            })
+            .then(data => {
+                return this._getMainProduct(data.groupId, data.contractId);
+            })
+    }
+
+  
     createCPCode(property) {
         return this._createCPCode(property);
     }
 
-    /**
+        /**
      * Advanced Metadata can't be automatically replicated, but if we preserver the UUID we can. This method loops through
      * the behaviors and matches and finds advanced entries.  The PS adv. metadata check looks at the md5() of the xml
      * and the UUID of the behavior and the rule ancestry UUID. If all of these things match then the validator will allow
@@ -1158,19 +1192,19 @@ class WebSite {
      *     Only the {Object}.rules will be copied
      * @returns {Promise} returns a promise with the updated form of the
      */
-    updateFromFile(propertyLookup, fromFile) {
-        return new Promise((resolve, reject) => {
-            console.info(`Reading ${propertyLookup} rules from ${fromFile}`);
+    updateFromFile(propertyLookup, srcFile) {
+        return new Promise ((resolve, reject) => {
             fs.readFile(untildify(fromFile), (err, data) => {
                 if (err)
                     reject(err);
                 else
                     resolve(JSON.parse(data));
             });
+
         })
-            .then(rules => {
-                return this.update(propertyLookup, rules)
-            });
+        .then(data => {
+            return this.update(propertyLookup, rules)
+        })
     }
 
     /**
@@ -1311,23 +1345,6 @@ class WebSite {
     }
 
     /**
-     * Create a new property
-     *
-     * @param {object} options - srcProperty and propertyName ([] or "", group, contract, srcProperty, srcVersion,copyHostnames )
-     *
-     */
-
-    //TODO: delete this interface
-    createProperty(configName, hostnames, cpcode) {
-        return this.create(configName, hostnames, cpcode);
-    }
-
-    //TODO: delete this interface
-    cloneProperty(srcProperty, srcVersion, destProperty, cpcode, copyHostnames) {
-        return this.createFromExisting(srcProperty, srcVersion, destProperty, cpcode, copyHostnames)
-    }
-
-    /**
      * Creates a new property from scratch
      *
      * @param {string} property Lookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
@@ -1335,23 +1352,10 @@ class WebSite {
      */
 
     create(hostnames = [], cpcode = null, configName = null, contractId = null, newRules = null) {
-        
-        if (!configName && typeof hostnames != "string") {
-            configName = hostnames[0];
-        } else if (typeof hostnames == "string") {
-            hostnames = [hostnames];
-            if (!configName) 
-                configName = hostnames
-        } else if (hostnames.length == 0) {
-            hostnames = [configName]
-        }
-        let letters = "/^[0-9a-zA-Z\\_\\-\\.]+$/";
-        if (!configName.match(letters)) {
-            configName = configName.replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_')
-        }
+        let names = this._getConfigAndHostname(configName, hostnames);
+        configName = names[0];
+        hostnames = names[1];
 
-        //TODO: use newRules instead of the default template; this should just call update()
-        //TODO: don't create cpcode (even if the cpcode param is null) if rules are provided
         let groupId,
             accountId,
             productId,
@@ -1359,15 +1363,10 @@ class WebSite {
             propertyId,
             edgeHostnameId;
 
-        return this._getGroupList()
+        return this._getPropertyInfo(contractId)
             .then(data => {
-                return this._getContractAndGroup(data, contractId);
-            }).then(data => {
                 contractId = data.contractId;
                 groupId = data.groupId;
-                accountId = data.accountId;
-                return this._getMainProduct(groupId, contractId);
-            }).then(data => {
                 productId = data.productId;
                 return this._createProperty(groupId,
                     contractId,
@@ -1406,26 +1405,29 @@ class WebSite {
             })
     }
 
-    createFromFile(hostnames = [], srcFile, configName = null, contractId = null) {
-        //TODO: do all the things
-        //TOOD: read srcfile and pass up to create()
+    createFromFile(hostnames = [], srcFile, configName = null, contractId = null, cpcode = null) {
+        let names = this._getConfigAndHostname(configName, hostnames);
+        configName = names[0];
+        hostnames = names[1];
+        return new Promise ((resolve, reject) => {
+            fs.readFile(untildify(srcFile), (err, data) => {
+                if (err)
+                    reject(err);
+                else
+                    resolve(JSON.parse(data));
+            });
 
-    }
+        })
+        .then(rules => {
+            return this.create(hostnames, cpcode, configName, contractId, rules)
+        })
+
+     }
 
     createFromExisting(srcProperty, srcVersion = LATEST_VERSION.LATEST, copyHostnames = false, hostnames = [], configName = null, contractId = null) {
-        if (!configName && typeof hostnames != "string") {
-            configName = hostnames[0];
-        } else if (typeof hostnames == "string") {
-            hostnames = [hostnames];
-            if (!configName) 
-                configName = hostnames
-        } else if (hostnames.length == 0) {
-            hostnames = [configName]
-        }
-        let letters = "/^[0-9a-zA-Z\\_\\-\\.]+$/";
-        if (!configName.match(letters)) {
-            configName = configName.replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_')
-        }
+        let names = this._getConfigAndHostname(configName, hostnames);
+        configName = names[0];
+        hostnames = names[1];
 
         let groupId,
             cloneFrom,
@@ -1435,16 +1437,10 @@ class WebSite {
             propertyId,
             edgeHostnameId;
 
-        return this._getGroupList()
-            .then(data => {
-                return this._getContractAndGroup(data, contractId);
-            })
-            .then(data => {
-                groupId = data.groupId;
+       return this._getPropertyInfo(contractId)
+            .then(() => {
                 contractId = data.contractId;
-                return this._getMainProduct(groupId, contractId);
-            })
-            .then(data => {
+                groupId = data.groupId;
                 productId = data.productId;
                 return this._getCloneConfig(groupId,
                     contractId,
@@ -1476,9 +1472,9 @@ class WebSite {
              }).then(data => {
                         return Promise.resolve();
             })
-        })
+        }
     }
-}
+
 
 WebSite.AKAMAI_ENV = Object.freeze(AKAMAI_ENV);
 WebSite.LATEST_VERSION = Object.freeze(LATEST_VERSION);

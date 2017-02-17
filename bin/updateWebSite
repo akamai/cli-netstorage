@@ -49,7 +49,7 @@ TARGET_PROP          is the configuration name. Use either hostnames (eg: www.ex
 --delete PROP        delete property from the system
 --create PROP        create new version
 --clone PROP         clone version to a new config
---configname         name for new property for clone or create
+--name               name for new config for clone or create
 --hostnames          hostnames for new property, comma delimited
 --cpcode             cpcode to use for create
 --contract           contract ID for create or clone
@@ -59,7 +59,7 @@ TARGET_PROP          is the configuration name. Use either hostnames (eg: www.ex
 }
 
 function updateProperty(property, options) {
-    if (options.srcFile)
+    if (options.srcFile && !options.create)
         return property.updateFromFile(options.srcProperty, options.srcFile);
     if (options.destProperty)
         return property.copy(options.srcProperty, options.srcVersion, options.destProperty);
@@ -73,19 +73,23 @@ function createProperty(property, options) {
     let hostnames;
     if (options.hostnames) {
         hostnames = options.hostnames.split(',')
-        if (!options.configName) {
-            options.configName = hostnames[0];
-        }
-    } else if (options.configName) {
-        hostnames = [options.configName]
-    } else {
-        help()
     }
-    if (options.create) {
-        return property.createProperty(hostnames, 
+
+    if (options.create && !options.clone) {
+        if (options.srcFile) {
+          return property.createFromFile(hostnames, 
+                                        options.srcFile,
+                                        options.configName,
+                                        options.contractId, 
+                                        options.cpcode);
+
+        } else {
+            return property.create(hostnames, 
                                         options.cpcode,
                                         options.configName,
-                                        null, null);
+                                        options.contractId, 
+                                        null);
+        }
     } else if (options.cloneProperty) {
         return property.createFromExisting(options.cloneProperty, 
                                         options.version, 
@@ -169,7 +173,7 @@ function main()
         create,
         clone,
         deleteProp,
-        configName,
+        propertyName,
         hostnames,
         cpcode,
         cloneProperty,
@@ -230,8 +234,8 @@ function main()
                 case "--hostnames":
                     hostnames = value;
                     break;
-                case "--configname":
-                    configName = value;
+                case "--name":
+                    propertyName = value;
                     break
                 case "--nocopy":
                     copyHostnames = false;
@@ -272,7 +276,7 @@ function main()
             clone: clone,
             hostnames: hostnames,
             cpcode: cpcode,
-            configName: configName,
+            configName: propertyName,
             cloneProperty: cloneProperty,
             contractId: contractId,
             copyHostnames: copyHostnames
