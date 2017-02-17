@@ -19,7 +19,7 @@ if (process.env.AKAMAI_TEST_PROPID) {
     propertyId = process.env.AKAMAI_TEST_PROPID;
 }
 
-var akamaiweb = new WebSite({path: "~/.edgerc", section: "papi"});
+var akamaiweb = new WebSite({path: edgercFile, section: sectionName});
 
 describe('Retrieve Named Property', function() {
     let papiPropertyId;

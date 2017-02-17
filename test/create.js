@@ -40,11 +40,32 @@ describe('Create a new property from scratch', function () {
             .then(data => {
                 return akamaiweb.retrieve(akamaiweb.propertyId)
             })
-            .catch((data) =>  {
-                console.log(data);
-                return Promise.resolve(data);
+            .catch((error) =>  {
+                assert(error);
             })
     })
+    it ('should clone a new property, activate, deactivate and delete', function() {
+        akamaiweb.propertyName = "test.mocha.com";
+        options = {"srcProperty":"bc.akamaiapibootcamp.com"};
+        return akamaiweb.createProperty(akamaiweb, options)
+            .then(data => {
+                akamaiweb.propertyId = data.propertyId;
+                return akamaiweb.activate(akamaiweb.propertyId)
+            })
+            .then(data => {
+                return akamaiweb.deactivate(akamaiweb.propertyId)
+            })
+            .then(data => {
+                return akamaiweb.delete(akamaiweb.propertyId)
+            })
+            .then(data => {
+                return akamaiweb.retrieve(akamaiweb.propertyId)
+            })
+            .catch((error) =>  {
+                assert(error);
+            })
+    })
+
     it ('should try to create a new property without a propertyName (and fail)', function() {
         return akamaiweb.createProperty(akamaiweb, {})
             .catch(error => {
