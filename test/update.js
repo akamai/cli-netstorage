@@ -19,7 +19,7 @@ if (process.env.AKAMAI_TEST_PROPID) {
     propertyId = process.env.AKAMAI_TEST_PROPID;
 }
 
-var akamaiweb = new WebSite({path: "~/.edgerc", section: "papi"});
+var akamaiweb = new WebSite({path: edgercFile, section: sectionName});
 
 describe('Retrieve Named Property', function() {
     let papiPropertyId;
@@ -93,24 +93,4 @@ describe('Full update including production and staging', function () {
         })
     });
 })
-})
-
-describe('Create a new property from scratch', function () {
-    it ('should create a new property, set rules and assign a hostname', function() {
-        akamaiweb.propertyName = "abc.def.com"
-        return akamaiweb.createProperty(akamaiweb)
-            .then(data => {
-                akamaiweb=data;
-                return akamaiweb.activate(akamaiweb.propertyId)
-            })
-            .then(data => {
-                return akamaiweb.deactivate(akamaiweb.propertyId)
-            })
-            .then(data => {
-                return akamaiweb.delete(akamaiweb.propertyId)
-            })
-            .then(data => {
-                return akamaiweb.retrieve(akamaiweb.propertyId)
-            })
-    })
 })

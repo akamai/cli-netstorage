@@ -15,6 +15,7 @@
   ],
   "dependencies": {
     "edgegrid": "*",
+    "md5": "^2.2.1",
     "mocha": "^3.2.0",
     "request": "^2.74.0",
     "untildify": "*"

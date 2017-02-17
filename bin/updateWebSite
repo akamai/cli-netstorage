@@ -22,6 +22,8 @@
  * @author Colin Bendell <colinb@akamai.com>
  */
 
+var path = require('path');
+
 let WebSite = require('../index').WebSite;
 
 function appName() {
@@ -30,30 +32,79 @@ function appName() {
 
 function help() {
     let app = appName();
-    console.log(`Usage: ${app} <SRC_CONFIG> [options...]
+    console.log(`Usage: ${app} <TARGET_PROP> [options...]
 Where: 
-SRC_CONFIG           is the source configuration name. Use either hostnames (eg: www.example.com) or akamai configuration
+TARGET_PROP          is the configuration name. Use either hostnames (eg: www.example.com) or akamai configuration
                      names (eg: example_prod_ion).
---version VERSION    the configuration VERSION of SRC_CONFIG to copy from. Use in conjunction with --to and/or --on. 
+--version VERSION    the configuration VERSION of TARGET_PROP to copy from. Use in conjunction with --to and/or --on. 
                      Values are either numbers >= 1 corresponding to versions, 0 for LATEST, -1 for current PROD version
                      or -2 for current STAGING version. Default is LATEST (0).
---copyto DEST_CONFIG indicates that the SRC_CONFIG is being copied to DEST_CONFIG (using VERSION)
---out FILE           stores the rules to FILE
---src FILE           updates SRC_CONFIG with the rule contents from FILE. Cannot be used in conjunction with --copyto
+--dest DEST_PROP     target property for copy
+--outfile FILE       stores the rules to FILE
+--srcfile FILE       updates SRC_CONFIG with the rule contents from FILE. Cannot be used in conjunction with --copyto
 --activate  ENV      indicates to also activate to ENV. Values include PRODUCTION, STAGING, or both.
 --deactivate ENV     deactivate ENV (PRODUCTION, STAGING, or both) from the Akamai platform
 --force              //TODO create new version
 --addhost            //TODO
+--delete PROP        delete property from the system
+--create PROP        create new version
+--clone PROP         clone version to a new config
+--name               name for new config for clone or create
+--hostnames          hostnames for new property, comma delimited
+--cpcode             cpcode to use for create
+--contract           contract ID for create or clone
+--nocopy             don't copy the hostnames
 `);
     process.exit(0);
 }
 
 function updateProperty(property, options) {
-    if (options.srcFile)
+    if (options.srcFile && !options.create)
         return property.updateFromFile(options.srcProperty, options.srcFile);
     if (options.destProperty)
         return property.copy(options.srcProperty, options.srcVersion, options.destProperty);
     return Promise.resolve();
+}
+
+function createProperty(property, options) {
+    if (!options.create && !options.clone) {
+        return Promise.resolve();
+    }
+    let hostnames;
+    if (options.hostnames) {
+        hostnames = options.hostnames.split(',')
+    }
+
+    if (options.create && !options.clone) {
+        if (options.srcFile) {
+          return property.createFromFile(hostnames, 
+                                        options.srcFile,
+                                        options.configName,
+                                        options.contractId, 
+                                        options.cpcode);
+
+        } else {
+            return property.create(hostnames, 
+                                        options.cpcode,
+                                        options.configName,
+                                        options.contractId, 
+                                        null);
+        }
+    } else if (options.cloneProperty) {
+        return property.createFromExisting(options.cloneProperty, 
+                                        options.version, 
+                                        options.copyHostnames,
+                                        hostnames,
+                                        options.configName, 
+                                        options.contractId
+                                        )
+    }
+}
+
+function deleteProperty(property, options) {
+    if (!options.deleteProperty)
+        return Promise.resolve;
+    return property.deleteProperty(options.deleteProperty);
 }
 
 function retrieveProperty(property, options) {
@@ -94,14 +145,9 @@ function deactivateProperty(property, options, data) {
 
     let env = options.deactivateNetwork;
     return Promise.resolve()
-        // .then(() => {
-        //     if (data && data.propertyVersion)
-        //         return Promise.resolve(data);
-        //     return property.lookupPropertyIdFromHost(options.deactivateProperty);
-        // })
         .then(data => {
             if ("BOTH" === env || env.startsWith("STAG"))
-                return property.deactivate(options.deactivateProperty, WebSite.AKAMAI_ENV.STAGING,
+               return property.deactivate(options.deactivateProperty, WebSite.AKAMAI_ENV.STAGING,
                     "Automatically deactivating on staging.", options.email);
             return Promise.resolve(data);
         })
@@ -123,9 +169,19 @@ function main()
         env = 'both',
         activate,
         deactivate,
-        email;
+        email,
+        create,
+        clone,
+        deleteProp,
+        propertyName,
+        hostnames,
+        cpcode,
+        cloneProperty,
+        copyHostnames=true,
+        contractId
 
     let lastValue = null;
+    
     for (const value of process.argv.slice(2)) {
         if ("--help" === value) {
             help();
@@ -140,13 +196,13 @@ function main()
                         help();
                     version = value;
                     break;
-                case "--copyto":
+                case "--dest":
                     destProperty = value;
                     break;
-                case "--src":
+                case "--srcfile":
                     fromFile = value;
                     break;
-                case "--out":
+                case "--outfile":
                     toFile = value;
                     break;
                 case "--activate":
@@ -161,49 +217,90 @@ function main()
                         help();
                     deactivate = true;
                     break;
+                case "--create":
+                    create = true;
+                    configName = value;
+                    break;
+                case "--clone":
+                    clone = true;
+                    cloneProperty = value;
+                    break;
+                case "--delete":
+                    deleteProp = value;
+                    break;
                 case "--email":
                     email = value;
+                    break;
+                case "--hostnames":
+                    hostnames = value;
+                    break;
+                case "--name":
+                    propertyName = value;
+                    break
+                case "--nocopy":
+                    copyHostnames = false;
+                    break
+                case "--contract":
+                    contractId = value
+                    break
+                case "--cpcode":
+                    cpcode = value
+                    break
             }
             lastValue = lastValue ? null : value;
         }
     }
-    if (!srcProperty) help();
-    if (destProperty && fromFile) help();
-    if (!destProperty && !fromFile && !env && !toFile) help();
-    let options = {
-        srcProperty: srcProperty,
-        srcFile: fromFile,
-        srcVersion: version,
-        destProperty: destProperty,
-        destFile: toFile,
-        activate: activate,
-        activateVersion: version,
-        activateNetwork: env,
-        activateProperty: (destProperty || srcProperty),
-        deactivate: deactivate,
-        deactivateNetwork: env,
-        deactivateProperty: (destProperty || srcProperty),
-        email: email
-    };
+        
+        let property = new WebSite({path:"~/.edgerc", section: "papi"});
 
-    let property = new WebSite();
-    let app = appName();
-    console.time(app);
-
-    Promise.resolve()
-        .then(() => updateProperty(property, options))
-        .then(data => activateProperty(property, options, data))
-        .then(data => deactivateProperty(property, options, data))
-        .then(data => retrieveProperty(property, options))
-        .then(() => {
-            console.timeEnd(app);
-            console.info("Success!");
-        })
-        .catch((error) => {
-            console.timeEnd(app);
-            console.error("ERROR: ", error.body || JSON.stringify(error));
-            if (error.stack) console.log(error.stack);
-        });
-}
+        if (create && !hostnames && !configName) help("Create requires hostnames or a configName");
+        if (!srcProperty && !deleteProp && !create && !cloneProperty) help();
+        if (destProperty && fromFile) help();
+        if (!destProperty && !fromFile && !env && !toFile && !deleteProp && !create) help();
+        let options = {
+            srcProperty: srcProperty,
+            srcFile: fromFile,
+            srcVersion: version,
+            destProperty: destProperty,
+            destFile: toFile,
+            activate: activate,
+            activateVersion: version,
+            activateNetwork: env,
+            activateProperty: (destProperty || srcProperty),
+            deactivate: deactivate,
+            deactivateNetwork: env,
+            deleteProperty: deleteProp,
+            deactivateProperty: (destProperty || srcProperty),
+            email: email,
+            create: create,
+            clone: clone,
+            hostnames: hostnames,
+            cpcode: cpcode,
+            configName: propertyName,
+            cloneProperty: cloneProperty,
+            contractId: contractId,
+            copyHostnames: copyHostnames
+        };
+        
+        let app = appName();
+        console.time(app);
+        
+        Promise.resolve()
+            .then(() => createProperty(property, options))
+            .then(() => updateProperty(property, options))
+            .then(data => activateProperty(property, options, data))
+            .then(data => deactivateProperty(property, options, data))
+            .then(data => retrieveProperty(property, options))
+            .then(data => deleteProperty(property, options))
+            .then(() => {
+                console.timeEnd(app);
+                console.info("Success!");
+            })
+            .catch((error) => {
+                console.timeEnd(app);
+                console.error("ERROR: ", error.body || JSON.stringify(error));
+                if (error.stack) console.log(error.stack);
+            });
+    }
 
 main();
