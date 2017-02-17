@@ -50,8 +50,10 @@ TARGET_PROP          is the configuration name. Use either hostnames (eg: www.ex
 --create PROP        create new version
 --clone PROP         clone version to a new config
 --configname         name for new property for clone or create
---hostnames          hostnames for new property
---cpcode             cpcode to use for create or clone
+--hostnames          hostnames for new property, comma delimited
+--cpcode             cpcode to use for create
+--contract           contract ID for create or clone
+--nocopy             don't copy the hostnames
 `);
     process.exit(0);
 }
@@ -80,15 +82,18 @@ function createProperty(property, options) {
         help()
     }
     if (options.create) {
-        return property.createProperty(options.configName, 
-                                        hostnames, 
-                                        options.cpcode);
-    } else if (options.cloneProperty) {
-        return property.cloneProperty(options.cloneProperty, 
-                                        options.version, 
-                                        options.configName, 
+        return property.createProperty(hostnames, 
                                         options.cpcode,
-                                        options.copyHostnames)
+                                        options.configName,
+                                        null, null);
+    } else if (options.cloneProperty) {
+        return property.createFromExisting(options.cloneProperty, 
+                                        options.version, 
+                                        options.copyHostnames,
+                                        hostnames,
+                                        options.configName, 
+                                        options.contractId
+                                        )
     }
 }
 
@@ -167,7 +172,9 @@ function main()
         configName,
         hostnames,
         cpcode,
-        cloneProperty
+        cloneProperty,
+        copyHostnames=true,
+        contractId
 
     let lastValue = null;
     
@@ -223,8 +230,18 @@ function main()
                 case "--hostnames":
                     hostnames = value;
                     break;
-                case "--configName":
+                case "--configname":
                     configName = value;
+                    break
+                case "--nocopy":
+                    copyHostnames = false;
+                    break
+                case "--contract":
+                    contractId = value
+                    break
+                case "--cpcode":
+                    cpcode = value
+                    break
             }
             lastValue = lastValue ? null : value;
         }
@@ -256,7 +273,9 @@ function main()
             hostnames: hostnames,
             cpcode: cpcode,
             configName: configName,
-            cloneProperty: cloneProperty
+            cloneProperty: cloneProperty,
+            contractId: contractId,
+            copyHostnames: copyHostnames
         };
         
         let app = appName();
