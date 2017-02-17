@@ -826,7 +826,7 @@ class WebSite {
                 let pending = false;
                 let active = false;
                 data.activations.items.map(status => {
-                    pending = pending || 'PENDING' === status.status;
+                    pending = pending || 'PENDING' === status.status || 'ZONE_2' === status.status;
                     active = !pending && 'ACTIVE' === status.status;
                 });
                 if (pending) {
