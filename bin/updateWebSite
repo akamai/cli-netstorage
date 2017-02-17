@@ -44,16 +44,14 @@ TARGET_PROP          is the configuration name. Use either hostnames (eg: www.ex
 --srcfile FILE       updates SRC_CONFIG with the rule contents from FILE. Cannot be used in conjunction with --copyto
 --activate  ENV      indicates to also activate to ENV. Values include PRODUCTION, STAGING, or both.
 --deactivate ENV     deactivate ENV (PRODUCTION, STAGING, or both) from the Akamai platform
---force              //TODO create new version
---addhost            //TODO
 --delete PROP        delete property from the system
---create PROP        create new version
---clone PROP         clone version to a new config
+--create PROP        create new property configuration
+--clone PROP         clone property to a new config
 --name               name for new config for clone or create
 --hostnames          hostnames for new property, comma delimited
 --cpcode             cpcode to use for create
 --contract           contract ID for create or clone
---nocopy             don't copy the hostnames
+--nocopy             don't copy the hostnames when cloning
 `);
     process.exit(0);
 }
