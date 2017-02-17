@@ -594,38 +594,6 @@ class WebSite {
         });
     }
 
-   _retrieveCPCode(property) {
-        return new Promise((resolve, reject) => {
-            let cpcode = property.cpcode;
-            console.info('Retrieving information for cpcode:' + cpcode);
-            console.time('... retrieving CPCode info');
-            let request = {
-                method: 'GET',
-                path: `/papi/v0/cpcodes/cpc_${cpcode}?contractId=${property.contractId}&groupId=${property.groupId}`,
-            };
-
-            this._edge.auth(request);
-
-            this._edge.send((data, response) => {
-                console.timeEnd('... retrieving CPCode info');
-                if (response.statusCode >= 200 && response.statusCode < 400) {
-                    let parsed = JSON.parse(response.body);
-                    let cpCodeInfo = parsed.cpcodes.items[0];
-                    let datestring = cpCodeInfo.createdDate;
-                    property.cpcode = {
-                        "id": cpcode,
-                        "description": cpCodeInfo.cpcodeName,
-                        "name": cpCodeInfo.cpcodeName,
-                        "products": [property.productName],
-                        "createdDate": datestring
-                    };
-                    resolve(property);
-                } else {
-                    reject(config);
-                }
-            })
-        });
-    }
 
     //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
     _createHostname(groupId, contractId, configName, productId) {
