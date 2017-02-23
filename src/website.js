@@ -410,7 +410,6 @@ class WebSite {
                             let parsed = JSON.parse(response.body);
                             resolve(parsed);
                         } else {
-                            console.log(response);
                             reject(response);
                         }
                     })
@@ -495,7 +494,6 @@ class WebSite {
                     response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
                     resolve(response);
                 } else {
-                    console.log(response);
                     reject(response);
                 }
             });
@@ -589,7 +587,8 @@ class WebSite {
                     let cpcode = parsed["cpcodeLink"].split('?')[0].split("/")[4].split('_')[1];
                     resolve(cpcode);
                 } else {
-                    reject(response);
+                    console.log("Unable to create new cpcode");
+                    resolve();
                 }
             });
         });
@@ -963,7 +962,7 @@ class WebSite {
                 hostnames = [configName]
             }
             let letters = "/^[0-9a-zA-Z\\_\\-\\.]+$/";
-            if (!configName.match(letters)) {
+            if (configName && !configName.match(letters)) {
                 configName = configName.replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_')
             }
 
@@ -1438,7 +1437,7 @@ class WebSite {
             edgeHostnameId;
 
        return this._getPropertyInfo(contractId)
-            .then(() => {
+            .then(data => {
                 contractId = data.contractId;
                 groupId = data.groupId;
                 productId = data.productId;
@@ -1455,7 +1454,8 @@ class WebSite {
                     productId,
                     cloneFrom);
             })
-            .then(() => {
+            .then(data => {
+                    propertyId = data;
                         return this._createHostname(groupId,
                             contractId,
                             configName,

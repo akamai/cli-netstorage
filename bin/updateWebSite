@@ -176,7 +176,8 @@ function main()
         cpcode,
         cloneProperty,
         copyHostnames=true,
-        contractId
+        contractId,
+	configName
 
     let lastValue = null;
     
@@ -274,7 +275,7 @@ function main()
             clone: clone,
             hostnames: hostnames,
             cpcode: cpcode,
-            configName: propertyName,
+            configName: configName,
             cloneProperty: cloneProperty,
             contractId: contractId,
             copyHostnames: copyHostnames
