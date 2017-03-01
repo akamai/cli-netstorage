@@ -4,7 +4,7 @@
 ## Overview
 This is a set of nodejs libraries use to wrap Akamai's {OPEN} APIs to help simplify the operations and interactions
 with Akamai for common configuration tasks.  This kit can be used in different ways:
-* [Include the libraries](#library) in your own Node.js applications
+* [Include the library](#library) in your own Node.js applications
 * [Use the command line utility](#updateWebSite) to interact with the library
 * Leverage the gulp integration to integrate with your Continuous Integration/Continuous Deployment toolset
 
