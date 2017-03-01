@@ -1,4 +1,4 @@
-#AkamaiWeb SDK
+#AkamaiConfigKit
 
 
 ## Overview
