@@ -4,8 +4,8 @@
 ## Overview
 This is a set of nodejs libraries use to wrap Akamai's {OPEN} APIs to help simplify the operations and interactions
 with Akamai for common configuration tasks.  This kit can be used in different ways:
-* [Use the command line utility](#updateWebSite) to interact with the library
-* [Include the library](#library) in your own Node.js applications
+* Just want a no-fuss tool? [Use the command line utility](#updateWebSite) to interact with the library
+* Want to integrate into your own Node.js application? [Include the library](#library) 
 * Leverage the [gulp integration](#gulp) to integrate with your Continuous Integration/Continuous Deployment toolset
 
 ## Functionality (version 0.0.1)
@@ -19,7 +19,7 @@ The initial version of the ConfigKit provides the following functionality:
 * Activate and deactivate property versions to production, staging or both
 
 ## updateWebSite
-This script wraps all of the functionality from the [library](#library) into a command line utility which can be used to support the following use cases:
+This script wraps all of the functionality from the [library](#library) into a command line utility which can be used to support the following use cases.  All of the functions accept a property ID, the config name or a hostname from the property.
 * [Create property](#create)
 * [Clone property](#clone)
 * [Retrieve property rules](#retrieve)
@@ -97,8 +97,40 @@ Activate the specified property version on staging, production or both.
 ```bash
 % updateWebSite my.property.com --activate BOTH
 ```
+## Gulp
+
+Download the Gulp integration project from https://github.com/akamai-open/gulp-akamaiweb
+
+In your gulpfile, include the library and define your build targets.
+
+```
+let gulp = require('gulp'),
+    akamaiweb = require('gulp-akamaiweb');
+
+const localConfig = {
+    host: 'www.example.com',
+    smokeTestUrls: ['/'],
+    emailNotification: 'nobody@akamai.com',
+
+};
+
+const credConfig = {
+    path: "~/.edgerc",
+    section: "papi"
+}
 
 
+let akamai = new akamaiweb(credConfig);
+
+gulp.task('deploy-akamai', () => {
+    return gulp.src("src/akamai/rules.json")
+        .pipe(akamai.deployStaging(localConfig))
+        .pipe(akamai.testStaging(localConfig.host, localConfig.smokeTestUrls))
+        .pipe(akamai.promoteStagingToProduction(localConfig));
+})
+```
+
+This integration can be used to have a CD tool such as Jenkins push changes to Akamai whenever a rules file changes in your SCM.  This allows you to treat your configuration as code and keep your own rules locally.
 
 ## Library
 
