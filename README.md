@@ -22,10 +22,10 @@ The initial version of the ConfigKit provides the following functionality:
 This script wraps all of the functionality from the [library](#library) into a command line utility which can be used to support the following use cases:
 * [Create property](#create)
 * [Clone property](#clone)
-* [Activate or deactivate](#activate)
-* [Update a property](#update)
 * [Retrieve property rules](#retrieve)
+* [Update a property](#update)
 * [Copy a property's config to another property](#copy)
+* [Activate or deactivate](#activate)
 
 ### Create
 Creating a new property requires only a single parameter, the target property.  
@@ -35,10 +35,13 @@ Creating a new property requires only a single parameter, the target property.
 ```
 
 The flags of interest for create are:
+
+```
   --cpcode: The CPCode to use for the new property.  Default is to create a new CPCode.
   --contractid: The contractId to place the new property in.  Defaults to the parent group for the account.
   --name: The name for the new property
   --hostnames: Comma-delimited list of new hostnames to use for the property
+```
 
 ### Clone
 Cloning a configuration to a new property is also simple, with command line flags to adjust behavior. 
@@ -48,11 +51,53 @@ Cloning a configuration to a new property is also simple, with command line flag
 ```
 
 The flags of interest for create are:
+```
 --cpcode: The CPCode to use for the new property.  Default is to use the CPCode for the original config.
 --contractid: The contractId to place the new property in.  Defaults to the same group as the original config.
 --name: The name for the new property
 --hostnames: Comma-delimited list of new hostnames to use for the property
 --nocopy: Do not copy the edge hostnames to the new property
+```
+
+### Retrieve
+This function retrieves the specified ruleset, either to STDOUT or the --outfile flag
+
+```bash
+% updateWebSite new.property.name
+```
+
+The flags of interest for create are:
+```
+--version VERSION - specifies the version to retrieve for the specified property
+--outfile FILE - stores the results to a file.  Default is to use STDOUT
+```
+
+### Update
+Update the current property version with the rules from a local file.
+
+```bash
+% updateWebSite new.property.name --srcfile myfile
+```
+
+The flags of interest for update are:
+```
+--srcfile <FILE_WITH_RULES>
+```
+
+### Copy
+Copy the configuration from one property to another.  For instance, you may use this if you have a staging property and a production property and want to migrate the new config between them.  Currently this does not handle advanced metadata.
+
+```bash
+% updateWebSite source.property.name --dest dest.property.name
+```
+
+### Activate
+Activate the specified property version on staging, production or both.
+
+```bash
+% updateWebSite my.property.com --activate BOTH
+```
+
 
 
 ## Library
