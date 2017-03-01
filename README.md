@@ -10,11 +10,13 @@ with Akamai for common configuration tasks.  This kit can be used in different w
 
 ## Functionality (version 0.0.1)
 The initial version of the ConfigKit provides the following functionality:
-* Promote rules in a file through staging to production
+* Create a new version from locally stored rules
 * Copy a configuration between properties
+ * Currently does not support advanced metadata
 * Create or clone a new property
+ * Accepts cpcode, contract ID and hostnames
 * Delete a property
-* Activate and deactivate property versions
+* Activate and deactivate property versions to production, staging or both
 
 ## updateWebSite
 This script wraps all of the functionality from the [library](#library) into a command line utility which can be used to support the following use cases:
