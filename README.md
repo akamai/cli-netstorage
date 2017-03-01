@@ -1,25 +1,35 @@
 #AkamaiWeb SDK
 
+
 ## Overview
 This is a set of nodejs libraries use to wrap Akamai's {OPEN} APIs to help simplify the operations and interactions
-with Akamai for common tasks. There are 4 core libraries:
+with Akamai for common configuration tasks.  This kit can be used in different ways:
+* [Include the libraries](#library) in your own Node.js applications
+* [Use the command line utility](#updateWebSite) to interact with the library
+* Leverage the gulp integration to integrate with your Continuous Integration/Continuous Deployment toolset
 
-* `website.js` - manage changes for rules against your website configuration. Specifically perform updates for your
-Web Performance products (DSD, DSA, Ion Standard, Ion Premier)
-* `tls.js` - manage TLS certificates that are used by the various website configurations
-* `dns.js` - manage the DNS zone for FastDNS customers
-* `apiclient.js` - manage the API keys used for the above SDKs
+## Functionality (version 0.0.1)
+The initial version of the ConfigKit provides the following functionality:
+* Promote rules in a file through staging to production
+* Copy a configuration between properties
+* Create or clone a new property
+* Delete a property
+* Activate and deactivate property versions
 
-These libraries are written in ES6, use babel if you require ES5 environments
+## updateWebSite
+This script wraps all of the functionality from the [library](#library) into a command line utility which can be used to support the following use cases:
+* [Create property](#create)
+* [Activate or deactivate](#activate)
+* [Update a property](#update)
+* [Retrieve property rules](#retrieve)
+* [Copy a property's config to another property](#copy)
 
-Grunt tasks are available that wrap these libraries for common build activities.
-
-## Getting started: `website.js`
+## Library
 
 Start with creating the WebSite object:
 
 ```
-let WebSite = require('AkamaiWeb').WebSite;
+let WebSite = require('akamaiwebkit').WebSite;
 let exampleDotCom = new WebSite();
 
 exampleDotCom.copy("qa-www.example.com", "sage-www.example.com")
