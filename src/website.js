@@ -928,12 +928,15 @@ class WebSite {
      * @param {object} data which is the output from getGroupList
      */
     _getContractAndGroup(data, contractId) {
+        if (!contractId.match("ctr_")) {
+            contractId = "ctr_" + contractId;
+        }
         return new Promise((resolve, reject) => {
             data.groups.items.map(item => {
                 let queryObj = {};
                 if (item.contractIds) {
                     item.contractIds.map(contract => {
-                        if (contract == contractId) {
+                        if (contract == contractId ) {
                             data.contractId = contract;
                             data.groupId = item.groupId;
                             data.accountId = data.accountId;
