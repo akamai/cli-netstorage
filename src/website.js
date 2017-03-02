@@ -1142,7 +1142,7 @@ class WebSite {
                     return Promise.resolve(data);
                 } else {
                     return new Promise((resolve, reject) => {
-                        fs.writeFile(untildify(toFile), JSON.stringify(data), (err) => {
+                        fs.writeFile(untildify(toFile), JSON.stringify(data, '', 2), (err) => {
                             if (err)
                                 reject(err);
                             else
