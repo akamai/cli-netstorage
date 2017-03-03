@@ -372,7 +372,7 @@ class WebSite {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
                 } else if (response.statusCode == 403) {
-                    console.info('... ignoring  {%s : %s}', contractId, groupId);
+                    console.info('... no permissions, ignoring  {%s : %s}', contractId, groupId);
                     resolve(null);
                 } else {
                     reject(response);
@@ -928,7 +928,7 @@ class WebSite {
      * @param {object} data which is the output from getGroupList
      */
     _getContractAndGroup(data, contractId) {
-        if (!contractId.match("ctr_")) {
+        if (contractId && (!contractId.match("ctr_"))) {
             contractId = "ctr_" + contractId;
         }
         return new Promise((resolve, reject) => {
