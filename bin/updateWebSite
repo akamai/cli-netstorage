@@ -30,8 +30,15 @@ function appName() {
     return process.argv[1].replace(/.*\//, "");
 }
 
-function help() {
+function help(message="") {
     let app = appName();
+    if (message) {
+            console.log(`
+======================================================================
+Usage error: ${message}
+======================================================================
+`);
+    }
     console.log(`Usage: ${app} <TARGET_PROP> [options...]
 Where: 
 TARGET_PROP          is the configuration name. Use either hostnames (eg: www.example.com) or akamai configuration
@@ -256,6 +263,7 @@ function main()
         if (!srcProperty && !deleteProp && !create && !cloneProperty) help();
         if (destProperty && fromFile) help();
         if (!destProperty && !fromFile && !env && !toFile && !deleteProp && !create) help();
+        if (cpcode && !contractId) help("Cannot specify cpcode without contractID")
         let options = {
             srcProperty: srcProperty,
             srcFile: fromFile,
