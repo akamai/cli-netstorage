@@ -31,13 +31,13 @@ This script wraps all of the functionality from the [library](#library) into a c
 Creating a new property requires only a single parameter, the target property.  
 
 ```bash
-% updateWebSite --create new.property.name
+% updateWebSite new.property.name --create 
 ```
 
 The flags of interest for create are:
 
 ```
-  --cpcode: The CPCode to use for the new property.  Default is to create a new CPCode.
+  --cpcode: The CPCode to use for the new property.  Default is to create a new CPCode.  The cpcode flag requires the contractid as well.
   --contractid: The contractId to place the new property in.  Defaults to the parent group for the account.
   --name: The name for the new property
   --hostnames: Comma-delimited list of new hostnames to use for the property
@@ -47,7 +47,7 @@ The flags of interest for create are:
 Cloning a configuration to a new property is also simple, with command line flags to adjust behavior. 
 
 ```bash
-% updateWebSite --create new.property.name --clone original.property.name
+% updateWebSite new.property.name --clone original.property.name
 ```
 
 The flags of interest for create are:
@@ -63,7 +63,7 @@ The flags of interest for create are:
 This function retrieves the specified ruleset, either to STDOUT or the --outfile flag
 
 ```bash
-% updateWebSite new.property.name
+% updateWebSite new.property.name --retrieve
 ```
 
 The flags of interest for create are:
@@ -76,7 +76,7 @@ The flags of interest for create are:
 Update the current property version with the rules from a local file.
 
 ```bash
-% updateWebSite new.property.name --srcfile myfile
+% updateWebSite new.property.name --update --srcfile myfile
 ```
 
 The flags of interest for update are:
@@ -85,10 +85,10 @@ The flags of interest for update are:
 ```
 
 ### Copy
-Copy the configuration from one property to another.  For instance, you may use this if you have a staging property and a production property and want to migrate the new config between them.  Currently this does not handle advanced metadata.
+Copy the configuration from one property to another.  For instance, you may use this if you have a staging property and a production property and want to migrate the new config between them.  Currently this does not handle advanced metadata.  Note that this is *not* to create a new property.  It is to copy configs between existing properties.  Use clone and copy to create new properties.
 
 ```bash
-% updateWebSite source.property.name --dest dest.property.name
+% updateWebSite dest.property.name --copy source.property.name
 ```
 
 ### Activate
