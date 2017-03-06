@@ -587,7 +587,7 @@ class WebSite {
                     let cpcode = parsed["cpcodeLink"].split('?')[0].split("/")[4].split('_')[1];
                     resolve(cpcode);
                 } else {
-                    console.log("Unable to create new cpcode");
+                    console.log("Unable to create new cpcode.  Likely this means you have reached the limit of new cpcodes for this contract.  Please try the request again with a specified cpcode");
                     resolve();
                 }
             });

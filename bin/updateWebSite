@@ -250,7 +250,7 @@ function main()
         }
     }
         
-        let property = new WebSite({path:"~/.edgerc", section: "papi"});
+        let property = new WebSite({path:"~/.edgerc", section: "papi2"});
 
         if (create && !hostnames && !configName) help("Create requires hostnames or a configName");
         if (!srcProperty && !deleteProp && !create && !cloneProperty) help();
