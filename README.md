@@ -37,7 +37,7 @@ Creating a new property requires only a single parameter, the target property.
 The flags of interest for create are:
 
 ```
-  --cpcode: The CPCode to use for the new property.  Default is to create a new CPCode.
+  --cpcode: The CPCode to use for the new property.  Default is to create a new CPCode.  The cpcode flag requires the contractid as well.
   --contractid: The contractId to place the new property in.  Defaults to the parent group for the account.
   --name: The name for the new property
   --hostnames: Comma-delimited list of new hostnames to use for the property
