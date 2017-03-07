@@ -870,13 +870,18 @@ class WebSite {
             if (hostnames.length == 0) {
                 hostnames = [configName];
             }
-
+            console.log(edgeHostnameId);
+            console.log(propertyId);
+            
             hostnames.map(hostname => {
+                
                 let assignHostnameObj = {
                     "cnameType": "EDGE_HOSTNAME",
                     "edgeHostnameId": edgeHostnameId,
                     "cnameFrom": hostname
                 }
+                console.log(assignHostnameObj);
+
                 assignHostnameArray.push(assignHostnameObj);
             })
 
@@ -927,7 +932,7 @@ class WebSite {
      *
      * @param {object} data which is the output from getGroupList
      */
-    _getContractAndGroup(data, contractId) {
+    _getContractAndGroup(data, contractId, groupId) {
         if (contractId && (!contractId.match("ctr_"))) {
             contractId = "ctr_" + contractId;
         }
@@ -936,9 +941,9 @@ class WebSite {
                 let queryObj = {};
                 if (item.contractIds) {
                     item.contractIds.map(contract => {
-                        if (contract == contractId ) {
-                            data.contractId = contract;
-                            data.groupId = item.groupId;
+                        if ((contract === contractId) && (item.groupId === groupId)) {
+                            data.contractId = contractId;
+                            data.groupId = groupId;
                             data.accountId = data.accountId;
                             resolve(data);
                         }
@@ -995,10 +1000,10 @@ class WebSite {
         })
     }
 
-    _getPropertyInfo(contractId) {
+    _getPropertyInfo(contractId, groupId) {
         return this._getGroupList()
             .then(data => {
-                return this._getContractAndGroup(data, contractId);
+                return this._getContractAndGroup(data, contractId, groupId);
             })
             .then(data => {
                 return this._getMainProduct(data.groupId, data.contractId);
@@ -1097,8 +1102,6 @@ class WebSite {
      * @returns {Promise} the {object} of Property as the {TResult}
      */
     lookupPropertyIdFromHost(hostname, env = LATEST_VERSION.PRODUCTION) {
-        console.log("lookup")
-
         return this._getProperty(hostname, env);
     }
 
@@ -1121,18 +1124,16 @@ class WebSite {
             });
     }
 
-    /**
-     * Create a new version of a property, copying the rules from a file stream. This allows storing the property configuration
-     * in a version control system and then updating the Akamai system when it becomes live. Only the Object.rules from the file
-     * will be used to update the property
+      /**
+     * Retrieve the configuration rules for a given property. Use either Host or PropertyId to use as the lookup
+     * for the rules
      *
      * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
      * @param {number} versionLookup specify the version or use LATEST_VERSION.PRODUCTION / STAGING / latest
-     * @param {string} toFile the filename to read a previously saved (and modified) form of the property configuration.
-     *     Only the {Object}.rules will be copied
-     * @returns {Promise} returns a promise with the updated form of the
+     * @returns {Promise} with the property rules as the {TResult}
      */
+    
     retrieveToFile(propertyLookup, versionLookup = LATEST_VERSION.LATEST, toFile) {
         return this.retrieve(propertyLookup, versionLookup)
             .then(data => {
@@ -1196,7 +1197,7 @@ class WebSite {
      */
     updateFromFile(propertyLookup, srcFile) {
         return new Promise ((resolve, reject) => {
-            fs.readFile(untildify(fromFile), (err, data) => {
+            fs.readFile(untildify(srcFile), (err, data) => {
                 if (err)
                     reject(err);
                 else
@@ -1205,7 +1206,7 @@ class WebSite {
 
         })
         .then(data => {
-            return this.update(propertyLookup, rules)
+            return this.update(propertyLookup, data)
         })
     }
 
@@ -1353,19 +1354,18 @@ class WebSite {
      *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
      */
 
-    create(hostnames = [], cpcode = null, configName = null, contractId = null, newRules = null) {
+    create(hostnames = [], cpcode = null, configName = null, contractId = null, groupId = null, newRules = null) {
         let names = this._getConfigAndHostname(configName, hostnames);
         configName = names[0];
         hostnames = names[1];
 
-        let groupId,
-            accountId,
+        let accountId,
             productId,
             productName,
             propertyId,
             edgeHostnameId;
 
-        return this._getPropertyInfo(contractId)
+        return this._getPropertyInfo(contractId, groupId)
             .then(data => {
                 contractId = data.contractId;
                 groupId = data.groupId;
@@ -1407,7 +1407,7 @@ class WebSite {
             })
     }
 
-    createFromFile(hostnames = [], srcFile, configName = null, contractId = null, cpcode = null) {
+    createFromFile(hostnames = [], srcFile, configName = null, contractId = null, groupId = null, cpcode = null) {
         let names = this._getConfigAndHostname(configName, hostnames);
         configName = names[0];
         hostnames = names[1];
@@ -1421,25 +1421,24 @@ class WebSite {
 
         })
         .then(rules => {
-            return this.create(hostnames, cpcode, configName, contractId, rules)
+            return this.create(hostnames, cpcode, configName, contractId, groupId, rules)
         })
 
      }
 
-    createFromExisting(srcProperty, srcVersion = LATEST_VERSION.LATEST, copyHostnames = false, hostnames = [], configName = null, contractId = null) {
+    createFromExisting(srcProperty, srcVersion = LATEST_VERSION.LATEST, copyHostnames = false, hostnames = [], configName = null, contractId = null, groupId = null) {
         let names = this._getConfigAndHostname(configName, hostnames);
         configName = names[0];
         hostnames = names[1];
 
-        let groupId,
-            cloneFrom,
+        let cloneFrom,
             accountId,
             productId,
             productName,
             propertyId,
             edgeHostnameId;
 
-       return this._getPropertyInfo(contractId)
+       return this._getPropertyInfo(contractId, groupId)
             .then(data => {
                 contractId = data.contractId;
                 groupId = data.groupId;

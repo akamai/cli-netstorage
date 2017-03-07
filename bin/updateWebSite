@@ -26,6 +26,8 @@ var path = require('path');
 
 let WebSite = require('../index').WebSite;
 
+let options = require('minimist')(process.argv.slice(2));
+
 function appName() {
     return process.argv[1].replace(/.*\//, "");
 }
@@ -46,28 +48,29 @@ TARGET_PROP          is the configuration name. Use either hostnames (eg: www.ex
 --version VERSION    the configuration VERSION of TARGET_PROP to copy from. Use in conjunction with --to and/or --on. 
                      Values are either numbers >= 1 corresponding to versions, 0 for LATEST, -1 for current PROD version
                      or -2 for current STAGING version. Default is LATEST (0).
---dest DEST_PROP     target property for copy
+--copy DEST_PROP     source property for copy
 --outfile FILE       stores the rules to FILE
---srcfile FILE       updates SRC_CONFIG with the rule contents from FILE. Cannot be used in conjunction with --copyto
+--srcfile FILE       updates TARGET_PROP with the rule contents from FILE. Cannot be used in conjunction with --copy
 --activate  ENV      indicates to also activate to ENV. Values include PRODUCTION, STAGING, or both.
 --deactivate ENV     deactivate ENV (PRODUCTION, STAGING, or both) from the Akamai platform
---delete PROP        delete property from the system
---create PROP        create new property configuration
---clone PROP         clone property to a new config
---name               name for new config for clone or create
+--delete             delete property from the system
+--create             create new property configuration
+--clone              clone property to a new config
 --hostnames          hostnames for new property, comma delimited
---cpcode             cpcode to use for create
---contract           contract ID for create or clone
+--cpcode             cpcode to use for create.  Requires contract and group
+--contract           contract ID for create or clone.  Requires group
+--group              group ID for create or clone.  Requires contract
 --nocopy             don't copy the hostnames when cloning
 `);
     process.exit(0);
 }
 
 function updateProperty(property, options) {
-    if (options.srcFile && !options.create)
-        return property.updateFromFile(options.srcProperty, options.srcFile);
-    if (options.destProperty)
-        return property.copy(options.srcProperty, options.srcVersion, options.destProperty);
+    if (!options.update) { return Promise.resolve()}
+    if (options.srcfile)
+        return property.updateFromFile(options.targetProperty, options.srcfile);
+    if (options.targetProperty)
+        return property.copy(options.copy, options.srcVersion, options.targetProperty);
     return Promise.resolve();
 }
 
@@ -75,46 +78,56 @@ function createProperty(property, options) {
     if (!options.create && !options.clone) {
         return Promise.resolve();
     }
+
     let hostnames;
     if (options.hostnames) {
         hostnames = options.hostnames.split(',')
     }
 
     if (options.create && !options.clone) {
-        if (options.srcFile) {
+        if (options.srcfile) {
           return property.createFromFile(hostnames, 
-                                        options.srcFile,
-                                        options.configName,
-                                        options.contractId, 
+                                        options.srcfile,
+                                        options.targetProperty,
+                                        options.contract, 
+                                        options.group,
                                         options.cpcode);
 
         } else {
             return property.create(hostnames, 
                                         options.cpcode,
-                                        options.configName,
-                                        options.contractId, 
+                                        options.targetProperty,
+                                        options.contract, 
+                                        options.group,
                                         null);
         }
     } else if (options.cloneProperty) {
         return property.createFromExisting(options.cloneProperty, 
-                                        options.version, 
-                                        options.copyHostnames,
+                                        options.srcVersion, 
+                                        options.nocopy,
                                         hostnames,
-                                        options.configName, 
-                                        options.contractId
+                                        options.targetProperty, 
+                                        options.contract, 
+                                        options.group
                                         )
     }
 }
 
 function deleteProperty(property, options) {
-    if (!options.deleteProperty)
+    if (!options.delete)
         return Promise.resolve;
-    return property.deleteProperty(options.deleteProperty);
+    return property.deleteProperty(options.targetProperty);
 }
 
 function retrieveProperty(property, options) {
-    if (options.destFile)
-        return property.retrieveToFile(options.srcProperty, options.srcVersion, options.destFile);
+    if (!options.retrieve) return Promise.resolve;
+    if (options.outfile) {
+        return property.retrieveToFile(options.targetProperty, options.version, options.outfile);
+    } else {
+        return property.retrieve(options.targetProperty, options.version,'-').then(data => {
+            console.log(JSON.stringify(data,'',2));
+        });
+    }
     return Promise.resolve();
 }
 
@@ -122,23 +135,23 @@ function activateProperty(property, options, data) {
     if (!options.activate)
         return Promise.resolve();
 
-    let env = options.activateNetwork;
+    let env = options.activate;
     return Promise.resolve()
         .then(() => {
             if (data && data.propertyVersion)
                 return Promise.resolve(data);
-            return property.lookupPropertyIdFromHost(options.activateProperty);
+            return property.lookupPropertyIdFromHost(options.targetProperty);
         })
         .then(data => {
             options.activateVersion = data.propertyVersion;
             if ("BOTH" === env || env.startsWith("STAG"))
-                return property.activate(options.activateProperty, options.activateVersion, WebSite.AKAMAI_ENV.STAGING,
+                return property.activate(options.targetProperty, options.version, WebSite.AKAMAI_ENV.STAGING,
                     "Updated Automatically to staging.", options.email);
             return Promise.resolve(data);
         })
         .then(data => {
             if ("BOTH" === env || env.startsWith("PROD"))
-                return property.activate(options.activateProperty, options.activateVersion, WebSite.AKAMAI_ENV.PRODUCTION,
+                return property.activate(options.targetProperty, options.version, WebSite.AKAMAI_ENV.PRODUCTION,
                     "Updated Automatically to prod.", options.email);
             return Promise.resolve(data);
         });
@@ -152,13 +165,13 @@ function deactivateProperty(property, options, data) {
     return Promise.resolve()
         .then(data => {
             if ("BOTH" === env || env.startsWith("STAG"))
-               return property.deactivate(options.deactivateProperty, WebSite.AKAMAI_ENV.STAGING,
+               return property.deactivate(options.targetProperty, WebSite.AKAMAI_ENV.STAGING,
                     "Automatically deactivating on staging.", options.email);
             return Promise.resolve(data);
         })
         .then(data => {
             if ("BOTH" === env || env.startsWith("PROD"))
-                return property.deactivate(options.deactivateProperty, WebSite.AKAMAI_ENV.PRODUCTION,
+                return property.deactivate(options.targetProperty, WebSite.AKAMAI_ENV.PRODUCTION,
                     "Automatically deactivating on prod.", options.email);
             return Promise.resolve(data);
         });
@@ -166,129 +179,55 @@ function deactivateProperty(property, options, data) {
 
 function main()
 {
-    let srcProperty,
-        destProperty,
-        fromFile,
-        toFile,
-        version = 0,
-        env = 'both',
-        activate,
-        deactivate,
-        email,
-        create,
-        clone,
-        deleteProp,
-        propertyName,
-        hostnames,
-        cpcode,
-        cloneProperty,
-        copyHostnames=true,
-        contractId,
-	configName
+    if (options._.length <= 0) {
+       help("Don't forget to specify the target property (no flag)");
+    } 
 
-    let lastValue = null;
-    
-    for (const value of process.argv.slice(2)) {
-        if ("--help" === value) {
-            help();
+    // Process arguments with no 
+    options._.forEach(function(argument) {
+        console.log(argument);
+        if (argument.match('--')) {
+            options[argument] = true
+        } else {
+            options.targetProperty = argument;
         }
-        if (!srcProperty && !lastValue && !value.startsWith('--')) {
-            srcProperty = value;
-        }
-        else {
-            switch (lastValue) {
-                case "--version":
-                    if (Number.isNaN(Number(value)) || value < -2)
-                        help();
-                    version = value;
-                    break;
-                case "--dest":
-                    destProperty = value;
-                    break;
-                case "--srcfile":
-                    fromFile = value;
-                    break;
-                case "--outfile":
-                    toFile = value;
-                    break;
-                case "--activate":
-                    env = value.toUpperCase();
-                    if ("BOTH" != env && !env.startsWith("STAG") && !env.startsWith("PROD"))
-                        help();
-                    activate = true;
-                    break;
-                case "--deactivate":
-                    env = value.toUpperCase();
-                    if ("BOTH" != env && !env.startsWith("STAG") && !env.startsWith("PROD"))
-                        help();
-                    deactivate = true;
-                    break;
-                case "--create":
-                    create = true;
-                    configName = value;
-                    break;
-                case "--clone":
-                    clone = true;
-                    cloneProperty = value;
-                    break;
-                case "--delete":
-                    deleteProp = value;
-                    break;
-                case "--email":
-                    email = value;
-                    break;
-                case "--hostnames":
-                    hostnames = value;
-                    break;
-                case "--name":
-                    propertyName = value;
-                    break
-                case "--nocopy":
-                    copyHostnames = false;
-                    break
-                case "--contract":
-                    contractId = value
-                    break
-                case "--cpcode":
-                    cpcode = value
-                    break
-            }
-            lastValue = lastValue ? null : value;
-        }
+    })
+ 
+	if (options.help) help();
+
+	if (options.version && Number.isNaN(Number(options.version)) || options.version < -2)
+		help();	
+
+    if (options.copy) {
+        if (options.version) srcVersion = options.version
+        if (options.fromfile) help("Cannot specify")
     }
-        
-        let property = new WebSite({path:"~/.edgerc", section: "papi2"});
 
-        if (create && !hostnames && !configName) help("Create requires hostnames or a configName");
-        if (!srcProperty && !deleteProp && !create && !cloneProperty) help();
-        if (destProperty && fromFile) help();
-        if (!destProperty && !fromFile && !env && !toFile && !deleteProp && !create) help();
-        if (cpcode && !contractId) help("Cannot specify cpcode without contractID")
-        let options = {
-            srcProperty: srcProperty,
-            srcFile: fromFile,
-            srcVersion: version,
-            destProperty: destProperty,
-            destFile: toFile,
-            activate: activate,
-            activateVersion: version,
-            activateNetwork: env,
-            activateProperty: (destProperty || srcProperty),
-            deactivate: deactivate,
-            deactivateNetwork: env,
-            deleteProperty: deleteProp,
-            deactivateProperty: (destProperty || srcProperty),
-            email: email,
-            create: create,
-            clone: clone,
-            hostnames: hostnames,
-            cpcode: cpcode,
-            configName: configName,
-            cloneProperty: cloneProperty,
-            contractId: contractId,
-            copyHostnames: copyHostnames
-        };
+    if (options.update) {
+        if (options.srcfile) options.fromFile = options.srcfile
+    }
+    if (options.activate) {
+        let env = options.activate.toUpperCase();
+        if ("BOTH" != env && !env.startsWith("STAG") && !env.startsWith("PROD"))
+           help("--activate (STAGING, PROD, BOTH)");        
+    }
+
+    if (options.deactivate) {
+        options.deactivate = options.deactivate.toUpperCase();
+        if ("BOTH" != env && !env.startsWith("STAG") && !env.startsWith("PROD"))
+           help("--deactivate (STAGING, PROD, BOTH)");        
+     }
+
+     if (options.cpcode) {
+         if (!(options.group && options.contract)) help("Cannot specify cpcode without contract and group");
+     }
+
+     if (options.group || options.contract) {
+         if (!(options.group && options.contract)) help("Need both contract and group")
+     }
         
+        let property = new WebSite({path:"~/.edgerc", section: "papi", debug: true});
+
         let app = appName();
         console.time(app);
         
