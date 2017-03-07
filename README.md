@@ -52,8 +52,9 @@ Cloning a configuration to a new property is also simple, with command line flag
 
 The flags of interest for create are:
 ```
---cpcode: The CPCode to use for the new property.  Default is to use the CPCode for the original config.
---contractid: The contractId to place the new property in.  Defaults to the same group as the original config.
+--cpcode: The CPCode to use for the new property.  Default is to create a new CPCode at the top level of the contract.  If you use --cpcode, note that it requires contractid.
+--contractid: The contractId to place the new property in.  Defaults to the top level group for the contract.
+--groupid: If given, this group will be used for the property.  Requires contractID.
 --name: The name for the new property
 --hostnames: Comma-delimited list of new hostnames to use for the property
 --nocopy: Do not copy the edge hostnames to the new property
