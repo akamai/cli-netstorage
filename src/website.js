@@ -205,6 +205,7 @@ class WebSite {
 
     _getCloneConfig(groupId, contractId, srcProperty, srcVersion = LATEST_VERSION.STAGING) {
         let cloneFrom = {};
+        
         return this._getProperty(srcProperty, srcVersion)
             .then(cloneFromProperty => {
                 cloneFrom = {propertyId: cloneFromProperty.propertyId};
@@ -643,7 +644,6 @@ class WebSite {
                                 response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
                                 resolve(response);
                             } else {
-                                console.log(response.body);
                                 reject(response);
                             }
                         })
@@ -870,9 +870,7 @@ class WebSite {
             if (hostnames.length == 0) {
                 hostnames = [configName];
             }
-            console.log(edgeHostnameId);
-            console.log(propertyId);
-            
+
             hostnames.map(hostname => {
                 
                 let assignHostnameObj = {
@@ -880,10 +878,10 @@ class WebSite {
                     "edgeHostnameId": edgeHostnameId,
                     "cnameFrom": hostname
                 }
-                console.log(assignHostnameObj);
-
                 assignHostnameArray.push(assignHostnameObj);
             })
+
+	    console.log(assignHostnameArray);
 
             let request = {
                 method: 'PUT',
@@ -936,6 +934,7 @@ class WebSite {
         if (contractId && (!contractId.match("ctr_"))) {
             contractId = "ctr_" + contractId;
         }
+        
         return new Promise((resolve, reject) => {
             data.groups.items.map(item => {
                 let queryObj = {};

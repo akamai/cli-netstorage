@@ -101,8 +101,8 @@ function createProperty(property, options) {
                                         options.group,
                                         null);
         }
-    } else if (options.cloneProperty) {
-        return property.createFromExisting(options.cloneProperty, 
+    } else if (options.clone) {
+        return property.createFromExisting(options.clone, 
                                         options.srcVersion, 
                                         options.nocopy,
                                         hostnames,
@@ -226,7 +226,7 @@ function main()
          if (!(options.group && options.contract)) help("Need both contract and group")
      }
         
-        let property = new WebSite({path:"~/.edgerc", section: "papi", debug: true});
+        let property = new WebSite({path:"~/.edgerc", section: "papibby"});
 
         let app = appName();
         console.time(app);
