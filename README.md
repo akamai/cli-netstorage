@@ -1,4 +1,4 @@
-#AkamaiConfigKit
+# AkamaiConfigKit
 
 
 ## Overview
@@ -100,13 +100,13 @@ Activate the specified property version on staging, production or both.
 ```
 ## Gulp
 
-Download the Gulp integration project from https://github.com/akamai-open/gulp-akamaiweb
+Download the Gulp integration project from https://github.com/akamai-open/gulp-akamaiconfigkit
 
 In your gulpfile, include the library and define your build targets.
 
 ```
 let gulp = require('gulp'),
-    akamaiweb = require('gulp-akamaiweb');
+    akamaiconfig = require('gulp-akamaiconfigkit');
 
 const localConfig = {
     host: 'www.example.com',
@@ -121,7 +121,7 @@ const credConfig = {
 }
 
 
-let akamai = new akamaiweb(credConfig);
+let akamai = new akamaiconfig(credConfig);
 
 gulp.task('deploy-akamai', () => {
     return gulp.src("src/akamai/rules.json")
@@ -138,7 +138,7 @@ This integration can be used to have a CD tool such as Jenkins push changes to A
 Start with creating the WebSite object:
 
 ```
-let WebSite = require('akamaiwebkit').WebSite;
+let WebSite = require('akamaiconfigkit').WebSite;
 let exampleDotCom = new WebSite();
 
 exampleDotCom.copy("qa-www.example.com", "sage-www.example.com")
