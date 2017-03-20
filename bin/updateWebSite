@@ -161,7 +161,7 @@ function deactivateProperty(property, options, data) {
     if (!options.deactivate)
         return Promise.resolve();
 
-    let env = options.deactivateNetwork;
+    let env = options.deactivate;
     return Promise.resolve()
         .then(data => {
             if ("BOTH" === env || env.startsWith("STAG"))
@@ -225,8 +225,12 @@ function main()
      if (options.group || options.contract) {
          if (!(options.group && options.contract)) help("Need both contract and group")
      }
+
+     if (!options.section) {
+         options.section = "papibby";
+     }
         
-        let property = new WebSite({path:"~/.edgerc", section: "papibby"});
+        let property = new WebSite({path:"~/.edgerc", section: options.section});
 
         let app = appName();
         console.time(app);
