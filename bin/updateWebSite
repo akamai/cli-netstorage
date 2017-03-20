@@ -60,6 +60,7 @@ TARGET_PROP          is the configuration name. Use either hostnames (eg: www.ex
 --cpcode             cpcode to use for create.  Requires contract and group
 --contract           contract ID for create or clone.  Requires group
 --group              group ID for create or clone.  Requires contract
+--section            section for the credentials file
 --nocopy             don't copy the hostnames when cloning
 `);
     process.exit(0);
