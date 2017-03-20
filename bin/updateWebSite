@@ -45,17 +45,17 @@ Usage error: ${message}
 Where: 
 TARGET_PROP          is the configuration name. Use either hostnames (eg: www.example.com) or akamai configuration
                      names (eg: example_prod_ion).
---version VERSION    the configuration VERSION of TARGET_PROP to copy from. Use in conjunction with --to and/or --on. 
+--version VERSION    the configuration VERSION of TARGET_PROP to access or for copy/clone the version of SRC_PROP
                      Values are either numbers >= 1 corresponding to versions, 0 for LATEST, -1 for current PROD version
                      or -2 for current STAGING version. Default is LATEST (0).
---copy DEST_PROP     source property for copy
+--copy SRC_PROP      source property for copy
 --outfile FILE       stores the rules to FILE
 --srcfile FILE       updates TARGET_PROP with the rule contents from FILE. Cannot be used in conjunction with --copy
 --activate  ENV      indicates to also activate to ENV. Values include PRODUCTION, STAGING, or both.
 --deactivate ENV     deactivate ENV (PRODUCTION, STAGING, or both) from the Akamai platform
 --delete             delete property from the system
 --create             create new property configuration
---clone              clone property to a new config
+--clone SRC_PROP     clone property to a new config
 --hostnames          hostnames for new property, comma delimited
 --cpcode             cpcode to use for create.  Requires contract and group
 --contract           contract ID for create or clone.  Requires group
@@ -226,7 +226,7 @@ function main()
          if (!(options.group && options.contract)) help("Need both contract and group")
      }
         
-        let property = new WebSite({path:"~/.edgerc", section: "papibby"});
+        let property = new WebSite({path:"~/.edgerc", section: "papi"});
 
         let app = appName();
         console.time(app);
