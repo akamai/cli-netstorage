@@ -1133,7 +1133,7 @@ class WebSite {
      * @returns {Promise} with the property rules as the {TResult}
      */
     
-    retrieveToFile(propertyLookup, versionLookup = LATEST_VERSION.LATEST, toFile) {
+    retrieveToFile(propertyLookup, toFile, versionLookup = LATEST_VERSION.LATEST) {
         return this.retrieve(propertyLookup, versionLookup)
             .then(data => {
                 console.info(`Writing ${propertyLookup} rules to ${toFile}`);

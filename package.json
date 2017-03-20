@@ -1,8 +1,8 @@
 {
-  "name": "akamaiwebkit",
+  "name": "akamaiconfigkit",
   "version": "0.0.2",
   "description": "A wrapping development kit to interface common tasks with akamai's {OPEN} API.",
-  "repository": "git+ssh://git@stash.akamai.com:7999/~colinb/akamaiweb-kit.git",
+  "repository": "https://github.com/akamai-open/akamaiconfigkit.git",
   "license": "Apache-2.0",
   "scripts": {
     "start": "node ./bin/createKeys",

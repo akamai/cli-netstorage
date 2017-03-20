@@ -226,7 +226,7 @@ function main()
          if (!(options.group && options.contract)) help("Need both contract and group")
      }
         
-        let property = new WebSite({path:"~/.edgerc", section: "papi"});
+        let property = new WebSite({path:"~/.edgerc", section: "papibby"});
 
         let app = appName();
         console.time(app);
