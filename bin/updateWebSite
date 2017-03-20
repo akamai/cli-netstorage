@@ -122,7 +122,7 @@ function deleteProperty(property, options) {
 function retrieveProperty(property, options) {
     if (!options.retrieve) return Promise.resolve;
     if (options.outfile) {
-        return property.retrieveToFile(options.targetProperty, options.version, options.outfile);
+        return property.retrieveToFile(options.targetProperty, options.outfile, options.version);
     } else {
         return property.retrieve(options.targetProperty, options.version,'-').then(data => {
             console.log(JSON.stringify(data,'',2));
