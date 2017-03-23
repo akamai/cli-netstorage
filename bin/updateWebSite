@@ -186,7 +186,6 @@ function main()
 
     // Process arguments with no 
     options._.forEach(function(argument) {
-        console.log(argument);
         if (argument.match('--')) {
             options[argument] = true
         } else {
@@ -228,7 +227,7 @@ function main()
      }
 
      if (!options.section) {
-         options.section = "papi";
+         options.section = "papibby";
      }
         
         let property = new WebSite({path:"~/.edgerc", section: options.section});

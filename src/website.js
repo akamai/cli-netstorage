@@ -865,6 +865,7 @@ class WebSite {
         return new Promise((resolve, reject) => {
             console.info('Assigning hostname to property');
             console.time('... assigning hostname');
+            console.log(contractId);
             let assignHostnameArray = [];
 
             if (hostnames.length == 0) {
@@ -954,6 +955,7 @@ class WebSite {
                         }
                     })
                 }
+                reject("Group/Contract combination doesn't exist");
             });
         })
     }
@@ -1375,6 +1377,7 @@ class WebSite {
                     productId);
             })
             .then(data => {
+                
                 propertyId = data;
                 if (newRules) {
                     return Promise.resolve(newRules)
@@ -1383,11 +1386,15 @@ class WebSite {
                 }
             })
              .then(rules => {
+                 console.log(contractId);
+            
                 return this._updatePropertyRules(configName,
                     1,
                     rules);
             })
             .then(() => {
+                console.log(contractId);
+            
                 return this._createHostname(groupId,
                     contractId,
                     configName,
@@ -1395,6 +1402,8 @@ class WebSite {
             })
             .then(data => {
                 edgeHostnameId = data;
+                console.log(contractId);
+            
                 return this._assignHostname(groupId,
                     contractId,
                     configName,
