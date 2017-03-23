@@ -85,7 +85,7 @@ function createProperty(property, options) {
         hostnames = options.hostnames.split(',')
     }
 
-    if (options.create && !options.clone) {
+    if (options.create) {
         if (options.srcfile) {
           return property.createFromFile(hostnames, 
                                         options.srcfile,
@@ -184,7 +184,7 @@ function main()
        help("Don't forget to specify the target property (no flag)");
     } 
 
-    // Process arguments with no 
+    // Process arguments with no flag
     options._.forEach(function(argument) {
         if (argument.match('--')) {
             options[argument] = true
@@ -227,7 +227,7 @@ function main()
      }
 
      if (!options.section) {
-         options.section = "papibby";
+         options.section = "papi";
      }
         
         let property = new WebSite({path:"~/.edgerc", section: options.section});

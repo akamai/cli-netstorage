@@ -203,7 +203,7 @@ class WebSite {
             })
     }
 
-    _getCloneConfig(groupId, contractId, srcProperty, srcVersion = LATEST_VERSION.STAGING) {
+    _getCloneConfig(srcProperty, srcVersion = LATEST_VERSION.STAGING) {
         let cloneFrom = {};
         
         return this._getProperty(srcProperty, srcVersion)
@@ -226,6 +226,7 @@ class WebSite {
                     this._edge.send(function (data, response) {
                         if (response.statusCode >= 200 && response.statusCode < 400) {
                             let parsed = JSON.parse(response.body);
+                            console.log(response.body);
                             cloneFrom.cloneFromVersionEtag = parsed.versions.items[0]["etag"];
                             resolve(cloneFrom);
                         } else {
@@ -1446,18 +1447,13 @@ class WebSite {
             propertyId,
             edgeHostnameId;
 
-       return this._getPropertyInfo(contractId, groupId)
+       return this._getCloneConfig(srcProperty,
+                    srcVersion = LATEST_VERSION.STAGING)
             .then(data => {
+                cloneFrom = data;
                 contractId = data.contractId;
                 groupId = data.groupId;
                 productId = data.productId;
-                return this._getCloneConfig(groupId,
-                    contractId,
-                    srcProperty,
-                    srcVersion = LATEST_VERSION.STAGING);
-            })
-            .then(data => {
-                cloneFrom = data;
                 return this._createProperty(groupId,
                     contractId,
                     configName,
