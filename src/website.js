@@ -205,10 +205,17 @@ class WebSite {
 
     _getCloneConfig(srcProperty, srcVersion = LATEST_VERSION.STAGING) {
         let cloneFrom = {};
+        let contractId, 
+            groupId, 
+            productId;
         
         return this._getProperty(srcProperty, srcVersion)
             .then(cloneFromProperty => {
-                cloneFrom = {propertyId: cloneFromProperty.propertyId};
+                contractId = cloneFromProperty.contractId;
+                groupId = cloneFromProperty.groupId;
+                cloneFrom = {propertyId: cloneFromProperty.propertyId,
+                             groupId: groupId,
+                             contractId: contractId};
                 return WebSite._getLatestVersion(cloneFromProperty)
             })
             .then(version => {
@@ -226,8 +233,8 @@ class WebSite {
                     this._edge.send(function (data, response) {
                         if (response.statusCode >= 200 && response.statusCode < 400) {
                             let parsed = JSON.parse(response.body);
-                            console.log(response.body);
                             cloneFrom.cloneFromVersionEtag = parsed.versions.items[0]["etag"];
+                            cloneFrom.productId = parsed.versions.items[0]["productId"];
                             resolve(cloneFrom);
                         } else {
                             reject(response);
@@ -475,6 +482,10 @@ class WebSite {
             console.time('... creating');
             console.info(`Creating property config ${configName}`);
 
+            if (cloneFrom) {
+                productId = cloneFrom.productId;
+            }
+
             let propertyObj = {
                 "cloneFrom": cloneFrom,
                 "productId": productId,
@@ -502,7 +513,7 @@ class WebSite {
         })
     }
 
-    _updatePropertyBehaviors(rules, configName, cpcode) {
+    _updatePropertyBehaviors(rules, configName, hostname, cpcode) {
         return new Promise((resolve, reject) => {
             let behaviors = [];
             let children_behaviors = [];
@@ -630,6 +641,8 @@ class WebSite {
                             "ipVersionBehavior": "IPV6_COMPLIANCE",
                         };
 
+                        console.log(hostnameObj);
+
                         let request = {
                             method: 'POST',
                             path: `/papi/v0/edgehostnames?contractId=${contractId}&groupId=${groupId}`,
@@ -642,6 +655,7 @@ class WebSite {
                             console.timeEnd('... creating hostname');
                             if (response.statusCode >= 200 && response.statusCode < 400) {
                                 let hostnameResponse = JSON.parse(response.body);
+                                console.log(response.body);
                                 response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
                                 resolve(response);
                             } else {
@@ -866,7 +880,6 @@ class WebSite {
         return new Promise((resolve, reject) => {
             console.info('Assigning hostname to property');
             console.time('... assigning hostname');
-            console.log(contractId);
             let assignHostnameArray = [];
 
             if (hostnames.length == 0) {
@@ -883,7 +896,7 @@ class WebSite {
                 assignHostnameArray.push(assignHostnameObj);
             })
 
-	    console.log(assignHostnameArray);
+            console.log(assignHostnameArray);
 
             let request = {
                 method: 'PUT',
@@ -956,8 +969,8 @@ class WebSite {
                         }
                     })
                 }
-                reject("Group/Contract combination doesn't exist");
             });
+            reject("Group/Contract combination doesn't exist");
         })
     }
 
@@ -966,13 +979,13 @@ class WebSite {
                 configName = hostnames[0];
             } else if (typeof hostnames == "string") {
                 hostnames = [hostnames];
-                if (!configName) 
-                    configName = hostnames
-            } else if (hostnames.length == 0) {
+             } else if (hostnames.length == 0) {
                 hostnames = [configName]
             }
+            if (!configName) 
+               configName = hostnames[0]
             let letters = "/^[0-9a-zA-Z\\_\\-\\.]+$/";
-            if (configName && !configName.match(letters)) {
+            if (!configName.match(letters)) {
                 configName = configName.replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_')
             }
 
@@ -980,7 +993,7 @@ class WebSite {
         }
 
 
-    _setRules(groupId, contractId, productId, configName, cpcode=null) {
+    _setRules(groupId, contractId, productId, configName, cpcode=null, hostnames=[]) {
         return new Promise((resolve, reject) => {
             if (cpcode) {
                 return resolve(cpcode)
@@ -998,6 +1011,7 @@ class WebSite {
         .then(rules => {
             return this._updatePropertyBehaviors(rules,
                 configName,
+                hostnames[0],
                 cpcode)
         })
     }
@@ -1357,6 +1371,9 @@ class WebSite {
      */
 
     create(hostnames = [], cpcode = null, configName = null, contractId = null, groupId = null, newRules = null) {
+        if (!configName && !hostnames) {
+            return Promise.reject("Configname or hostname are required.")
+        }
         let names = this._getConfigAndHostname(configName, hostnames);
         configName = names[0];
         hostnames = names[1];
@@ -1371,6 +1388,9 @@ class WebSite {
             .then(data => {
                 contractId = data.contractId;
                 groupId = data.groupId;
+                return this._getMainProduct(groupId, contractId);
+            })
+            .then(data => {
                 productId = data.productId;
                 return this._createProperty(groupId,
                     contractId,
@@ -1383,19 +1403,15 @@ class WebSite {
                 if (newRules) {
                     return Promise.resolve(newRules)
                 } else {
-                    return this._setRules(groupId, contractId, propertyId, configName, cpcode)
+                    return this._setRules(groupId, contractId, propertyId, configName, cpcode, hostnames)
                 }
             })
              .then(rules => {
-                 console.log(contractId);
-            
                 return this._updatePropertyRules(configName,
                     1,
                     rules);
             })
             .then(() => {
-                console.log(contractId);
-            
                 return this._createHostname(groupId,
                     contractId,
                     configName,
@@ -1403,8 +1419,6 @@ class WebSite {
             })
             .then(data => {
                 edgeHostnameId = data;
-                console.log(contractId);
-            
                 return this._assignHostname(groupId,
                     contractId,
                     configName,
@@ -1446,13 +1460,19 @@ class WebSite {
             productName,
             propertyId,
             edgeHostnameId;
-
-       return this._getCloneConfig(srcProperty,
-                    srcVersion = LATEST_VERSION.STAGING)
+        
+       return this._getProperty(srcProperty)
+            .then(data => {
+                if (!contractId) {
+                    contractId = data.contractId;
+                    groupId = data.groupId;
+                }
+            })
+            .then(data => {
+                return this._getCloneConfig(srcProperty, srcVersion = srcVersion)
+            })
             .then(data => {
                 cloneFrom = data;
-                contractId = data.contractId;
-                groupId = data.groupId;
                 productId = data.productId;
                 return this._createProperty(groupId,
                     contractId,
