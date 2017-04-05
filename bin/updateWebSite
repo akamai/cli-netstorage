@@ -73,14 +73,14 @@ function addHostnames(property, options) {
     if (!options.addhosts) {
         return Promise.resolve();
     }
-    return property.addHosts(options.targetProperty, options.addhosts);
+    return property.addHostnames(options.targetProperty, options.addhosts.split(','));
 }
 
 function delHostnames(property, options) {
     if (!options.delhosts) {
         return Promise.resolve();
     }
-    return property.delHosts(options.targetProperty, options.delhosts)
+    return property.delHostnames(options.targetProperty, options.delhosts.split(','))
 }
 
 function setOrigin(property, options) {
@@ -264,6 +264,8 @@ function main()
         
         Promise.resolve()
             .then(() => createProperty(property, options))
+            .then(() => delHostnames(property, options))
+            .then(() => addHostnames(property, options))
             .then(() => setOrigin(property, options))
             .then(() => updateProperty(property, options))
             .then(data => activateProperty(property, options, data))

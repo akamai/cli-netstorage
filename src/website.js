@@ -881,41 +881,45 @@ class WebSite {
     }
 
     _assignHostnames(groupId, contractId, configName, edgeHostnameId, propertyId, hostnames) {
-        return new Promise((resolve, reject) => {
-            console.info('Assigning hostname to property');
-            console.time('... assigning hostname');
-            let assignHostnameArray = [];
-
-            if (hostnames.length == 0) {
-                hostnames = [configName];
-            }
-
-            hostnames.map(hostname => {
-                let assignHostnameObj = {
-                    "cnameType": "EDGE_HOSTNAME",
-                    "edgeHostnameId": edgeHostnameId,
-                    "cnameFrom": hostname
+        let assignHostnameArray;
+        return this._getHostnameList(configName)
+        .then(hostnamelist => {
+            assignHostnameArray = hostnamelist.hostnames.items;
+            return new Promise((resolve, reject) => {
+                console.info('Assigning hostname to property');
+                console.time('... assigning hostname');
+                
+                if (hostnames.length == 0) {
+                    hostnames = [configName];
                 }
-                assignHostnameArray.push(assignHostnameObj);
-            })
 
-            let request = {
-                method: 'PUT',
-                path: `/papi/v0/properties/${propertyId}/versions/1/hostnames?contractId=${contractId}&groupId=${groupId}`,
-                body: assignHostnameArray
-            }
+                hostnames.map(hostname => {
+                    let assignHostnameObj = {
+                        "cnameType": "EDGE_HOSTNAME",
+                        "edgeHostnameId": edgeHostnameId,
+                        "cnameFrom": hostname
+                    }
+                    assignHostnameArray.push(assignHostnameObj);
+                })
 
-            this._edge.auth(request);
-            this._edge.send((data, response) => {
-                console.timeEnd('... assigning hostname');
-                if (response.statusCode >= 200 && response.statusCode < 400) {
-                    response = JSON.parse(response.body);
-                    resolve(response);
-                } else {
-                    reject(response);
+                let request = {
+                    method: 'PUT',
+                    path: `/papi/v0/properties/${propertyId}/versions/1/hostnames?contractId=${contractId}&groupId=${groupId}`,
+                    body: assignHostnameArray
                 }
+
+                this._edge.auth(request);
+                this._edge.send((data, response) => {
+                    console.timeEnd('... assigning hostname');
+                    if (response.statusCode >= 200 && response.statusCode < 400) {
+                        response = JSON.parse(response.body);
+                        resolve(response);
+                    } else {
+                        reject(response);
+                    }
+                })
             })
-        })
+    })
     }
 
     _getEdgeHostnames(groupId, contractId) {
@@ -1361,6 +1365,55 @@ class WebSite {
             .then(property => {
                 console.info(`Deleting ${propertyLookup}`);
                 return this._deleteConfig(property)
+            })
+    }
+
+    delHostnames(propertyLookup, hostnames) {
+        const version = WebSite._getLatestVersion(propertyLookup);
+        return this._getHostnameList(propertyLookup, version)
+            .then(hostnamelist => {
+                console.log(hostnamelist)
+            })
+    }
+
+    addHostnames(propertyLookup, hostnames) {
+        const version = WebSite._getLatestVersion(propertyLookup);
+        let contractId, 
+            groupId, 
+            productId, 
+            propertyId,
+            configName, 
+            hostlist;
+
+        return this._getProperty(propertyLookup)
+            .then(data => {
+                contractId = data.contractId;
+                groupId = data.groupId;
+                configName = data.propertyName;
+                propertyId = data.propertyId;
+                return this._getMainProduct(groupId, contractId)
+            })
+            .then(product => {
+                productId = product;
+                return this._getHostnameList(propertyLookup, version)
+            })
+           .then(hostnamelist => {
+                hostlist = hostnamelist.hostnames.items;
+                return this._createHostname(groupId,
+                    contractId,
+                    configName,
+                    productId);
+            })
+            .then(data => {
+                let edgeHostnameId = data;
+                return this._assignHostnames(groupId,
+                            contractId,
+                            configName,
+                            edgeHostnameId,
+                            propertyId,
+                            hostnames);
+            }).then(data => {
+                return Promise.resolve();
             })
     }
 
