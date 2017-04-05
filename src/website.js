@@ -513,14 +513,18 @@ class WebSite {
         })
     }
 
-    _updatePropertyBehaviors(rules, configName, hostname, cpcode) {
+    _updatePropertyBehaviors(rules, configName, hostname, cpcode, origin=null) {
         return new Promise((resolve, reject) => {
             let behaviors = [];
             let children_behaviors = [];
 
             rules.rules.behaviors.map(behavior => {
                 if (behavior.name == "origin") {
-                    behavior.options.hostname = "origin-" + configName
+                    if (origin) {
+                        behavior.options.hostname = origin;
+                    } else {
+                        behavior.options.hostname = "origin-" + configName
+                    } 
                 }
                 if (behavior.name == "cpCode") {
                     behavior.options.cpcode = {"id":Number(cpcode)};
@@ -876,7 +880,7 @@ class WebSite {
         })
     }
 
-    _assignHostname(groupId, contractId, configName, edgeHostnameId, propertyId, hostnames) {
+    _assignHostnames(groupId, contractId, configName, edgeHostnameId, propertyId, hostnames) {
         return new Promise((resolve, reject) => {
             console.info('Assigning hostname to property');
             console.time('... assigning hostname');
@@ -887,7 +891,6 @@ class WebSite {
             }
 
             hostnames.map(hostname => {
-                
                 let assignHostnameObj = {
                     "cnameType": "EDGE_HOSTNAME",
                     "edgeHostnameId": edgeHostnameId,
@@ -895,8 +898,6 @@ class WebSite {
                 }
                 assignHostnameArray.push(assignHostnameObj);
             })
-
-            console.log(assignHostnameArray);
 
             let request = {
                 method: 'PUT',
@@ -913,7 +914,6 @@ class WebSite {
                 } else {
                     reject(response);
                 }
-
             })
         })
     }
@@ -993,7 +993,7 @@ class WebSite {
         }
 
 
-    _setRules(groupId, contractId, productId, configName, cpcode=null, hostnames=[]) {
+    _setRules(groupId, contractId, productId, configName, cpcode=null, hostnames=[],origin=null) {
         return new Promise((resolve, reject) => {
             if (cpcode) {
                 return resolve(cpcode)
@@ -1012,7 +1012,8 @@ class WebSite {
             return this._updatePropertyBehaviors(rules,
                 configName,
                 hostnames[0],
-                cpcode)
+                cpcode,
+                origin)
         })
     }
 
@@ -1363,14 +1364,47 @@ class WebSite {
             })
     }
 
+    setOrigin(propertyLookup, origin) {
+          const version = WebSite._getLatestVersion(propertyLookup);
+                
+          return this._getPropertyRules(propertyLookup, version)
+            .then(data => {
+                let behaviors = [];
+
+                data.rules.behaviors.map(behavior => {
+                    if (behavior.name == "origin") {
+                        behavior.options.hostname = origin;
+                    }
+                    behaviors.push(behavior);
+                })
+                data.rules.behaviors = behaviors;   
+                console.log(data); 
+                return Promise.resolve(data);
+            })
+            .then(rules => {
+                return this._updatePropertyRules(propertyLookup,version,rules);
+            })
+    }
+
+    /** 
+     * Adds specified hostnames to the property
+     * 
+     * @param {string}
+    */
+
     /**
      * Creates a new property from scratch
      *
-     * @param {string} property Lookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
-     *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+     * @param {array} hostnames List of hostnames for the property
+     * @param {string} cpcode
+     * @param {string} configName
+     * @param {string} contractId
+     * @param {string} groupId
+     * @param {object} newRules
+     * @param {string} origin
      */
 
-    create(hostnames = [], cpcode = null, configName = null, contractId = null, groupId = null, newRules = null) {
+    create(hostnames = [], cpcode = null, configName = null, contractId = null, groupId = null, newRules = null, origin = null) {
         if (!configName && !hostnames) {
             return Promise.reject("Configname or hostname are required.")
         }
@@ -1398,12 +1432,11 @@ class WebSite {
                     productId);
             })
             .then(data => {
-                
                 propertyId = data;
                 if (newRules) {
                     return Promise.resolve(newRules)
                 } else {
-                    return this._setRules(groupId, contractId, propertyId, configName, cpcode, hostnames)
+                    return this._setRules(groupId, contractId, propertyId, configName, cpcode, hostnames, origin)
                 }
             })
              .then(rules => {
@@ -1419,7 +1452,7 @@ class WebSite {
             })
             .then(data => {
                 edgeHostnameId = data;
-                return this._assignHostname(groupId,
+                return this._assignHostnames(groupId,
                     contractId,
                     configName,
                     edgeHostnameId,
@@ -1489,7 +1522,7 @@ class WebSite {
                     })
             .then(data => {
                         edgeHostnameId = data;
-                        return this._assignHostname(groupId,
+                        return this._assignHostnames(groupId,
                             contractId,
                             configName,
                             edgeHostnameId,

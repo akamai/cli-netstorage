@@ -56,7 +56,10 @@ TARGET_PROP          is the configuration name. Use either hostnames (eg: www.ex
 --delete             delete property from the system
 --create             create new property configuration
 --clone SRC_PROP     clone property to a new config
---hostnames          hostnames for new property, comma delimited
+--addhosts HOSTNAMES Create and add hostnames for the specified property, comma delimited.
+--delhosts HOSTNAMES Delete specified hostnames from a specified property, comma delimited.
+--origin HOSTNAME    Set the origin for the property to the specified value.
+--hostnames          hostnames for the property, comma delimited.  Will create and assign edge hostnames for TARGET_PROP.
 --cpcode             cpcode to use for create.  Requires contract and group
 --contract           contract ID for create or clone.  Requires group
 --group              group ID for create or clone.  Requires contract
@@ -66,12 +69,33 @@ TARGET_PROP          is the configuration name. Use either hostnames (eg: www.ex
     process.exit(0);
 }
 
+function addHostnames(property, options) {
+    if (!options.addhosts) {
+        return Promise.resolve();
+    }
+    return property.addHosts(options.targetProperty, options.addhosts);
+}
+
+function delHostnames(property, options) {
+    if (!options.delhosts) {
+        return Promise.resolve();
+    }
+    return property.delHosts(options.targetProperty, options.delhosts)
+}
+
+function setOrigin(property, options) {
+    if (!options.origin || options.create) {
+        return Promise.resolve();
+    }
+    return property.setOrigin(options.targetProperty, options.origin);
+}
+
 function updateProperty(property, options) {
     if (!options.update) { return Promise.resolve()}
     if (options.srcfile)
-        return property.updateFromFile(options.targetProperty, options.srcfile);
+        return property.updateFromFile(options.targetProperty, options.srcfile, options.origin);
     if (options.targetProperty)
-        return property.copy(options.copy, options.srcVersion, options.targetProperty);
+        return property.copy(options.copy, options.srcVersion, options.targetProperty, options.origin);
     return Promise.resolve();
 }
 
@@ -92,7 +116,8 @@ function createProperty(property, options) {
                                         options.targetProperty,
                                         options.contract, 
                                         options.group,
-                                        options.cpcode);
+                                        options.cpcode,
+                                        options.origin);
 
         } else {
             return property.create(hostnames, 
@@ -100,7 +125,8 @@ function createProperty(property, options) {
                                         options.targetProperty,
                                         options.contract, 
                                         options.group,
-                                        null);
+                                        null,
+                                        options.origin);
         }
     } else if (options.clone) {
         return property.createFromExisting(options.clone, 
@@ -109,7 +135,8 @@ function createProperty(property, options) {
                                         hostnames,
                                         options.targetProperty, 
                                         options.contract, 
-                                        options.group
+                                        options.group,
+                                        options.origin
                                         )
     }
 }
@@ -183,7 +210,7 @@ function main()
     if (options._.length <= 0) {
        help("Don't forget to specify the target property (no flag)");
     } 
-
+    
     // Process arguments with no flag
     options._.forEach(function(argument) {
         if (argument.match('--')) {
@@ -200,7 +227,7 @@ function main()
 
     if (options.copy) {
         if (options.version) srcVersion = options.version
-        if (options.fromfile) help("Cannot specify")
+        if (options.fromfile) help("Cannot specify both a source file and a source property.")
     }
 
     if (options.update) {
@@ -209,13 +236,13 @@ function main()
     if (options.activate) {
         let env = options.activate.toUpperCase();
         if ("BOTH" != env && !env.startsWith("STAG") && !env.startsWith("PROD"))
-           help("--activate (STAGING, PROD, BOTH)");        
+           help("--activate (STAGING, PRODUCTION, BOTH)");        
     }
 
     if (options.deactivate) {
         options.deactivate = options.deactivate.toUpperCase();
         if ("BOTH" != env && !env.startsWith("STAG") && !env.startsWith("PROD"))
-           help("--deactivate (STAGING, PROD, BOTH)");        
+           help("--deactivate (STAGING, PRODUCTION, BOTH)");        
      }
 
      if (options.cpcode) {
@@ -237,6 +264,7 @@ function main()
         
         Promise.resolve()
             .then(() => createProperty(property, options))
+            .then(() => setOrigin(property, options))
             .then(() => updateProperty(property, options))
             .then(data => activateProperty(property, options, data))
             .then(data => deactivateProperty(property, options, data))
