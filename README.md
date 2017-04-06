@@ -26,6 +26,7 @@ This script wraps all of the functionality from the [library](#library) into a c
 * [Update a property](#update)
 * [Copy a property's config to another property](#copy)
 * [Activate or deactivate](#activate)
+* [Add Origin or Hostname](#add)
 
 ### Create
 Creating a new property requires only a single parameter, the target property.  
@@ -98,6 +99,16 @@ Activate the specified property version on staging, production or both.
 ```bash
 % updateWebSite my.property.com --activate BOTH
 ```
+
+### Add
+Add origin or hostname to the specified property (or delete hostname)
+
+```bash
+% updateWebSite my.property.com --addhosts list.com,of.com,hosts.com
+% updateWebSite my.property.com --origin this.is.my.origin.com
+% updateWebSite my.property.com --delhosts list.com,of.com,hosts.com
+```
+
 ## Gulp
 
 Download the Gulp integration project from https://github.com/akamai-open/gulp-akamaiconfigkit
