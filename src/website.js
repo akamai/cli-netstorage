@@ -880,37 +880,57 @@ class WebSite {
         })
     }
 
-    _assignHostnames(groupId, contractId, configName, edgeHostnameId, propertyId, hostnames) {
-        let assignHostnameArray;
+    _assignHostnames(groupId, contractId, configName, edgeHostnameId, propertyId, hostnames, deleteHosts=false) {
+        let assignHostnameArray,myDelete=false;
+        let newHostnameArray = [];  
         return this._getHostnameList(configName)
+        
         .then(hostnamelist => {
             assignHostnameArray = hostnamelist.hostnames.items;
             return new Promise((resolve, reject) => {
-                console.info('Assigning hostname to property');
-                console.time('... assigning hostname');
+                console.info('Updating property hostnames');
+                console.time('... updating hostname');
                 
                 if (hostnames.length == 0) {
                     hostnames = [configName];
                 }
 
-                hostnames.map(hostname => {
-                    let assignHostnameObj = {
-                        "cnameType": "EDGE_HOSTNAME",
-                        "edgeHostnameId": edgeHostnameId,
-                        "cnameFrom": hostname
-                    }
-                    assignHostnameArray.push(assignHostnameObj);
-                })
+                if (!deleteHosts) {
+                    newHostnameArray = assignHostnameArray;
+                    hostnames.map(hostname => {
+                        let assignHostnameObj = {
+                            "cnameType": "EDGE_HOSTNAME",
+                            "edgeHostnameId": edgeHostnameId,
+                            "cnameFrom": hostname
+                        }
+                        console.log("Adding hostname " + assignHostnameObj["cnameFrom"]);
+                        newHostnameArray.push(assignHostnameObj);
+                    })
+                } else {
+                    assignHostnameArray.map(host=> {
+                        myDelete = false;
+                        for (let i=0; i<hostnames.length; i++) {
+                            if (hostnames[i] == host["cnameFrom"]) {
+                                myDelete = true;
+                                console.log("Removing hostname " + host["cnameFrom"]);
+                            }
+                        }
+                        if (!myDelete) {
+                            newHostnameArray.push(host);
+                            console.log("Not removing hostname " + host["cnameFrom"]);
+                        }
+                    })
+                }
 
                 let request = {
                     method: 'PUT',
                     path: `/papi/v0/properties/${propertyId}/versions/1/hostnames?contractId=${contractId}&groupId=${groupId}`,
-                    body: assignHostnameArray
+                    body: newHostnameArray
                 }
 
                 this._edge.auth(request);
                 this._edge.send((data, response) => {
-                    console.timeEnd('... assigning hostname');
+                    console.timeEnd('... updating hostname');
                     if (response.statusCode >= 200 && response.statusCode < 400) {
                         response = JSON.parse(response.body);
                         resolve(response);
@@ -1370,9 +1390,32 @@ class WebSite {
 
     delHostnames(propertyLookup, hostnames) {
         const version = WebSite._getLatestVersion(propertyLookup);
-        return this._getHostnameList(propertyLookup, version)
+        let contractId, 
+            groupId, 
+            productId, 
+            propertyId,
+            configName, 
+            hostlist;
+
+        return this._getProperty(propertyLookup)
+            .then(data => {
+                contractId = data.contractId;
+                groupId = data.groupId;
+                configName = data.propertyName;
+                propertyId = data.propertyId;
+                return this._getHostnameList(propertyLookup, version)
+            })
             .then(hostnamelist => {
-                console.log(hostnamelist)
+                hostlist = hostnamelist.hostnames.items;
+                return this._assignHostnames(groupId,
+                            contractId,
+                            configName,
+                            null,
+                            propertyId,
+                            hostnames,
+                            true);
+            }).then(data => {
+                return Promise.resolve();
             })
     }
 
