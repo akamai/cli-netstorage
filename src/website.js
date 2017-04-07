@@ -66,7 +66,6 @@ class WebSite {
         this._initComplete = false;
         this._propertyHostnameList = {};
         this._accountId = "";
-        this._cacheFile = "";
         if (auth.create) {
             this._initComplete = true;
         }
@@ -86,16 +85,7 @@ class WebSite {
         return this._getGroupList()
             .then(data => {
                 return new Promise((resolve, reject) => {
-                    this._accountId = data.accountId;
-                    this.cacheFile = tmpDir + data.accountId + ".json";
-                    if (fs.existsSync(this.cacheFile)) {
-                        fs.readFile(this.cacheFile, function (err, hostlist) {
-                            data.propertyHostnameList = JSON.parse(hostlist);
-                            return resolve(data);
-                        })
-                    } else {
-                        return resolve(data);
-                    }
+                    return resolve(data);
                 })
             })
             .then(data => {
@@ -177,15 +167,6 @@ class WebSite {
                     })
                 });
                 console.timeEnd('Init PropertyManager cache');
-                return new Promise((resolve, reject) => {
-                    fs.writeFile(this.cacheFile, JSON.stringify(this._propertyHostnameList, null, ' '), (err) => {
-                        if (err)
-                            reject(err);
-                        else
-                            console.info("Created on-disk cache for hostnames");
-                        resolve(true);
-                    });
-                });
             });
     };
 
@@ -268,7 +249,11 @@ class WebSite {
     };
 
     //TODO: this will only be called for LATEST, CURRENT_PROD and CURRENT_STAGE. How do we handle collecting hostnames of different versions?
-    _getHostnameList(propertyId, version) {
+    _getHostnameList(propertyId, version, newConfig=false) {
+        if (newConfig) {
+            return Promise.resolve();
+        }
+
         return this._getProperty(propertyId)
             .then(property => {
                 //set basic data like contract & group
@@ -278,7 +263,7 @@ class WebSite {
 
                 return new Promise((resolve, reject) => {
                     //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
-                    if (version == null) {
+                    if (version == null || !version) {
                         version = 1;
                     }
                     if (this._propertyHostnameList &&
@@ -645,8 +630,6 @@ class WebSite {
                             "ipVersionBehavior": "IPV6_COMPLIANCE",
                         };
 
-                        console.log(hostnameObj);
-
                         let request = {
                             method: 'POST',
                             path: `/papi/v0/edgehostnames?contractId=${contractId}&groupId=${groupId}`,
@@ -880,13 +863,16 @@ class WebSite {
         })
     }
 
-    _assignHostnames(groupId, contractId, configName, edgeHostnameId, propertyId, hostnames, deleteHosts=false) {
+    _assignHostnames(groupId, contractId, configName, edgeHostnameId, propertyId, hostnames, deleteHosts=false, newConfig=false) {
         let assignHostnameArray,myDelete=false;
         let newHostnameArray = [];  
-        return this._getHostnameList(configName)
-        
+        return this._getHostnameList(configName, LATEST_VERSION.LATEST,newConfig)
         .then(hostnamelist => {
-            assignHostnameArray = hostnamelist.hostnames.items;
+            if (hostnamelist) {
+                assignHostnameArray = hostnamelist.hostnames.items;
+            } else {
+                assignHostnameArray = [];
+            }
             return new Promise((resolve, reject) => {
                 console.info('Updating property hostnames');
                 console.time('... updating hostname');
@@ -921,6 +907,7 @@ class WebSite {
                         }
                     })
                 }
+                console.log(newHostnameArray);
 
                 let request = {
                     method: 'PUT',
@@ -1397,13 +1384,18 @@ class WebSite {
             configName, 
             hostlist;
 
+        let names = this._getConfigAndHostname(propertyLookup, hostnames);
+        configName = names[0];
+        hostnames = names[1];
+
+
         return this._getProperty(propertyLookup)
             .then(data => {
                 contractId = data.contractId;
                 groupId = data.groupId;
                 configName = data.propertyName;
                 propertyId = data.propertyId;
-                return this._getHostnameList(propertyLookup, version)
+                return this._getHostnameList(configName, version)
             })
             .then(hostnamelist => {
                 hostlist = hostnamelist.hostnames.items;
@@ -1420,7 +1412,6 @@ class WebSite {
     }
 
     addHostnames(propertyLookup, hostnames) {
-        const version = WebSite._getLatestVersion(propertyLookup);
         let contractId, 
             groupId, 
             productId, 
@@ -1428,7 +1419,13 @@ class WebSite {
             configName, 
             hostlist;
 
-        return this._getProperty(propertyLookup)
+        let names = this._getConfigAndHostname(propertyLookup, hostnames);
+        configName = names[0];
+        hostnames = names[1];
+        const version = WebSite._getLatestVersion(configName);
+        
+
+        return this._getProperty(configName)
             .then(data => {
                 contractId = data.contractId;
                 groupId = data.groupId;
@@ -1437,8 +1434,8 @@ class WebSite {
                 return this._getMainProduct(groupId, contractId)
             })
             .then(product => {
-                productId = product;
-                return this._getHostnameList(propertyLookup, version)
+                productId = product.productId;
+                return this._getHostnameList(configName, version)
             })
            .then(hostnamelist => {
                 hostlist = hostnamelist.hostnames.items;
@@ -1553,7 +1550,9 @@ class WebSite {
                     configName,
                     edgeHostnameId,
                     propertyId,
-                    hostnames);
+                    hostnames,
+                    false,
+                    true);
             }).then(() => {
                 return Promise.resolve();
             })
@@ -1623,7 +1622,9 @@ class WebSite {
                             configName,
                             edgeHostnameId,
                             propertyId,
-                            hostnames);
+                            hostnames,
+                            false,
+                            true);
              }).then(data => {
                         return Promise.resolve();
             })
