@@ -115,8 +115,13 @@ class WebSite {
                 propList.map(v => {
                     if (!v || !v.properties || !v.properties.items) return;
                     return v.properties.items.map(item => {
-
-                        //TODO: should use toJSON() instead of the primative toString()
+                        let letters = "/^[0-9a-zA-Z\\_\\-\\.]+$/";
+                        let configName = item.propertyName;
+                        if (!configName.match(letters)) {
+                            configName = configName.replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_')
+                        }
+                        item.propertyName = configName;
+                        //TODO: should use toJSON() instead of the primitive toString()
                         item.toString = function () {
                             return this.propertyName;
                         };
@@ -175,6 +180,7 @@ class WebSite {
             .then(propList => {
                 if (!propList || !propList.properties || propList.properties.items) return;
                 v.properties.items.map(item => {
+                    item.propertyName = item["propertyName"].replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_');
                     if (item.propertyId == propertyId) {
                         this._propertyByName[item.propertyName] = item;
                         this._propertyById[item.propertyId] = item;
@@ -336,6 +342,7 @@ class WebSite {
     _getProperty(propertyLookup, hostnameEnvironment = LATEST_VERSION.STAGING) {
         if (propertyLookup && propertyLookup.groupId && propertyLookup.propertyId && propertyLookup.contractId)
             return Promise.resolve(propertyLookup);
+        propertyLookup = propertyLookup.replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_');
         return this._init()
             .then(() => {
                 let prop = this._propertyById[propertyLookup] || this._propertyByName[propertyLookup];
