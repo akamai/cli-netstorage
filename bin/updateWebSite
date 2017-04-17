@@ -59,7 +59,8 @@ TARGET_PROP          is the configuration name. Use either hostnames (eg: www.ex
 --addhosts HOSTNAMES Create and add hostnames for the specified property, comma delimited.
 --delhosts HOSTNAMES Delete specified hostnames from a specified property, comma delimited.
 --origin HOSTNAME    Set the origin for the property to the specified value.
---hostnames          hostnames for the property, comma delimited.  Will create and assign edge hostnames for TARGET_PROP.
+--hostnames NAMES    hostnames for the property, comma delimited.  Will create and assign edge hostnames for TARGET_PROP.
+--ehn HOSTNAME       edge hostname to use for the newly created property
 --cpcode             cpcode to use for create.  Requires contract and group
 --contract           contract ID for create or clone.  Requires group
 --group              group ID for create or clone.  Requires contract
@@ -117,7 +118,8 @@ function createProperty(property, options) {
                                         options.contract, 
                                         options.group,
                                         options.cpcode,
-                                        options.origin);
+                                        options.origin,
+                                        options.ehname);
 
         } else {
             return property.create(hostnames, 
@@ -126,7 +128,8 @@ function createProperty(property, options) {
                                         options.contract, 
                                         options.group,
                                         null,
-                                        options.origin);
+                                        options.origin,
+                                        options.ehname);
         }
     } else if (options.clone) {
         return property.createFromExisting(options.clone, 
@@ -136,7 +139,8 @@ function createProperty(property, options) {
                                         options.targetProperty, 
                                         options.contract, 
                                         options.group,
-                                        options.origin
+                                        options.origin,
+                                        options.ehname
                                         )
     }
 }
