@@ -66,6 +66,7 @@ class WebSite {
         this._initComplete = false;
         this._propertyHostnameList = {};
         this._accountId = "";
+        this._ehnByHostname = {};
         if (auth.create) {
             this._initComplete = true;
         }
@@ -164,20 +165,12 @@ class WebSite {
                         let hostRef = this._propertyByHost[host.cnameFrom];
                         if (!hostRef)
                             hostRef = this._propertyByHost[host.cnameFrom] = {};
-                        if (!hostRef.ehn) {
-                            hostRef.ehn = [];
-                        }
-
-                        hostRef.ehn.push( {
-                            "cnameFrom":host.cnameFrom,
-                            "cnameTo":host.cnameTo
-                        })
+                        this._ehnByHostname[host.cnameTo] = host.edgeHostnameId;
 
                         if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
                             hostRef.staging = prop;
                         if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
                             hostRef.production = prop;
-                        
                     })
                 });
                 console.timeEnd('Init PropertyManager cache');
@@ -203,15 +196,19 @@ class WebSite {
         let cloneFrom = {};
         let contractId, 
             groupId, 
-            productId;
+            productId,
+            edgeHostnameId;
         
         return this._getProperty(srcProperty, srcVersion)
             .then(cloneFromProperty => {
                 contractId = cloneFromProperty.contractId;
                 groupId = cloneFromProperty.groupId;
+                let productionHosts = cloneFromProperty.productionHosts;
+                edgeHostnameId = productionHosts[0]["edgeHostnameId"];
                 cloneFrom = {propertyId: cloneFromProperty.propertyId,
                              groupId: groupId,
-                             contractId: contractId};
+                             contractId: contractId,
+                             edgeHostnameId: edgeHostnameId};
                 return WebSite._getLatestVersion(cloneFromProperty)
             })
             .then(version => {
@@ -616,25 +613,24 @@ class WebSite {
     _createHostname(groupId, contractId, configName, productId) {
         return this._getEdgeHostnames(groupId, contractId)
             .then(edgeHostnames => {
-                let edgeHostname = "";
+                let edgeHostnameId = "";
                 edgeHostnames.edgeHostnames.items.map(item => {
                     if (item["domainPrefix"] === configName) {
                         console.info("Hostname already exists");
-                        edgeHostname = item["edgeHostnameDomain"]
+                        edgeHostnameId = item["edgeHostnameId"]
                         if (this._propertyByHost[item["domainPrefix"]] ) {
                             let property = this._propertyByHost[item["domainPrefix"]]
                             console.info("Hostname assigned to " + property["propertyName"])
                         }
-                        return Promise.resolve(edgeHostname);
+                        return Promise.resolve(edgeHostnameId);
                     }
                 });
-                return Promise.resolve(edgeHostname);
-
+                return Promise.resolve(edgeHostnameId);
             })
-            .then(edgeHostname => {
+            .then(edgeHostnameId => {
                 return new Promise((resolve, reject) => {
-                    if (edgeHostname) {
-                        resolve(edgeHostname);
+                    if (edgeHostnameId) {
+                        resolve(edgeHostnameId);
                     } else {
                         console.info('Creating edge hostname for property: ' + configName);
                         console.time('... creating hostname');
@@ -645,8 +641,6 @@ class WebSite {
                             "secure": false,
                             "ipVersionBehavior": "IPV6_COMPLIANCE",
                         };
-
-                        edgeHostname = configName + ".edgesuite.net";
 
                         let request = {
                             method: 'POST',
@@ -661,7 +655,7 @@ class WebSite {
                             if (response.statusCode >= 200 && response.statusCode < 400) {
                                 let hostnameResponse = JSON.parse(response.body);
                                 response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
-                                resolve(edgeHostname);
+                                resolve(response);
                             } else {
                                 reject(response);
                             }
@@ -880,7 +874,7 @@ class WebSite {
         })
     }
 
-    _assignHostnames(groupId, contractId, configName, edgeHostname, propertyId, hostnames, deleteHosts=false, newConfig=false) {
+    _assignHostnames(groupId, contractId, configName, edgeHostnameId, propertyId, hostnames, deleteHosts=false, newConfig=false) {
         let assignHostnameArray,myDelete=false;
         let newHostnameArray = [];  
         return this._getHostnameList(configName, LATEST_VERSION.LATEST,newConfig)
@@ -903,7 +897,7 @@ class WebSite {
                     hostnames.map(hostname => {
                         let assignHostnameObj = {
                             "cnameType": "EDGE_HOSTNAME",
-                            "cnameTo": edgeHostname,
+                            "edgeHostnameId": edgeHostnameId,
                             "cnameFrom": hostname
                         }
                         console.log("Adding hostname " + assignHostnameObj["cnameFrom"]);
@@ -923,7 +917,7 @@ class WebSite {
                             console.log("Not removing hostname " + host["cnameFrom"]);
                         }
                     })
-                }
+                } 
 
                 let request = {
                     method: 'PUT',
@@ -937,8 +931,8 @@ class WebSite {
                     if (response.statusCode >= 200 && response.statusCode < 400) {
                         response = JSON.parse(response.body);
                         resolve(response);
-                    } else if (response.statusCode == 400 || response.statusCode == 403) {
-                        reject("Unable to assign hostname.  Please try to add the hostname in 30 minutes using the --addhosts flag.")
+                    //} else if (response.statusCode == 400 || response.statusCode == 403) {
+                    //    reject("Unable to assign hostname.  Please try to add the hostname in 30 minutes using the --addhosts flag.")
                     } else {
                         reject(response);
                     }
@@ -1056,11 +1050,6 @@ class WebSite {
             })
     }
 
-    _getEdgeHost(ehname) {
-
-    }
-
-  
     createCPCode(property) {
         return this._createCPCode(property);
     }
@@ -1433,7 +1422,7 @@ class WebSite {
             })
     }
 
-    addHostnames(propertyLookup, hostnames) {
+    addHostnames(propertyLookup, hostnames, edgeHostname=null) {
         let contractId, 
             groupId, 
             productId, 
@@ -1461,17 +1450,20 @@ class WebSite {
             })
            .then(hostnamelist => {
                 hostlist = hostnamelist.hostnames.items;
-                return this._createHostname(groupId,
-                    contractId,
-                    configName,
-                    productId);
+                if (edgeHostname) {
+                    return Promise.resolve(this._ehnByHostname[edgeHostname])
+                } else {
+                    return this._createHostname(groupId,
+                        contractId,
+                        configName,
+                        productId);
+                }
             })
-            .then(data => {
-                let edgeHostname = data;
+            .then(() => {
                 return this._assignHostnames(groupId,
                             contractId,
                             configName,
-                            edgeHostname,
+                            edgeHostnameId,
                             propertyId,
                             hostnames);
             }).then(data => {
@@ -1518,7 +1510,7 @@ class WebSite {
      * @param {string} origin
      */
 
-    create(hostnames = [], cpcode = null, configName = null, contractId = null, groupId = null, newRules = null, origin = null) {
+    create(hostnames = [], cpcode = null, configName = null, contractId = null, groupId = null, newRules = null, origin = null, edgeHostname=null) {
         if (!configName && !hostnames) {
             return Promise.reject("Configname or hostname are required.")
         }
@@ -1529,8 +1521,7 @@ class WebSite {
         let accountId,
             productId,
             productName,
-            propertyId,
-            edgeHostname;
+            propertyId;
 
         return this._getPropertyInfo(contractId, groupId)
             .then(data => {
@@ -1559,17 +1550,20 @@ class WebSite {
                     rules);
             })
             .then(() => {
+                if (edgeHostname) {
+                    return Promise.resolve(this._ehnByHostname[edgeHostname])
+                }
                 return this._createHostname(groupId,
                     contractId,
                     configName,
                     productId);
             })
             .then(data => {
-                edgeHostname = data;
+                edgeHostnameId = data;
                 return this._assignHostnames(groupId,
                     contractId,
                     configName,
-                    edgeHostname,
+                    edgeHostnameId,
                     propertyId,
                     hostnames,
                     false,
@@ -1579,7 +1573,7 @@ class WebSite {
             })
     }
 
-    createFromFile(hostnames = [], srcFile, configName = null, contractId = null, groupId = null, cpcode = null, origin=null,ehname=null) {
+    createFromFile(hostnames = [], srcFile, configName = null, contractId = null, groupId = null, cpcode = null, origin=null,edgeHostname=null) {
         let names = this._getConfigAndHostname(configName, hostnames);
         configName = names[0];
         hostnames = names[1];
@@ -1593,12 +1587,12 @@ class WebSite {
 
         })
         .then(rules => {
-            return this.create(hostnames, cpcode, configName, contractId, groupId, rules)
+            return this.create(hostnames, cpcode, configName, contractId, groupId, rules, origin, edgeHostname)
         })
 
      }
 
-    createFromExisting(srcProperty, srcVersion = LATEST_VERSION.LATEST, copyHostnames = false, hostnames = [], configName = null, contractId = null, groupId = null, origin=null,ehname=null) {
+    createFromExisting(srcProperty, srcVersion = LATEST_VERSION.LATEST, copyHostnames = false, hostnames = [], configName = null, contractId = null, groupId = null, origin=null,edgeHostname=null) {
         let names = this._getConfigAndHostname(configName, hostnames);
         configName = names[0];
         hostnames = names[1];
@@ -1608,7 +1602,7 @@ class WebSite {
             productId,
             productName,
             propertyId,
-            edgeHostname;
+            edgeHostnameId;
         
        return this._getProperty(srcProperty)
             .then(data => {
@@ -1623,29 +1617,22 @@ class WebSite {
             .then(data => {
                 cloneFrom = data;
                 productId = data.productId;
+                if (edgeHostname) {
+                    edgeHostnameId = this._ehnByHostname[edgeHostname];
+                } else {
+                    edgeHostnameId = data.edgeHostnameId;
+                }
                 return this._createProperty(groupId,
                     contractId,
                     configName,
                     productId,
                     cloneFrom);
             })
-            .then(data => {
-                    propertyId = data;
-                    if (ehname) {
-                        return this._getEdgeHost(ehname)
-                    } else {
-                        return this._createHostname(groupId,
+            .then(propertyId => {
+                    return this._assignHostnames(groupId,
                             contractId,
                             configName,
-                            productId);
-                    }
-                    })
-            .then(data => {
-                        edgeHostname = data;
-                        return this._assignHostnames(groupId,
-                            contractId,
-                            configName,
-                            edgeHostname,
+                            edgeHostnameId,
                             propertyId,
                             hostnames,
                             false,
