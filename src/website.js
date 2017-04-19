@@ -610,7 +610,8 @@ class WebSite {
     }
 
     //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
-    _createHostname(groupId, contractId, configName, productId) {
+    _createHostname(groupId, contractId, configName, productId, force=false) {
+        
         return this._getEdgeHostnames(groupId, contractId)
             .then(edgeHostnames => {
                 let edgeHostnameId = "";
@@ -626,6 +627,50 @@ class WebSite {
                     }
                 });
                 return Promise.resolve(edgeHostnameId);
+            })
+            .then(edgeHostnameId => {
+                if (edgeHostnameId) {
+                    return Promise.resolve(edgeHostnameId);
+                } else {
+                    return new Promise((resolve, reject) => {
+                        let ehnGroupCounts = {};
+                        let ehnContractCounts = {};
+                        let propertyByHost = this._propertyByHost;
+                        Object.keys(propertyByHost).forEach(function(key) {
+                            let current = propertyByHost[key]["production"] || propertyByHost[key]["staging"]
+                            if (current) {
+                                if (current.contractId == contractId) {
+                                    current["productionHosts"].forEach(function(host) {
+                                        if (!ehnContractCounts[host.edgeHostnameId]) {
+                                            ehnContractCounts[host.edgeHostnameId] = 1;
+                                        } else {
+                                            ehnContractCounts[host.edgeHostnameId] += 1;
+                                        }
+                                        
+                                        if (current.groupId == groupId) {
+                                            if (!ehnGroupCounts[host.edgeHostnameId]) {
+                                                ehnGroupCounts[host.edgeHostnameId] = 1;
+                                            } else {
+                                                ehnGroupCounts[host.edgeHostnameId] += 1;
+                                            }
+                                        }
+                                    })
+                                }
+                            }
+                        })
+                        let groupSorted = Object.keys(ehnGroupCounts).sort((a,b) => ehnGroupCounts[a]-ehnGroupCounts[b])
+                        let contractSorted = Object.keys(ehnContractCounts).sort((a,b) => ehnContractCounts[b]-ehnContractCounts[a])
+                        
+                        if (groupSorted.length > 0) {
+                            let edgeHostnameId = groupSorted[0];
+                            resolve(edgeHostnameId);
+                        } else {
+                            let edgeHostnameId = contractSorted[0];
+                            resolve(edgeHostnameId)
+                        }
+                        resolve();
+                    })
+                }
             })
             .then(edgeHostnameId => {
                 return new Promise((resolve, reject) => {
@@ -1459,7 +1504,7 @@ class WebSite {
                         productId);
                 }
             })
-            .then(() => {
+            .then(edgeHostnameId => {
                 return this._assignHostnames(groupId,
                             contractId,
                             configName,
@@ -1558,8 +1603,7 @@ class WebSite {
                     configName,
                     productId);
             })
-            .then(data => {
-                edgeHostnameId = data;
+            .then(edgeHostnameId => {
                 return this._assignHostnames(groupId,
                     contractId,
                     configName,
