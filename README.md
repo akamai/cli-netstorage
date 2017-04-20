@@ -99,6 +99,11 @@ Activate the specified property version on staging, production or both.
 ```bash
 % updateWebSite my.property.com --activate BOTH
 ```
+Possible options are:
+```bash
+STAGING: activates to the staging environment on Akamai
+PROD: activates to the production environment
+BOTH: simultaneously activate to both the environments
 
 ### Add
 Add origin or hostname to the specified property (or delete hostname)
