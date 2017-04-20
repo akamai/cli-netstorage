@@ -639,13 +639,20 @@ class WebSite {
                         Object.keys(propertyByHost).forEach(function(key) {
                             let current = propertyByHost[key]["production"] || propertyByHost[key]["staging"]
                             if (current) {
+                                let hosts = [];
+                                if (current["productionHosts"]) {
+                                    hosts.concat(current["productionHosts"])
+                                }
+                                if (current["stagingHosts"]) {
+                                    hosts.concat(current["stagingHosts"]);
+                                }
                                 if (current.contractId == contractId) {
-                                    current["productionHosts"].forEach(function(host) {
-                                        if (!ehnContractCounts[host.edgeHostnameId]) {
-                                            ehnContractCounts[host.edgeHostnameId] = 1;
-                                        } else {
-                                            ehnContractCounts[host.edgeHostnameId] += 1;
-                                        }
+                                    hosts.forEach(function(host) {
+                                            if (!ehnContractCounts[host.edgeHostnameId]) {
+                                                ehnContractCounts[host.edgeHostnameId] = 1;
+                                            } else {
+                                                ehnContractCounts[host.edgeHostnameId] += 1;
+                                            }
                                         
                                         if (current.groupId == groupId) {
                                             if (!ehnGroupCounts[host.edgeHostnameId]) {
@@ -1495,14 +1502,8 @@ class WebSite {
             })
            .then(hostnamelist => {
                 hostlist = hostnamelist.hostnames.items;
-                if (edgeHostname) {
-                    return Promise.resolve(this._ehnByHostname[edgeHostname])
-                } else {
-                    return this._createHostname(groupId,
-                        contractId,
-                        configName,
-                        productId);
-                }
+                let ehn = hostlist[0]["edgeHostnameId"]
+                return Promise.resolve(ehn)
             })
             .then(edgeHostnameId => {
                 return this._assignHostnames(groupId,
