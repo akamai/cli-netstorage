@@ -641,10 +641,10 @@ class WebSite {
                             if (current) {
                                 let hosts = [];
                                 if (current["productionHosts"]) {
-                                    hosts.concat(current["productionHosts"])
+                                    hosts.push.apply(hosts, current["productionHosts"])
                                 }
                                 if (current["stagingHosts"]) {
-                                    hosts.concat(current["stagingHosts"]);
+                                    hosts.push.apply(hosts, current["stagingHosts"]);
                                 }
                                 if (current.contractId == contractId) {
                                     hosts.forEach(function(host) {
@@ -936,6 +936,7 @@ class WebSite {
             } else {
                 assignHostnameArray = [];
             }
+
             return new Promise((resolve, reject) => {
                 console.info('Updating property hostnames');
                 console.time('... updating hostname');
@@ -947,11 +948,21 @@ class WebSite {
                 if (!deleteHosts) {
                     newHostnameArray = assignHostnameArray;
                     hostnames.map(hostname => {
-                        let assignHostnameObj = {
-                            "cnameType": "EDGE_HOSTNAME",
-                            "edgeHostnameId": edgeHostnameId,
-                            "cnameFrom": hostname
+                        let assignHostnameObj;
+                        if (edgeHostnameId.includes("ehn_")) {
+                            assignHostnameObj = {
+                                "cnameType": "EDGE_HOSTNAME",
+                                "edgeHostnameId": edgeHostnameId,
+                                "cnameFrom": hostname
+                            }
+                        } else {
+                             assignHostnameObj = {
+                                "cnameType": "EDGE_HOSTNAME",
+                                "cnameTo": edgeHostnameId,
+                                "cnameFrom": hostname                           
+                            }
                         }
+                        
                         console.log("Adding hostname " + assignHostnameObj["cnameFrom"]);
                         newHostnameArray.push(assignHostnameObj);
                     })
@@ -1503,6 +1514,11 @@ class WebSite {
            .then(hostnamelist => {
                 hostlist = hostnamelist.hostnames.items;
                 let ehn = hostlist[0]["edgeHostnameId"]
+                console.log(hostlist[0]);
+                console.log(ehn);
+                if (!ehn) {
+                    ehn = hostlist[0]["cnameTo"]
+                }
                 return Promise.resolve(ehn)
             })
             .then(edgeHostnameId => {
