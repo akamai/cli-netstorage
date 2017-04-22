@@ -167,7 +167,7 @@ function activateProperty(property, options, data) {
     if (!options.activate)
         return Promise.resolve();
 
-    let env = options.activate;
+    let env = options.activate.toUpperCase();
     return Promise.resolve()
         .then(() => {
             if (data && data.propertyVersion)
@@ -193,7 +193,7 @@ function deactivateProperty(property, options, data) {
     if (!options.deactivate)
         return Promise.resolve();
 
-    let env = options.deactivate;
+    let env = options.deactivate.toUpperCase();
     return Promise.resolve()
         .then(data => {
             if ("BOTH" === env || env.startsWith("STAG"))
