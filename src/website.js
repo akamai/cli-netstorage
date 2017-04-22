@@ -204,7 +204,9 @@ class WebSite {
                 contractId = cloneFromProperty.contractId;
                 groupId = cloneFromProperty.groupId;
                 let productionHosts = cloneFromProperty.productionHosts;
-                edgeHostnameId = productionHosts[0]["edgeHostnameId"];
+                if (productionHosts) {
+                    edgeHostnameId = productionHosts[0]["edgeHostnameId"];
+                }
                 cloneFrom = {propertyId: cloneFromProperty.propertyId,
                              groupId: groupId,
                              contractId: contractId,
@@ -335,6 +337,7 @@ class WebSite {
                                 groupId: groupId,
                                 contractId: contractId
                             }
+                            resolve(productInfo);
                         }
                     });
                 } else {
@@ -936,6 +939,8 @@ class WebSite {
             } else {
                 assignHostnameArray = [];
             }
+            let property = this._propertyById[propertyId];
+            let version = property.latestVersion;
 
             return new Promise((resolve, reject) => {
                 console.info('Updating property hostnames');
@@ -984,7 +989,7 @@ class WebSite {
 
                 let request = {
                     method: 'PUT',
-                    path: `/papi/v0/properties/${propertyId}/versions/1/hostnames?contractId=${contractId}&groupId=${groupId}`,
+                    path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames?contractId=${contractId}&groupId=${groupId}`,
                     body: newHostnameArray
                 }
 
@@ -1514,8 +1519,6 @@ class WebSite {
            .then(hostnamelist => {
                 hostlist = hostnamelist.hostnames.items;
                 let ehn = hostlist[0]["edgeHostnameId"]
-                console.log(hostlist[0]);
-                console.log(ehn);
                 if (!ehn) {
                     ehn = hostlist[0]["cnameTo"]
                 }
@@ -1678,11 +1681,23 @@ class WebSite {
             .then(data => {
                 cloneFrom = data;
                 productId = data.productId;
-                if (edgeHostname) {
-                    edgeHostnameId = this._ehnByHostname[edgeHostname];
-                } else {
-                    edgeHostnameId = data.edgeHostnameId;
-                }
+                return new Promise((resolve, reject) => {
+                    if (edgeHostname) {
+                        edgeHostnameId = this._ehnByHostname[edgeHostname];
+                        resolve(edgeHostnameId);
+                    } else if (data.edgeHostnameId) {
+                        edgeHostnameId = data.edgeHostnameId;
+                        resolve(edgeHostnameId);
+                    } else {
+                        return this._createHostname(groupId,
+                            contractId,
+                            configName,
+                            productId);
+                    }
+                })
+            })
+            .then(data => {
+                edgeHostnameId = data;
                 return this._createProperty(groupId,
                     contractId,
                     configName,
