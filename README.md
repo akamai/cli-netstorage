@@ -39,7 +39,8 @@ The flags of interest for create are:
 
 ```
   --cpcode: The CPCode to use for the new property.  Default is to create a new CPCode.  The cpcode flag requires the contractid as well.
-  --contractid: The contractId to place the new property in.  Defaults to the parent group for the account.
+  --contract: The contractId to place the new property in.  Defaults to the parent group for the account.
+  --group: The groupId to place the new propert in. 
   --name: The name for the new property
   --hostnames: Comma-delimited list of new hostnames to use for the property
 ```
@@ -99,6 +100,11 @@ Activate the specified property version on staging, production or both.
 ```bash
 % updateWebSite my.property.com --activate BOTH
 ```
+Possible options are:
+```bash
+STAGING: activates to the staging environment on Akamai
+PROD: activates to the production environment
+BOTH: simultaneously activate to both the environments
 
 ### Add
 Add origin or hostname to the specified property (or delete hostname)
