@@ -525,7 +525,7 @@ class WebSite {
                     } 
                 }
                 if (behavior.name == "cpCode") {
-                    behavior.options.cpcode = {"id":Number(cpcode)};
+                    behavior.options.value = {"id":Number(cpcode)};
                 }
                 behaviors.push(behavior);
             })
