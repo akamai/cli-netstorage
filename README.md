@@ -43,6 +43,7 @@ The flags of interest for create are:
   --group: The groupId to place the new propert in. 
   --name: The name for the new property
   --hostnames: Comma-delimited list of new hostnames to use for the property
+  --ehname: The edge hostname to use for the newly created property.  If not included an edge hostname from the same group/contract will be used.
 ```
 
 ### Clone
@@ -52,7 +53,7 @@ Cloning a configuration to a new property is also simple, with command line flag
 % updateWebSite new.property.name --clone original.property.name
 ```
 
-The flags of interest for create are:
+The flags of interest for clone are:
 ```
 --cpcode: The CPCode to use for the new property.  Default is to create a new CPCode at the top level of the contract.  If you use --cpcode, note that it requires contractid.
 --contractid: The contractId to place the new property in.  Defaults to the top level group for the contract.
@@ -60,6 +61,7 @@ The flags of interest for create are:
 --name: The name for the new property
 --hostnames: Comma-delimited list of new hostnames to use for the property
 --nocopy: Do not copy the edge hostnames to the new property
+--ehname: Edge hostname for the newly created property.  If not included, the edge hostname from the cloned property will be used.
 ```
 
 ### Retrieve
@@ -114,6 +116,7 @@ Add origin or hostname to the specified property (or delete hostname)
 % updateWebSite my.property.com --origin this.is.my.origin.com
 % updateWebSite my.property.com --delhosts list.com,of.com,hosts.com
 ```
+
 
 ## Gulp
 
