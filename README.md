@@ -1,4 +1,4 @@
-# NOTE THAT THIS IS A PREVIEW ONLY OF AN UPCOMING PRODUCT.  COMMENTS, QUESTIONS, REQUESTS ARE WELCOME AS ISSUES.
+# NOTE THAT THIS IS A PREVIEW ONLY OF AN UPCOMING PRODUCT. 
 
 ----
 
@@ -11,6 +11,12 @@ with Akamai for common configuration tasks.  This kit can be used in different w
 * Just want a no-fuss tool? [Use the command line utility](#updateWebSite) to interact with the library
 * Want to integrate into your own Node.js application? [Include the library](#library) 
 * Leverage the [gulp integration](#gulp) to integrate with your Continuous Integration/Continuous Deployment toolset
+
+## Setup
+In order to use this configuration, you need to:
+* Setup your credential files with a 'papi' section as described in the [authorization](https://developer.akamai.com/introduction/Prov_Creds.html) and [credentials](https://developer.akamai.com/introduction/Conf_Client.html) sections of the getting started guide on the developer portal
+* Node 7 is required
+* Install the libraries with 'npm install'
 
 ## Functionality (version 0.0.1)
 The initial version of the ConfigKit provides the following functionality:
