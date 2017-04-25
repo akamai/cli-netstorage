@@ -612,7 +612,7 @@ class WebSite {
     }
 
     //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
-    _createHostname(groupId, contractId, configName, productId, edgeHostnameId=null, force=false) {
+    _createHostname(groupId, contractId, configName, productId, edgeHostnameId=null, force=false, secure=false) {
         if (edgeHostnameId) {
             return Promise.resolve(edgeHostnameId);
         }
@@ -639,6 +639,8 @@ class WebSite {
                     return new Promise((resolve, reject) => {
                         let ehnGroupCounts = {};
                         let ehnContractCounts = {};
+                        let ehnSecureContractCounts = {};
+                        let ehnSecureGroupCounts = {};
                         let propertyByHost = this._propertyByHost;
                         Object.keys(propertyByHost).forEach(function(key) {
                             let current = propertyByHost[key]["production"] || propertyByHost[key]["staging"]
@@ -652,10 +654,18 @@ class WebSite {
                                 }
                                 if (current.contractId == contractId) {
                                     hosts.forEach(function(host) {
-                                            if (!ehnContractCounts[host.edgeHostnameId]) {
-                                                ehnContractCounts[host.edgeHostnameId] = 1;
+                                        if (!ehnContractCounts[host.edgeHostnameId]) {
+                                               if(host.cnameTo.indexOf("edgekey") > -1) {
+                                                    ehnSecureContractCounts[host.edgeHostnameId] = 1;
+                                               } else {
+                                                   ehnContractCounts[host.edgeHostnameId] = 1;
+                                               }
                                             } else {
-                                                ehnContractCounts[host.edgeHostnameId] += 1;
+                                                if(host.cnameTo.indexOf("edgekey") > -1) {
+                                                    ehnContractCounts[host.edgeHostnameId] += 1;
+                                                } else {
+                                                    ehnSecureContractCounts[host.edgeHostnameId] += 1;
+                                                }
                                             }
                                         
                                         if (current.groupId == groupId) {
