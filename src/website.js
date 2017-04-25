@@ -179,8 +179,8 @@ class WebSite {
     _getNewProperty(propertyId, groupId, contractId) {
         return this._getPropertyList(contractId, groupId)
             .then(propList => {
-                if (!propList || !propList.properties || propList.properties.items) return;
-                v.properties.items.map(item => {
+                if (!propList || !propList.properties || !propList.properties.items) return;
+                propList.properties.items.map(item => {
                     item.propertyName = item["propertyName"].replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_');
                     if (item.propertyId == propertyId) {
                         this._propertyByName[item.propertyName] = item;
@@ -612,8 +612,10 @@ class WebSite {
     }
 
     //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
-    _createHostname(groupId, contractId, configName, productId, force=false) {
-        
+    _createHostname(groupId, contractId, configName, productId, edgeHostnameId=null, force=false) {
+        if (edgeHostnameId) {
+            return Promise.resolve(edgeHostnameId);
+        }
         return this._getEdgeHostnames(groupId, contractId)
             .then(edgeHostnames => {
                 let edgeHostnameId = "";
@@ -1686,21 +1688,23 @@ class WebSite {
             .then(data => {
                 cloneFrom = data;
                 productId = data.productId;
-                return new Promise((resolve, reject) => {
-                    if (edgeHostname) {
-                        edgeHostnameId = this._ehnByHostname[edgeHostname];
-                        resolve(edgeHostnameId);
-                    } else if (data.edgeHostnameId) {
+                if (edgeHostname) {
+                    edgeHostnameId = this._ehnByHostname[edgeHostname];
+                    return Promise.resolve(edgeHostnameId);
+                } else if (data.edgeHostnameId) {
                         edgeHostnameId = data.edgeHostnameId;
-                        resolve(edgeHostnameId);
-                    } else {
-                        return this._createHostname(groupId,
+                        return Promise.resolve(edgeHostnameId);
+                } else {
+                    return Promise.resolve();
+                }
+            })
+            .then(() => {
+                return this._createHostname(groupId,
                             contractId,
                             configName,
-                            productId);
-                    }
+                            productId,
+                            edgeHostnameId);
                 })
-            })
             .then(data => {
                 edgeHostnameId = data;
                 return this._createProperty(groupId,
@@ -1709,7 +1713,13 @@ class WebSite {
                     productId,
                     cloneFrom);
             })
-            .then(propertyId => {
+            .then(data => {
+                propertyId = data
+                return this._getNewProperty(propertyId, 
+                        groupId, 
+                        contractId)
+            })
+            .then(property => {
                     return this._assignHostnames(groupId,
                             contractId,
                             configName,
