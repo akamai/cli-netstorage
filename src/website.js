@@ -65,7 +65,6 @@ class WebSite {
         this._propertyByHost = {};
         this._initComplete = false;
         this._propertyHostnameList = {};
-        this._accountId = "";
         this._ehnByHostname = {};
         if (auth.create) {
             this._initComplete = true;
@@ -528,7 +527,7 @@ class WebSite {
                     } 
                 }
                 if (behavior.name == "cpCode") {
-                    behavior.options.value = {"id":Number(cpcode)};
+                    behavior.options.cpcode = {"id":Number(cpcode)};
                 }
                 behaviors.push(behavior);
             })
@@ -1040,8 +1039,14 @@ class WebSite {
         if (contractId && (!contractId.match("ctr_"))) {
             contractId = "ctr_" + contractId;
         }
+
         
         return new Promise((resolve, reject) => {
+            if (groupId && contractId) {
+                data.contractId = contractId;
+                data.groupId = groupId;
+                resolve(data);
+            }
             data.groups.items.map(item => {
                 let queryObj = {};
                 if (item.contractIds) {
@@ -1049,13 +1054,11 @@ class WebSite {
                         if ((contract === contractId) && (item.groupId === groupId)) {
                             data.contractId = contractId;
                             data.groupId = groupId;
-                            data.accountId = data.accountId;
                             resolve(data);
                         }
                         if (!item.parentGroupId && !contractId) {
                             data.contractId = contract;
                             data.groupId = item.groupId;
-                            data.accountId = data.accountId;
                             resolve(data);
                         }
                     })
@@ -1583,15 +1586,18 @@ class WebSite {
         configName = names[0];
         hostnames = names[1];
 
-        let accountId,
-            productId,
+        let productId,
             productName,
             propertyId;
 
         return this._getPropertyInfo(contractId, groupId)
             .then(data => {
-                contractId = data.contractId;
-                groupId = data.groupId;
+                if (!contractId) {
+                    contractId = data.contractId;
+                }
+                if (!groupId) {
+                    groupId = data.groupId;
+                }
                 return this._getMainProduct(groupId, contractId);
             })
             .then(data => {
@@ -1662,7 +1668,6 @@ class WebSite {
         hostnames = names[1];
 
         let cloneFrom,
-            accountId,
             productId,
             productName,
             propertyId,
