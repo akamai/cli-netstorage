@@ -60,7 +60,7 @@ TARGET_PROP          is the configuration name. Use either hostnames (eg: www.ex
 --delhosts HOSTNAMES Delete specified hostnames from a specified property, comma delimited.
 --origin HOSTNAME    Set the origin for the property to the specified value.
 --hostnames NAMES    hostnames for the property, comma delimited.  Will create and assign edge hostnames for TARGET_PROP.
---ehn HOSTNAME       edge hostname to use for the newly created property
+--ehn HOSTNAME       edge hostname to use for the property
 --cpcode             cpcode to use for create.  Requires contract and group
 --contract           contract ID for create or clone.  Requires group
 --group              group ID for create or clone.  Requires contract
@@ -140,7 +140,8 @@ function createProperty(property, options) {
                                         options.contract, 
                                         options.group,
                                         options.origin,
-                                        options.ehname
+                                        options.ehname,
+                                        options.cpcode
                                         )
     }
 }
