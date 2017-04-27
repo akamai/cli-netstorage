@@ -160,12 +160,13 @@ class WebSite {
                         prop.stagingHosts = hostList.hostnames.items;
                     if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
                         prop.productionHosts = hostList.hostnames.items;
+
                     hostList.hostnames.items.map(host => {
                         let hostRef = this._propertyByHost[host.cnameFrom];
                         if (!hostRef)
                             hostRef = this._propertyByHost[host.cnameFrom] = {};
                         this._ehnByHostname[host.cnameTo] = host.edgeHostnameId;
-
+                        
                         if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
                             hostRef.staging = prop;
                         if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
@@ -532,20 +533,20 @@ class WebSite {
                     behavior.options.hostname = origin;
                 }
                 if (behavior.name == "cpCode") {
-                    behavior.options.cpcode = {"id":Number(cpcode)};
+                    behavior.options.value = {"id":Number(cpcode)};
                 }
                 behaviors.push(behavior);
             })
             rules.rules.behaviors = behaviors;
 
             rules.rules.children.map(child => {
-                child.behaviors.map(behavior => {
-                    if (behavior.name == "sureRoute") {
-                        behavior.options.sr_stat_key_mode = "default";
-                        behavior.options.sr_test_object_url = "/akamai/sureroute-testobject.html"
-                    }
-                    children_behaviors.push(behavior);
-                })
+                //child.behaviors.map(behavior => {
+                //    if (behavior.name == "sureRoute") {
+                //        behavior.options.sr_stat_key_mode = "default";
+                //        behavior.options.sr_test_object_url = "/akamai/sureroute-testobject.html"
+                //    }
+                //    children_behaviors.push(behavior);
+                //})
             })
             if (secure) {
                 rules.rules.options = {"is_secure":true}
@@ -1599,7 +1600,7 @@ class WebSite {
      * @param {string} origin
      */
 
-    create(hostnames = [], cpcode = null, configName = null, contractId = null, groupId = null, newRules = null, origin = null, edgeHostname=null) {
+    create(hostnames = [], cpcode = null, configName = null, contractId = null, groupId = null, newRules = null, origin = null, edgeHostname=null, secure=false) {
         if (!configName && !hostnames) {
             return Promise.reject("Configname or hostname are required.")
         }
@@ -1613,7 +1614,8 @@ class WebSite {
 
         let productId,
             productName,
-            propertyId;
+            propertyId,
+            edgeHostnameId;
 
         return this._getPropertyInfo(contractId, groupId)
             .then(data => {
@@ -1634,9 +1636,12 @@ class WebSite {
             })
             .then(data => {
                 propertyId = data;
+                return this._getProperty(propertyId, groupId, contractId);
+            })
+            .then(data => {
                 return this._getNewProperty(propertyId, groupId, contractId);
             })
-            .then(property => {
+            .then(data => {
                 let propInfo=data.properties.items[0];
                 this._propertyByName[propInfo.propertyName] = propInfo;
                 this._propertyById[propInfo.propertyId] = propInfo;
@@ -1655,12 +1660,20 @@ class WebSite {
             })
             .then(() => {
                 if (edgeHostname) {
-                    return Promise.resolve(this._ehnByHostname[edgeHostname])
-                }
-                return this._createHostname(groupId,
+                    if(edgeHostname.indexOf("edgekey") > -1) {
+                          secure=true;
+                    }                     
+                    edgeHostnameId = this._ehnByHostname[edgeHostname];
+                    return Promise.resolve(edgeHostnameId);
+                } else if (data.edgeHostnameId) {
+                        edgeHostnameId = data.edgeHostnameId;
+                        return Promise.resolve(edgeHostnameId);
+                } else {
+                    return this._createHostname(groupId,
                     contractId,
                     configName,
                     productId);
+                }
             })
             .then(edgeHostnameId => {
                 return this._assignHostnames(groupId,
