@@ -1,0 +1,370 @@
+#!/usr/bin/env node
+
+// Copyright 2017 Akamai Technologies, Inc. All Rights Reserved
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+"use strict";
+
+/**
+ * Command line tool to interface with the WebSite library for manipulating the CDN activities on Akamai
+ *
+ * @author Colin Bendell <colinb@akamai.com>
+ */
+
+var path = require('path');
+
+let WebSite = require('../index').WebSite;
+
+let program = require('commander');
+
+function appName() {
+    return process.argv[1].replace(/.*\//, "");
+}
+let app = appName();
+
+let section = "papi";
+let targetProperty;
+
+function activateProperty(property, targetProperty, options) {
+    
+    let env = options.network.toUpperCase();
+    return Promise.resolve()
+        .then(() => {
+            return property.lookupPropertyIdFromHost(targetProperty);
+        })
+        .then(data => {
+            if (!options.ver) {
+                options.ver = data.propertyVersion;
+            }
+            if ("BOTH" === env || env.startsWith("STAG"))
+                return property.activate(   targetProperty, 
+                                            options.ver, 
+                                            WebSite.AKAMAI_ENV.STAGING,
+                                            "Updated Automatically to staging.", 
+                                            options.email);
+            return Promise.resolve(data);
+        })
+        .then(data => {
+            if ("BOTH" === env || env.startsWith("PROD"))
+                return property.activate(   targetProperty, 
+                                            options.ver, 
+                                            WebSite.AKAMAI_ENV.PRODUCTION,
+                                            "Updated Automatically to prod.", 
+                                            options.email);
+            return Promise.resolve(data);
+        });
+}
+
+function deactivateProperty(property, targetProperty, options) {
+    section = options.section || section;
+    
+    let env = options.network.toUpperCase();
+    return Promise.resolve()
+        .then(() => {
+            if ("BOTH" === env || env.startsWith("STAG"))
+               return property.deactivate(  targetProperty, 
+                                            WebSite.AKAMAI_ENV.STAGING,
+                                            "Automatically deactivating on staging.", 
+                                            options.email);
+            return Promise.resolve();
+        })
+        .then(() => {
+            if ("BOTH" === env || env.startsWith("PROD"))
+                return property.deactivate( targetProperty, 
+                                            WebSite.AKAMAI_ENV.PRODUCTION,
+                                            "Automatically deactivating on prod.", 
+                                            options.email);
+            return Promise.resolve(data);
+        });
+}
+
+
+function updateProperty(targetProperty, options) {
+    section = options.section || section;
+    let property = new WebSite({path:"~/.edgerc", section: section});
+
+    if (options.srcfile)
+        return property.updateFromFile( options.targetProperty, 
+                                        options.srcfile, 
+                                        options.origin);
+    if (options.targetProperty)
+        return property.copy(   options.copy, 
+                                options.srcVersion, 
+                                options.targetProperty, 
+                                options.origin);
+    return Promise.resolve();
+}
+
+function deleteProperty(property, targetProperty, options) {
+    return property.deleteProperty(targetProperty);
+}
+
+function createProperty(targetProperty, options) {
+    if (!options.create && !options.clone) {
+        return Promise.resolve();
+    }
+
+    let hostnames;
+    if (options.hostnames) {
+        hostnames = options.hostnames.split(',')
+    }
+
+    if (options.create) {
+        if (options.srcfile) {
+          return property.createFromFile(hostnames, 
+                                        options.srcfile,
+                                        targetProperty,
+                                        options.contract, 
+                                        options.group,
+                                        options.cpcode,
+                                        options.origin,
+                                        options.ehname);
+
+        } else {
+            return property.create(hostnames, 
+                                        options.cpcode,
+                                        targetProperty,
+                                        options.contract, 
+                                        options.group,
+                                        null,
+                                        options.origin,
+                                        options.ehname);
+        }
+    } else if (options.clone) {
+        return property.createFromExisting(options.clone, 
+                                        options.version, 
+                                        options.nocopy,
+                                        hostnames,
+                                        targetProperty, 
+                                        options.contract, 
+                                        options.group,
+                                        options.origin,
+                                        options.ehname,
+                                        options.cpcode
+                                        )
+    }
+}
+
+function retrieveProperty(property, targetProperty, options) {
+
+    if (options.file) {
+        return property.retrieveToFile( targetProperty, 
+                                        options.file, 
+                                        options.version);
+    } else {
+        return property.retrieve(targetProperty, 
+                                options.version,
+                                '-')
+        .then(data => {
+            console.log(JSON.stringify(data,'',2));
+            return Promise.resolve();
+        })
+    }
+}
+
+function modifyProperty(property, targetProperty, options) {
+    if (options.addhosts) {
+            return property.addHostnames(targetProperty, options.addhosts.split(','));
+    } else if (options.delhosts) {
+            return property.delHostnames(targetProperty, options.delhosts.split(','))
+    } else if (options.origin) {
+        console.log("TEST");
+            return property.setOrigin(targetProperty, options.origin);
+    } else {
+            return Promise.resolve()
+    }
+}
+
+function main()
+{
+    let options, command;
+
+        
+     program
+        .command('activate <property>')
+        .option('--network <network>', "Network to activate, PROD/STAG/BOTH")
+        .option("--ver <version>", "Property version, latest/staging/prod or number")
+        .option("--section <section>","Section of the credentials file")
+        .option("--email <email>","Email to use for confirmation")
+        .action(function(target, opts) {
+            targetProperty = target;
+            options = opts;
+            command = "activate";
+            if (!options.network) {
+                console.log("Must provide a network PROD/STAGING/BOTH")
+                program.help()
+            }
+
+            console.log('Activating %s on %s', targetProperty, options.network)
+
+            let env = options.network.toUpperCase();
+            if ("BOTH" != env && 
+                !env.startsWith("STAG") && 
+                !env.startsWith("PROD"))
+            program.help("activate <property> --network (STAGING, PRODUCTION, BOTH)"); 
+
+        })
+
+       program
+        .command('create <property>')
+        .option("--source <property>", "Source property to clone from")
+        .option("--version <version>", "Version for source property stag/prod/latest/<number> (default is latest)")
+        .option("--file <file>", "Source file for new property rules")
+        .option("--hostnames <hostnames>", "Comma delimited list of hostnames for property")
+        .option("--origin <origin>", "Origin for new property")
+        .option("--edgehostname <ehn>", "Edge hostname")
+        .option("--cpcode <cpcode>", "CPCode, requires contract and group")
+        .option("--contract <contract>", "Contract for the new property")
+        .option("--group <group>", "Group to place property in")
+        .option("--section <section>","Section of the credentials file")
+        .option("--nocopy", "Do not copy source property's hostnames")
+        .action(function(target, opts) {
+            targetProperty = target;
+            options = opts;
+            command = "create";
+            
+            if (!targetProperty)
+                program.help();
+
+            console.log('Creating new property %s', targetProperty);
+
+            if ((options.group || options.contract) && (!(options.group && options.contract))) 
+                program.help("Need both contract and group")
+
+            if ((options.cpcode) && (!(options.group && options.contract))) 
+                program.help("CPCode requires both contract and group")
+        })
+
+    program
+        .command('deactivate <property>')
+        .option('--network <network>', "Network to activate, PROD/STAG/BOTH")
+        .option("--section <section>","Section of the credentials file")
+        .option("--email <email>","Email to use for confirmation")
+        .action(function(target, opts) {
+            targetProperty = target;
+            options = opts;
+            command = "deactivate";
+
+            if (!options.network) {
+                console.log("Must provide a network PROD/STAGING/BOTH")
+                program.help()
+            }
+           console.log('Deactivating %s on %s', targetProperty, options.network)
+            let env = options.network.toUpperCase();
+            if ("BOTH" != env && 
+                !env.startsWith("STAG") && 
+                !env.startsWith("PROD"))
+            program.help("deactivate <property> --network (STAGING, PRODUCTION, BOTH)");
+        })
+
+    program
+        .command('delete <property>')
+        .option("--section <section>","Section of the credentials file")
+        .action(function(target, opts) {
+            targetProperty = target;
+            options = opts;
+            command = "delete";
+            
+            console.log('Deleting %s', targetProperty)
+            
+        })
+
+    program
+        .command('retrieve <property>')
+        .option("--file <file>", "Output file (default is STDOUT)")
+        .option("--version <version>", "Property version, latest/staging/prod or number")
+        .option("--section <section>","Section of the credentials file")
+        .action(function(target, opts) {
+            targetProperty = target;
+            options = opts;
+            command="retrieve";
+            
+            console.log('Retrieving %s', targetProperty)
+        })
+    program
+        .command('update <property>')
+        .option("--copy <property>", "Source property to copy rules from")
+        .option("--sourceversion <version>", "Version for source property stag/prod/latest/<number>  (default is latest)")
+        .option("--file <file>", "Source file for property rules")
+        .option("--section <section>","Section of the credentials file")
+        .action(function(target, opts) {
+            targetProperty = target;
+            options = opts;
+            command = "update";
+
+            console.log('Updating property %s', targetProperty);
+        })
+
+    program
+        .command('modify <property>')
+        .option("--version <version>", "Version to modify stag/prod/latest/<number> (default is latest)")
+        .option("--section <section>","Section of the credentials file")
+        .option("--addhosts <hostnames>", "Comma delimited list of hostnames to add")
+        .option("--delhosts <hostnames>", "Comma delimited list of hostnames to delete")
+        .option("--origin <origin>", "Origin ")
+        .option("--edgehostname <ehn>", "TODO: Edge hostname")
+        .action(function(target, opts) {
+            targetProperty = target;
+            options = opts;
+            command = "modify";
+ 
+            console.log('Modifying property %s', targetProperty);
+        })
+
+    program.parse(process.argv)
+
+    if (!targetProperty) {
+        program.help();
+    }
+
+    section = options.section || section;
+    let property = new WebSite({path:"~/.edgerc", section: section});
+
+    
+    console.time(app);
+ 
+
+        Promise.resolve()
+            .then(() => {
+                switch(command) {
+                    case "activate":
+                        return activateProperty(property, targetProperty, options)
+                        break;
+                    case "create":
+                        return createProperty(property, targetProperty, options)
+                        break;
+                    case "deactivate":
+                        return deactivateProperty(property, targetProperty, options)
+                        break;
+                    case "delete":
+                        return deleteProperty(property, targetProperty, options)
+                        break;
+                    case "modify":
+                        return modifyProperty(property, targetProperty, options)
+                        break;
+                    case "retrieve":
+                        return retrieveProperty(property, targetProperty, options)
+                        break;
+                    case "update":
+                        return updateProperty(property, targetProperty, options)
+                        break;
+                }
+            })
+            .catch((error) => {
+                console.error("ERROR: ", error.body || JSON.stringify(error));
+                if (error.stack) console.log(error.stack);
+            });
+    }
+
+main();

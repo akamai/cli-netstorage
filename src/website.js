@@ -297,7 +297,7 @@ class WebSite {
 
                         let request = {
                             method: 'GET',
-                            path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames?contractId=${contractId}&groupId=${groupId}`,
+                            path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames/?contractId=${contractId}&groupId=${groupId}`,
                             followRedirect: false
                         };
                         this._edge.auth(request);
@@ -533,20 +533,26 @@ class WebSite {
                     behavior.options.hostname = origin;
                 }
                 if (behavior.name == "cpCode") {
-                    behavior.options.value = {"id":Number(cpcode)};
+                    if (behavior.options.value) {
+                        behavior.options.value = {"id":Number(cpcode)};
+                    } else {
+                        behavior.options.cpcode = {"id":Number(cpcode)};
+                    }
                 }
                 behaviors.push(behavior);
             })
             rules.rules.behaviors = behaviors;
 
             rules.rules.children.map(child => {
-                //child.behaviors.map(behavior => {
-                //    if (behavior.name == "sureRoute") {
-                //        behavior.options.sr_stat_key_mode = "default";
-                //        behavior.options.sr_test_object_url = "/akamai/sureroute-testobject.html"
-                //    }
-                //    children_behaviors.push(behavior);
-                //})
+                child.behaviors.map(behavior => {
+                    if (behavior.name == "sureRoute") {
+                        if (!behavior.options.sr_stat_key_mode) {
+                            behavior.options.sr_stat_key_mode = "default";
+                            behavior.options.sr_test_object_url = "/akamai/sureroute-testobject.html"
+                        }
+                    }
+                    children_behaviors.push(behavior);
+                })
             })
             if (secure) {
                 rules.rules.options = {"is_secure":true}
@@ -1009,7 +1015,7 @@ class WebSite {
 
                 let request = {
                     method: 'PUT',
-                    path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames?contractId=${contractId}&groupId=${groupId}`,
+                    path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames/?contractId=${contractId}&groupId=${groupId}`,
                     body: newHostnameArray
                 }
 
@@ -1402,6 +1408,8 @@ class WebSite {
      */
     activate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes = '', email = ['test@example.com'], wait = true) {
         //todo: change the version lookup
+
+        console.log(version);
         let emailNotification = email;
         if (!Array.isArray(emailNotification))
             emailNotification = [email];
@@ -1625,10 +1633,12 @@ class WebSite {
                 if (!groupId) {
                     groupId = data.groupId;
                 }
+                console.log(groupId)
                 return this._getMainProduct(groupId, contractId);
             })
             .then(data => {
                 productId = data.productId;
+                console.log(groupId)
                 return this._createProperty(groupId,
                     contractId,
                     configName,
@@ -1658,7 +1668,7 @@ class WebSite {
                     1,
                     rules);
             })
-            .then(() => {
+            .then(data => {
                 if (edgeHostname) {
                     if(edgeHostname.indexOf("edgekey") > -1) {
                           secure=true;
