@@ -90,18 +90,17 @@ function deactivateProperty(property, targetProperty, options) {
 }
 
 
-function updateProperty(targetProperty, options) {
+function updateProperty(property, targetProperty, options) {
     section = options.section || section;
-    let property = new WebSite({path:"~/.edgerc", section: section});
-
-    if (options.srcfile)
-        return property.updateFromFile( options.targetProperty, 
-                                        options.srcfile, 
+ 
+    if (options.file)
+        return property.updateFromFile( targetProperty, 
+                                        options.file, 
                                         options.origin);
-    if (options.targetProperty)
-        return property.copy(   options.copy, 
-                                options.srcVersion, 
-                                options.targetProperty, 
+    if (options.srcprop)
+        return property.copy(   options.srcprop, 
+                                options.srcver, 
+                                targetProperty, 
                                 options.origin);
     return Promise.resolve();
 }
@@ -158,10 +157,10 @@ function retrieveProperty(property, targetProperty, options) {
     if (options.file) {
         return property.retrieveToFile( targetProperty, 
                                         options.file, 
-                                        options.propversion);
+                                        options.propver);
     } else {
         return property.retrieve(targetProperty, 
-                                options.propversion,
+                                options.propver,
                                 '-')
         .then(data => {
             console.log(JSON.stringify(data,'',2));
@@ -172,16 +171,38 @@ function retrieveProperty(property, targetProperty, options) {
 
 function modifyProperty(property, targetProperty, options) {
     if (options.addhosts) {
-            return property.addHostnames(targetProperty, options.addhosts.split(','));
+            return property.addHostnames(targetProperty, options.addhosts.split(','), options.edgehostname);
     } else if (options.delhosts) {
-            return property.delHostnames(targetProperty, options.delhosts.split(','))
+            return property.delHostnames(targetProperty, options.delhosts.split(','), options.edgehostname)
     } else if (options.origin) {
-        console.log("TEST");
             return property.setOrigin(targetProperty, options.origin);
+    } else if (options.edgehostname) {
+        return property.assignEdgeHostname(targetProperty, options.edgehostname);
     } else {
             return Promise.resolve()
     }
 }
+
+function numberVersion(version) {
+    return new Promise ((resolve, reject) => {
+        let versionstring = version.toString();
+        let returnstring;
+
+        if (versionstring.match(/^stag/i)) {
+            returnstring = -2;
+            resolve(returnstring)
+        } else if (versionstring.match(/^prod/i)) {
+            returnstring = -1;
+            resolve(returnstring)
+        } else if (versionstring.match(/^late/i)) {
+            returnstring = 0;
+            resolve(returnstring)
+        } else {
+            Promise.reject("Unable to parse version string")
+        }
+    })
+}
+
 
 function main()
 {
@@ -216,7 +237,7 @@ function main()
        program
         .command('create <property>')
         .option("--clone <property>", "Source property to clone from")
-        .option("--sourceversion <version>", "Version for source property stag/prod/latest/<number> (default is latest)")
+        .option("--srcver <version>", "Version for source property stag/prod/latest/<number> (default is latest)")
         .option("--file <file>", "Source file for new property rules")
         .option("--hostnames <hostnames>", "Comma delimited list of hostnames for property")
         .option("--origin <origin>", "Origin for new property")
@@ -280,7 +301,7 @@ function main()
     program
         .command('retrieve <property>')
         .option("--file <file>", "Output file (default is STDOUT)")
-        .option("--propversion <version>", "Property version, latest/staging/prod or number")
+        .option("--propver <version>", "Property version, latest/staging/prod or number")
         .option("--section <section>","Section of the credentials file")
         .action(function(target, opts) {
             targetProperty = target;
@@ -291,8 +312,8 @@ function main()
         })
     program
         .command('update <property>')
-        .option("--copy <property>", "Source property to copy rules from")
-        .option("--sourceversion <version>", "Version for source property stag/prod/latest/<number>  (default is latest)")
+        .option("--srcprop <property>", "Source property to copy rules from")
+        .option("--srcver <version>", "Version for source property stag/prod/latest/<number>  (default is latest)")
         .option("--file <file>", "Source file for property rules")
         .option("--section <section>","Section of the credentials file")
         .action(function(target, opts) {
@@ -305,10 +326,10 @@ function main()
 
     program
         .command('modify <property>')
-        .option("--version <version>", "Version to modify stag/prod/latest/<number> (default is latest)")
         .option("--section <section>","Section of the credentials file")
         .option("--addhosts <hostnames>", "Comma delimited list of hostnames to add")
         .option("--delhosts <hostnames>", "Comma delimited list of hostnames to delete")
+        .option("--edgehostname <edgehostname>", "Edge hostname to switch the property to")
         .option("--origin <origin>", "Origin ")
         .option("--edgehostname <ehn>", "TODO: Edge hostname")
         .action(function(target, opts) {
@@ -325,13 +346,18 @@ function main()
         program.help();
     }
 
+
     section = options.section || section;
     let property = new WebSite({path:"~/.edgerc", section: section});
-
-    
+  
     console.time(app);
- 
 
+    if (options.propver) {
+        options.propver = numberVersion(options.propver)
+    }
+    if (options.srcver) {
+        options.srcver = numberVersion(options.srcver)
+    }
         Promise.resolve()
             .then(() => {
                 switch(command) {
