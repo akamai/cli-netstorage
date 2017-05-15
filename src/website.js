@@ -237,6 +237,8 @@ class WebSite {
                     this._edge.send(function (data, response) {
                         if (response.statusCode >= 200 && response.statusCode < 400) {
                             let parsed = JSON.parse(response.body);
+                            console.log(response.body)
+                            console.log("IS ONE")
                             cloneFrom.cloneFromVersionEtag = parsed.versions.items[0]["etag"];
                             cloneFrom.productId = parsed.versions.items[0]["productId"];
                             resolve(cloneFrom);
@@ -244,8 +246,36 @@ class WebSite {
                             reject(response);
                         }
                     });
-                });
-            });
+                })
+            })
+            .then(cloneFrom => {
+                console.info('... retrieving clone rules for cpcode')
+                return new Promise ((resolve, reject) => {
+                    let request = {
+                            method: 'GET',
+                            path: `/papi/v0/properties/${cloneFrom.propertyId}/versions/${cloneFrom.version}/rules?contractId=${contractId}&groupId=${groupId}`,
+                            followRedirect: false
+                        };
+                        this._edge.auth(request);
+
+                        this._edge.send(function (data, response) {
+                            if (response.statusCode >= 200 && response.statusCode < 400) {
+                                let parsed = JSON.parse(response.body);
+                                cloneFrom.rules = parsed;
+                                resolve(cloneFrom);
+                            } else {
+                                reject(response);
+                            }
+                        });
+                    })
+            }).then(cloneFrom => {
+                cloneFrom.rules.rules.behaviors.map(behavior => {
+                    if (behavior.name == "cpCode") {
+                        cloneFrom.cpcode = behavior.options.value.id
+                    } 
+                })
+                return Promise.resolve(cloneFrom);
+            })
     };
 
     _getGroupList() {
@@ -297,7 +327,7 @@ class WebSite {
 
                         let request = {
                             method: 'GET',
-                            path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames?contractId=${contractId}&groupId=${groupId}`,
+                            path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames/?contractId=${contractId}&groupId=${groupId}`,
                             followRedirect: false
                         };
                         this._edge.auth(request);
@@ -533,7 +563,11 @@ class WebSite {
                     behavior.options.hostname = origin;
                 }
                 if (behavior.name == "cpCode") {
-                    behavior.options.cpcode = {"id":Number(cpcode)};
+                    if (behavior.options.value) {
+                        behavior.options.value = {"id":Number(cpcode)};
+                    } else {
+                        behavior.options.cpcode = {"id":Number(cpcode)};
+                    }
                 }
                 behaviors.push(behavior);
             })
@@ -542,8 +576,10 @@ class WebSite {
             rules.rules.children.map(child => {
                 child.behaviors.map(behavior => {
                     if (behavior.name == "sureRoute") {
-                        behavior.options.sr_stat_key_mode = "default";
-                        behavior.options.sr_test_object_url = "/akamai/sureroute-testobject.html"
+                        if (!behavior.options.sr_stat_key_mode) {
+                            behavior.options.sr_stat_key_mode = "default";
+                            behavior.options.sr_test_object_url = "/akamai/sureroute-testobject.html"
+                        }
                     }
                     children_behaviors.push(behavior);
                 })
@@ -1009,7 +1045,7 @@ class WebSite {
 
                 let request = {
                     method: 'PUT',
-                    path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames?contractId=${contractId}&groupId=${groupId}`,
+                    path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames/?contractId=${contractId}&groupId=${groupId}`,
                     body: newHostnameArray
                 }
 
@@ -1402,6 +1438,8 @@ class WebSite {
      */
     activate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes = '', email = ['test@example.com'], wait = true) {
         //todo: change the version lookup
+
+        console.log(version);
         let emailNotification = email;
         if (!Array.isArray(emailNotification))
             emailNotification = [email];
@@ -1625,10 +1663,12 @@ class WebSite {
                 if (!groupId) {
                     groupId = data.groupId;
                 }
+                console.log(groupId)
                 return this._getMainProduct(groupId, contractId);
             })
             .then(data => {
                 productId = data.productId;
+                console.log(groupId)
                 return this._createProperty(groupId,
                     contractId,
                     configName,
@@ -1658,7 +1698,7 @@ class WebSite {
                     1,
                     rules);
             })
-            .then(() => {
+            .then(data => {
                 if (edgeHostname) {
                     if(edgeHostname.indexOf("edgekey") > -1) {
                           secure=true;
@@ -1737,6 +1777,9 @@ class WebSite {
             .then(data => {
                 cloneFrom = data;
                 productId = data.productId;
+                if (!cpcode) {
+                    cpcode = data.cpcode;
+                }
                 if (!groupId) {
                     groupId = data.groupId;
                     contractId = data.contractId;
