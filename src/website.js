@@ -237,6 +237,8 @@ class WebSite {
                     this._edge.send(function (data, response) {
                         if (response.statusCode >= 200 && response.statusCode < 400) {
                             let parsed = JSON.parse(response.body);
+                            console.log(response.body)
+                            console.log("IS ONE")
                             cloneFrom.cloneFromVersionEtag = parsed.versions.items[0]["etag"];
                             cloneFrom.productId = parsed.versions.items[0]["productId"];
                             resolve(cloneFrom);
@@ -244,8 +246,36 @@ class WebSite {
                             reject(response);
                         }
                     });
-                });
-            });
+                })
+            })
+            .then(cloneFrom => {
+                console.info('... retrieving clone rules for cpcode')
+                return new Promise ((resolve, reject) => {
+                    let request = {
+                            method: 'GET',
+                            path: `/papi/v0/properties/${cloneFrom.propertyId}/versions/${cloneFrom.version}/rules?contractId=${contractId}&groupId=${groupId}`,
+                            followRedirect: false
+                        };
+                        this._edge.auth(request);
+
+                        this._edge.send(function (data, response) {
+                            if (response.statusCode >= 200 && response.statusCode < 400) {
+                                let parsed = JSON.parse(response.body);
+                                cloneFrom.rules = parsed;
+                                resolve(cloneFrom);
+                            } else {
+                                reject(response);
+                            }
+                        });
+                    })
+            }).then(cloneFrom => {
+                cloneFrom.rules.rules.behaviors.map(behavior => {
+                    if (behavior.name == "cpCode") {
+                        cloneFrom.cpcode = behavior.options.value.id
+                    } 
+                })
+                return Promise.resolve(cloneFrom);
+            })
     };
 
     _getGroupList() {
@@ -1747,6 +1777,9 @@ class WebSite {
             .then(data => {
                 cloneFrom = data;
                 productId = data.productId;
+                if (!cpcode) {
+                    cpcode = data.cpcode;
+                }
                 if (!groupId) {
                     groupId = data.groupId;
                     contractId = data.contractId;

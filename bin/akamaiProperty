@@ -110,17 +110,14 @@ function deleteProperty(property, targetProperty, options) {
     return property.deleteProperty(targetProperty);
 }
 
-function createProperty(targetProperty, options) {
-    if (!options.create && !options.clone) {
-        return Promise.resolve();
-    }
+function createProperty(property, targetProperty, options) {
 
     let hostnames;
     if (options.hostnames) {
         hostnames = options.hostnames.split(',')
     }
 
-    if (options.create) {
+    if (!options.clone) {
         if (options.srcfile) {
           return property.createFromFile(hostnames, 
                                         options.srcfile,
@@ -141,9 +138,9 @@ function createProperty(targetProperty, options) {
                                         options.origin,
                                         options.ehname);
         }
-    } else if (options.clone) {
+    } else {
         return property.createFromExisting(options.clone, 
-                                        options.version, 
+                                        options.sourceversion, 
                                         options.nocopy,
                                         hostnames,
                                         targetProperty, 
@@ -161,10 +158,10 @@ function retrieveProperty(property, targetProperty, options) {
     if (options.file) {
         return property.retrieveToFile( targetProperty, 
                                         options.file, 
-                                        options.version);
+                                        options.propversion);
     } else {
         return property.retrieve(targetProperty, 
-                                options.version,
+                                options.propversion,
                                 '-')
         .then(data => {
             console.log(JSON.stringify(data,'',2));
@@ -194,7 +191,7 @@ function main()
      program
         .command('activate <property>')
         .option('--network <network>', "Network to activate, PROD/STAG/BOTH")
-        .option("--ver <version>", "Property version, latest/staging/prod or number")
+        .option("--propver <version>", "Property version, latest/staging/prod or number")
         .option("--section <section>","Section of the credentials file")
         .option("--email <email>","Email to use for confirmation")
         .action(function(target, opts) {
@@ -218,8 +215,8 @@ function main()
 
        program
         .command('create <property>')
-        .option("--source <property>", "Source property to clone from")
-        .option("--version <version>", "Version for source property stag/prod/latest/<number> (default is latest)")
+        .option("--clone <property>", "Source property to clone from")
+        .option("--sourceversion <version>", "Version for source property stag/prod/latest/<number> (default is latest)")
         .option("--file <file>", "Source file for new property rules")
         .option("--hostnames <hostnames>", "Comma delimited list of hostnames for property")
         .option("--origin <origin>", "Origin for new property")
@@ -283,7 +280,7 @@ function main()
     program
         .command('retrieve <property>')
         .option("--file <file>", "Output file (default is STDOUT)")
-        .option("--version <version>", "Property version, latest/staging/prod or number")
+        .option("--propversion <version>", "Property version, latest/staging/prod or number")
         .option("--section <section>","Section of the credentials file")
         .action(function(target, opts) {
             targetProperty = target;
