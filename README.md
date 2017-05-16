@@ -53,77 +53,69 @@ The flags of interest for create are:
     --nocopy                 Do not copy source property's hostnames
 
 ```
-
-### Clone
-Cloning a configuration to a new property is also simple, with command line flags to adjust behavior. 
-
-```bash
-% updateWebSite new.property.name --clone original.property.name
-```
-
-The flags of interest for clone are:
-```
---cpcode: The CPCode to use for the new property.  Default is to create a new CPCode at the top level of the contract.  If you use --cpcode, note that it requires contractid.
---contractid: The contractId to place the new property in.  Defaults to the top level group for the contract.
---groupid: If given, this group will be used for the property.  Requires contractID.
---name: The name for the new property
---hostnames: Comma-delimited list of new hostnames to use for the property
---nocopy: Do not copy the edge hostnames to the new property
---ehname: Edge hostname for the newly created property.  If not included, the edge hostname from the cloned property will be used.
-```
-
 ### Retrieve
 This function retrieves the specified ruleset, either to STDOUT or the --outfile flag
 
 ```bash
-% updateWebSite new.property.name --retrieve
+% akamaiProperty retrieve new.property.name
 ```
 
-The flags of interest for create are:
+The flags of interest for retrieve are:
 ```
---version VERSION - specifies the version to retrieve for the specified property
---outfile FILE - stores the results to a file.  Default is to use STDOUT
+   -h, --help           output usage information
+    --file <file>        Output file (default is STDOUT)
+    --propver <version>  Property version, latest/staging/prod or number
+    --section <section>  Section of the credentials file
+
 ```
 
 ### Update
 Update the current property version with the rules from a local file.
 
 ```bash
-% updateWebSite new.property.name --update --srcfile myfile
+% akamaiProperty update my.property.com --srcprop this.other.property.com
 ```
 
 The flags of interest for update are:
 ```
---srcfile <FILE_WITH_RULES>
-```
-
-### Copy
-Copy the configuration from one property to another.  For instance, you may use this if you have a staging property and a production property and want to migrate the new config between them.  Currently this does not handle advanced metadata.  Note that this is *not* to create a new property.  It is to copy configs between existing properties.  Use clone and copy to create new properties.
-
-```bash
-% updateWebSite dest.property.name --copy source.property.name
+    -h, --help            output usage information
+    --srcprop <property>  Source property to copy rules from
+    --srcver <version>    Version for source property stag/prod/latest/<number>  (default is latest)
+    --file <file>         Source file for property rules
+    --section <section>   Section of the credentials file
 ```
 
 ### Activate
 Activate the specified property version on staging, production or both.
 
 ```bash
-% updateWebSite my.property.com --activate BOTH
+% akamaiProperty activate my.property.com --network BOTH
 ```
 Possible options are:
 ```bash
-STAGING: activates to the staging environment on Akamai
-PROD: activates to the production environment
-BOTH: simultaneously activate to both the environments
+    -h, --help           output usage information
+    --network <network>  Network to activate, PROD/STAG/BOTH
+    --propver <version>  Property version, latest/staging/prod or number
+    --section <section>  Section of the credentials file
+    --email <email>      Email to use for confirmation
 ```
 
-### Add
+### Modify
 Add origin or hostname to the specified property (or delete hostname)
 
 ```bash
-% updateWebSite my.property.com --addhosts list.com,of.com,hosts.com
-% updateWebSite my.property.com --origin this.is.my.origin.com
-% updateWebSite my.property.com --delhosts list.com,of.com,hosts.com
+% akamaiProperty modify my.property.com --origin new.origin.hostname
+```
+
+Possible options are:
+```bash
+    -h, --help                     output usage information
+    --section <section>            Section of the credentials file
+    --addhosts <hostnames>         Comma delimited list of hostnames to add
+    --delhosts <hostnames>         Comma delimited list of hostnames to delete
+    --edgehostname <edgehostname>  Edge hostname to switch the property to
+    --origin <origin>              Origin 
+    --edgehostname <ehn>           TODO: Edge hostname
 ```
 
 ## Gulp
