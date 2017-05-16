@@ -1,4 +1,4 @@
-# AkamaiConfigKit
+# AkamaiConfigKit - PREVIEW
 
 
 ## Overview
@@ -18,7 +18,7 @@ The initial version of the ConfigKit provides the following functionality:
 * Delete a property
 * Activate and deactivate property versions to production, staging or both
 
-## updateWebSite
+## akamaiProperty
 This script wraps all of the functionality from the [library](#library) into a command line utility which can be used to support the following use cases.  All of the functions accept a property ID, the config name or a hostname from the property.
 * [Create property](#create)
 * [Clone property](#clone)
@@ -32,18 +32,26 @@ This script wraps all of the functionality from the [library](#library) into a c
 Creating a new property requires only a single parameter, the target property.  
 
 ```bash
-% updateWebSite new.property.name --create 
+%  akamaiProperty create dev7.mydomain.com << New property from scratch
+%  akamaiProperty create dev7 --clone template1 --hostnames test.hostname.com << clone from another property
 ```
 
 The flags of interest for create are:
 
 ```
-  --cpcode: The CPCode to use for the new property.  Default is to create a new CPCode.  The cpcode flag requires the contractid as well.
-  --contract: The contractId to place the new property in.  Defaults to the parent group for the account.
-  --group: The groupId to place the new propert in. 
-  --name: The name for the new property
-  --hostnames: Comma-delimited list of new hostnames to use for the property
-  --ehname: The edge hostname to use for the newly created property.  If not included an edge hostname from the same group/contract will be used.
+      -h, --help               output usage information
+    --clone <property>       Source property to clone from
+    --srcver <version>       Version for source property stag/prod/latest/<number> (default is latest)
+    --file <file>            Source file for new property rules
+    --hostnames <hostnames>  Comma delimited list of hostnames for property
+    --origin <origin>        Origin for new property
+    --edgehostname <ehn>     Edge hostname
+    --cpcode <cpcode>        CPCode, requires contract and group
+    --contract <contract>    Contract for the new property
+    --group <group>          Group to place property in
+    --section <section>      Section of the credentials file
+    --nocopy                 Do not copy source property's hostnames
+
 ```
 
 ### Clone
