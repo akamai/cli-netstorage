@@ -1815,7 +1815,6 @@ class WebSite {
                           secure=true;
                     }                     
                     edgeHostnameId = this._ehnByHostname[edgeHostname];
-                    console.log(edgeHostnameId + " - one")
                     return Promise.resolve(edgeHostnameId);
                 } else if (data.edgeHostnameId) {
                         edgeHostnameId = data.edgeHostnameId;
@@ -1825,7 +1824,6 @@ class WebSite {
                 }
             })
             .then(() => {
-                console.log(edgeHostnameId +  " - two")
                     
                 return this._createHostname(groupId,
                             contractId,
