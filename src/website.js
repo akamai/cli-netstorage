@@ -156,6 +156,8 @@ class WebSite {
                         this._propertyHostnameList[hostList.propertyId][version] = hostList;
                     }
 
+                    if (prop.latestVersion && prop.latestVersion === hostList.propertyVersion)
+                        prop.latestHosts = hostList.hostnames.items;
                     if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
                         prop.stagingHosts = hostList.hostnames.items;
                     if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
@@ -212,10 +214,20 @@ class WebSite {
             .then(cloneFromProperty => {
                 contractId = cloneFromProperty.contractId;
                 groupId = cloneFromProperty.groupId;
+                        
                 let productionHosts = cloneFromProperty.productionHosts;
-                if (productionHosts) {
-                    edgeHostnameId = productionHosts[0]["edgeHostnameId"];
+                let stagingHosts = cloneFromProperty.stagingHosts;
+                let latestHosts = cloneFromProperty.latestHosts;
+
+                let hosts = productionHosts || stagingHosts || latestHosts;
+
+                if (hosts) {
+                    edgeHostnameId = hosts[0]["edgeHostnameId"];
+                    if (!edgeHostnameId) {
+                        edgeHostnameId = hosts[0]["cnameTo"];
+                    }
                 }
+
                 cloneFrom = {propertyId: cloneFromProperty.propertyId,
                              groupId: groupId,
                              contractId: contractId,

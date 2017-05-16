@@ -260,7 +260,7 @@ function main()
             if ((options.group || options.contract) && (!(options.group && options.contract))) 
                 program.help("Need both contract and group")
 
-            if ((options.cpcode) && (!(options.group && options.contract))) 
+            if ((options.cpcode) && (!(options.group && options.contract)) && !options.clone) 
                 program.help("CPCode requires both contract and group")
         })
 
