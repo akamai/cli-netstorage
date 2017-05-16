@@ -237,8 +237,6 @@ class WebSite {
                     this._edge.send(function (data, response) {
                         if (response.statusCode >= 200 && response.statusCode < 400) {
                             let parsed = JSON.parse(response.body);
-                            console.log(response.body)
-                            console.log("IS ONE")
                             cloneFrom.cloneFromVersionEtag = parsed.versions.items[0]["etag"];
                             cloneFrom.productId = parsed.versions.items[0]["productId"];
                             resolve(cloneFrom);
@@ -576,7 +574,7 @@ class WebSite {
             rules.rules.children.map(child => {
                 child.behaviors.map(behavior => {
                     if (behavior.name == "sureRoute") {
-                        if (!behavior.options.sr_stat_key_mode) {
+                        if (!behavior.options.sr_stat_key_mode && !behavior.options.testObjectUrl) {
                             behavior.options.sr_stat_key_mode = "default";
                             behavior.options.sr_test_object_url = "/akamai/sureroute-testobject.html"
                         }
@@ -958,7 +956,6 @@ class WebSite {
                         return this._pollActivation(propertyLookup, activationID);
                     });
                 } else {
-                    console.timeEnd('Activation Time');
                     return active ? Promise.resolve(true) : Promise.reject(data);
                 }
 
@@ -1439,7 +1436,6 @@ class WebSite {
     activate(propertyLookup, version = LATEST_VERSION.LATEST, networkEnv = AKAMAI_ENV.STAGING, notes = '', email = ['test@example.com'], wait = true) {
         //todo: change the version lookup
 
-        console.log(version);
         let emailNotification = email;
         if (!Array.isArray(emailNotification))
             emailNotification = [email];
@@ -1502,6 +1498,36 @@ class WebSite {
             })
     }
 
+    assignEdgeHostname(propertyLookup, edgeHostname) {
+        const version = WebSite._getLatestVersion(propertyLookup);
+        let contractId, 
+            groupId, 
+            productId, 
+            propertyId,
+            configName;
+
+        return this._getProperty(propertyLookup)
+            .then(data => {
+                contractId = data.contractId;
+                groupId = data.groupId;
+                configName = data.propertyName;
+                propertyId = data.propertyId;
+                return this._getHostnameList(configName, version)
+            })
+            .then(hostnamelist => {
+                hostlist = hostnamelist.hostnames.items;
+                return this._assignHostnames(groupId,
+                            contractId,
+                            configName,
+                            null,
+                            propertyId,
+                            null,
+                            true);
+            }).then(data => {
+                return Promise.resolve();
+            })
+    }
+
     /**
      * Deletes the specified property from the contract
      *
@@ -1516,6 +1542,7 @@ class WebSite {
                 return this._deleteConfig(property)
             })
     }
+
 
     delHostnames(propertyLookup, hostnames) {
         const version = WebSite._getLatestVersion(propertyLookup);
@@ -1600,8 +1627,8 @@ class WebSite {
     }
 
     setOrigin(propertyLookup, origin) {
-          const version = WebSite._getLatestVersion(propertyLookup);
-                
+        let version = WebSite._getLatestVersion(propertyLookup);
+           
           return this._getPropertyRules(propertyLookup, version)
             .then(data => {
                 let behaviors = [];
@@ -1663,12 +1690,10 @@ class WebSite {
                 if (!groupId) {
                     groupId = data.groupId;
                 }
-                console.log(groupId)
                 return this._getMainProduct(groupId, contractId);
             })
             .then(data => {
                 productId = data.productId;
-                console.log(groupId)
                 return this._createProperty(groupId,
                     contractId,
                     configName,
@@ -1799,6 +1824,7 @@ class WebSite {
                 }
             })
             .then(() => {
+                    
                 return this._createHostname(groupId,
                             contractId,
                             configName,

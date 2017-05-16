@@ -117,6 +117,7 @@ Possible options are:
 STAGING: activates to the staging environment on Akamai
 PROD: activates to the production environment
 BOTH: simultaneously activate to both the environments
+```
 
 ### Add
 Add origin or hostname to the specified property (or delete hostname)
@@ -126,7 +127,6 @@ Add origin or hostname to the specified property (or delete hostname)
 % updateWebSite my.property.com --origin this.is.my.origin.com
 % updateWebSite my.property.com --delhosts list.com,of.com,hosts.com
 ```
-
 
 ## Gulp
 
