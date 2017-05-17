@@ -208,6 +208,13 @@ function main()
 {
     let options, command;
 
+     program
+         .command("help [command]")
+         .action(function(command) {
+             process.argv.splice(2, 1)
+             process.argv.push("--help")
+             program.parse(process.argv)
+         })
         
      program
         .command('activate <property>')
