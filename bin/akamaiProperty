@@ -135,7 +135,7 @@ function createProperty(property, targetProperty, options) {
                                         options.group,
                                         null,
                                         options.origin,
-                                        options.ehname);
+                                        options.ehname)
         }
     } else {
         return property.createFromExisting(options.clone, 
@@ -174,8 +174,8 @@ function modifyProperty(property, targetProperty, options) {
             return property.addHostnames(targetProperty, options.addhosts.split(','), options.edgehostname);
     } else if (options.delhosts) {
             return property.delHostnames(targetProperty, options.delhosts.split(','), options.edgehostname)
-    } else if (options.origin) {
-            return property.setOrigin(targetProperty, options.origin);
+    } else if (options.origin || options.forward) {
+            return property.setOrigin(targetProperty, options.origin, options.forward);
     } else if (options.edgehostname) {
         return property.assignEdgeHostname(targetProperty, options.edgehostname);
     } else {
@@ -247,6 +247,7 @@ function main()
         .option("--group <group>", "Group to place property in")
         .option("--section <section>","Section of the credentials file")
         .option("--nocopy", "Do not copy source property's hostnames")
+        .option("--forward <forward host>", "Forward host header (origin|incoming|<hostname>")
         .action(function(target, opts) {
             targetProperty = target;
             options = opts;
@@ -332,6 +333,8 @@ function main()
         .option("--edgehostname <edgehostname>", "Edge hostname to switch the property to")
         .option("--origin <origin>", "Origin ")
         .option("--edgehostname <ehn>", "TODO: Edge hostname")
+        .option("--variables <file>", "User variables (see README for format)")
+        .option("--forward <forward host>", "Forward host header (origin|incoming|<hostname>")
         .action(function(target, opts) {
             targetProperty = target;
             options = opts;
@@ -366,6 +369,13 @@ function main()
                         break;
                     case "create":
                         return createProperty(property, targetProperty, options)
+                        .then(() => {
+                            if (options.forward) {
+                                return modifyProperty(property, targetProperty, options)
+                            } else {
+                                return Promise.resolve();
+                            }
+                        })
                         break;
                     case "deactivate":
                         return deactivateProperty(property, targetProperty, options)

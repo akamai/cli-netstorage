@@ -141,6 +141,7 @@ class WebSite {
             })
             .then(hostListList => {
                 hostListList.map(hostList => {
+
                     if (!hostList || !hostList.propertyId || !hostList.propertyVersion) {
                         console.log("ignoring: ", hostList);
                         return;
@@ -190,10 +191,10 @@ class WebSite {
             this._edge.auth(request);
 
             this._edge.send(function (data, response) {
-                if (response.statusCode >= 200 && response.statusCode < 400) {
+                if (response && response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
-                } else if (response.statusCode == 403) {
+                } else if (response && response.statusCode == 403) {
                     console.info('... no permissions, ignoring  {%s : %s}', contractId, groupId);
                     resolve(null);
                 } else {
@@ -247,7 +248,7 @@ class WebSite {
                     this._edge.auth(request);
 
                     this._edge.send(function (data, response) {
-                        if (response.statusCode >= 200 && response.statusCode < 400) {
+                        if (response && response.statusCode >= 200 && response.statusCode < 400) {
                             let parsed = JSON.parse(response.body);
                             cloneFrom.cloneFromVersionEtag = parsed.versions.items[0]["etag"];
                             cloneFrom.productId = parsed.versions.items[0]["productId"];
@@ -269,7 +270,7 @@ class WebSite {
                         this._edge.auth(request);
 
                         this._edge.send(function (data, response) {
-                            if (response.statusCode >= 200 && response.statusCode < 400) {
+                            if (response && response.statusCode >= 200 && response.statusCode < 400) {
                                 let parsed = JSON.parse(response.body);
                                 cloneFrom.rules = parsed;
                                 resolve(cloneFrom);
@@ -301,7 +302,7 @@ class WebSite {
             this._edge.auth(request);
 
             this._edge.send(function (data, response) {
-                if (response.statusCode >= 200 && response.statusCode < 400) {
+                if (response && response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
                 } else {
@@ -346,6 +347,9 @@ class WebSite {
                             if (response && response.statusCode >= 200 && response.statusCode < 400) {
                                 let parsed = JSON.parse(response.body);
                                 resolve(parsed);
+                            } else if (response && response.statusCode == 500) {
+                                // Work around PAPI bug
+                                resolve(propertyId)
                             } else {
                                 reject(response);
                             }
@@ -368,7 +372,7 @@ class WebSite {
             this._edge.auth(request);
 
             this._edge.send(function (data, response) {
-                if (response.statusCode >= 200 && response.statusCode < 400) {
+                if (response && response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     parsed.products.items.map(item => {
                         if (item.productId == "prd_SPM") {
@@ -389,6 +393,9 @@ class WebSite {
                             resolve(productInfo);
                         }
                     });
+                } else if (response.statusCode == 403) {
+                    console.info('... no permissions, ignoring  {%s : %s}', contractId, groupId);
+                    resolve(null);
                 } else {
                     reject(response);
                 }
@@ -427,7 +434,7 @@ class WebSite {
             this._edge.auth(request);
 
             this._edge.send(function (data, response) {
-                if (response.statusCode >= 200 && response.statusCode < 400) {
+                if (response && response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
                 } else if (response.statusCode == 403) {
@@ -1105,7 +1112,6 @@ class WebSite {
         if (contractId && (!contractId.match("ctr_"))) {
             contractId = "ctr_" + contractId;
         }
-
         
         return new Promise((resolve, reject) => {
             if (groupId && contractId) {
@@ -1638,8 +1644,19 @@ class WebSite {
             })
     }
 
-    setOrigin(propertyLookup, origin) {
+    setOrigin(propertyLookup, origin, forward) {
         let version = WebSite._getLatestVersion(propertyLookup);
+        let forwardHostHeader;
+        let customForward = "";
+
+        if (forward == "origin") {
+            forwardHostHeader = "ORIGIN_HOSTNAME"
+        } else if (forward == "incoming") {
+            forwardHostHeader = "REQUEST_HOST_HEADER"
+        } else if (forward) {
+            forwardHostHeader = "CUSTOM"
+            customForward = forward
+        }
            
           return this._getPropertyRules(propertyLookup, version)
             .then(data => {
@@ -1647,7 +1664,17 @@ class WebSite {
 
                 data.rules.behaviors.map(behavior => {
                     if (behavior.name == "origin") {
-                        behavior.options.hostname = origin;
+                        if (origin) {
+                            behavior.options.hostname = origin;
+                        }
+                        if (forwardHostHeader) {
+                            behavior.options.forwardHostHeader = forwardHostHeader;
+                            if (customForward) {
+                                behavior.options.customForwardHostHeader = customForward;
+                            } else {
+                                delete(behavior.options.customForwardHostHeader);
+                            }
+                        }
                     }
                     behaviors.push(behavior);
                 })
