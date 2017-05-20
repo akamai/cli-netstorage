@@ -91,12 +91,11 @@ function setOrigin(property, options) {
     return property.setOrigin(options.targetProperty, options.origin);
 }
 
-function updateProperty(property, options) {
-    if (!options.update) { return Promise.resolve()}
-    if (options.srcfile)
-        return property.updateFromFile(options.targetProperty, options.srcfile, options.origin);
-    if (options.targetProperty)
-        return property.copy(options.copy, options.srcVersion, options.targetProperty, options.origin);
+function updateProperty(property, targetProperty, options) {
+    if (options.file)
+        return property.updateFromFile(targetProperty, options.file, options.origin);
+    if (options.copy)
+        return property.copy(options.copy, options.srcver, targetProperty, options.origin);
     return Promise.resolve();
 }
 
