@@ -170,17 +170,41 @@ function retrieveProperty(property, targetProperty, options) {
 }
 
 function modifyProperty(property, targetProperty, options) {
-    if (options.addhosts) {
+    return new Promise ((resolve, reject) => {
+        if (options.addhosts) {
             return property.addHostnames(targetProperty, options.addhosts.split(','), options.edgehostname);
-    } else if (options.delhosts) {
+        } else {
+            return resolve();
+        }
+    })
+    .then(() => {
+        if (options.delhosts) {
             return property.delHostnames(targetProperty, options.delhosts.split(','), options.edgehostname)
-    } else if (options.origin || options.forward) {
+        }else {
+            return Promise.resolve();
+        }
+    })
+    .then(() => {
+        if (options.origin || options.forward) {
             return property.setOrigin(targetProperty, options.origin, options.forward);
-    } else if (options.edgehostname) {
-        return property.assignEdgeHostname(targetProperty, options.edgehostname);
-    } else {
-            return Promise.resolve()
-    }
+        }else {
+            return Promise.resolve();
+        }
+    })
+    .then(() => {
+        if (options.edgehostname) {
+            return property.assignEdgeHostname(targetProperty, options.edgehostname);
+        }else {
+            return Promise.resolve();
+        }
+    })
+    .then(() => {
+            if (options.variables) {
+                return property.setVariables(targetProperty, options.variables);
+            } else {
+             return Promise.resolve();
+            }
+    }) 
 }
 
 function numberVersion(version) {
@@ -333,7 +357,16 @@ function main()
         .option("--edgehostname <edgehostname>", "Edge hostname to switch the property to")
         .option("--origin <origin>", "Origin ")
         .option("--edgehostname <ehn>", "TODO: Edge hostname")
-        .option("--variables <file>", "User variables (see README for format)")
+        .option("--variables <file>", "User variables file.  Format should be\n" +
+                "\t\t\t\t   [{\n" + 
+        '\t\t\t\t\t"name": "PMUSER_TEST",' + "\n" +
+        '\t\t\t\t\t"value": "Foobar",' +"\n" +
+        '\t\t\t\t\t"description": "This is my test variable",' +"\n" +
+        '\t\t\t\t\t"hidden": false,' +"\n" +
+        '\t\t\t\t\t"sensitive": false,' +"\n" +
+        '\t\t\t\t\t"action":["delete","update","create"]' +"\n" +
+      '\t\t\t\t   }]'
+)
         .option("--forward <forward host>", "Forward host header (origin|incoming|<hostname>")
         .action(function(target, opts) {
             targetProperty = target;
@@ -365,12 +398,12 @@ function main()
             .then(() => {
                 switch(command) {
                     case "activate":
-                        return activateProperty(property, targetProperty, options)
+                        return activateProperty(property, targetProperty, options);
                         break;
                     case "create":
                         return createProperty(property, targetProperty, options)
                         .then(() => {
-                            if (options.forward) {
+                            if (options.forward || options.variables) {
                                 return modifyProperty(property, targetProperty, options)
                             } else {
                                 return Promise.resolve();

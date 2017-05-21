@@ -344,6 +344,10 @@ class WebSite {
                         this._edge.auth(request);
 
                         this._edge.send(function (data, response) {
+                            if (!response) {
+                                console.log("... No response from server for " + propertyId)
+                                resolve(propertyId);
+                            }
                             if (response && response.statusCode >= 200 && response.statusCode < 400) {
                                 let parsed = JSON.parse(response.body);
                                 resolve(parsed);
@@ -1643,6 +1647,77 @@ class WebSite {
                 return Promise.resolve();
             })
     }
+
+      setVariables(propertyLookup, variablefile) {
+        let version = WebSite._getLatestVersion(propertyLookup);
+        let changeVars = {
+            "delete":[],
+            "create":[],
+            "update":[]
+        };
+        
+        return new Promise ((resolve, reject) => {
+            fs.readFile(untildify(variablefile), (err, data) => {
+                if (err)
+                    reject(err);
+                else
+                    resolve(JSON.parse(data));
+            });
+        })
+        .then(data => {
+            data.map(variable => {
+                variable.action.map(action => {
+                    changeVars[action].push(variable);
+                })
+            })
+            return this._getPropertyRules(propertyLookup, version)
+        })
+        .then(data => {
+            let newVars = data.rules.variables || [];
+
+            changeVars['create'].map(variable => {
+
+                let index_check = newVars.findIndex(elt=>elt.name==variable.name);
+                
+                if (index_check < 0) {
+                    delete variable.action;
+                    newVars.push(variable)
+                    changeVars['update'].splice(
+                        changeVars['update'].findIndex(
+                            elt => elt.name === variable.name
+                        )
+                    )
+                } else {
+                    console.log("... not creating existing variable " + variable.name)
+                }
+            })
+
+            changeVars['delete'].map(variable => {
+                newVars.splice(
+                    newVars.findIndex(
+                        elt => elt.name === variable.name)
+                    )
+                    console.log("... deleting variable " + variable.name)
+            })
+
+            changeVars['update'].map(variable => {
+                let ind = newVars.findIndex(elt=>elt.name==variable.name);
+                if (ind >= 0 ) {
+                    delete variable.action;
+                    console.log("... updating existing variable " + variable.name)
+                    newVars[ind] = variable;
+                }
+            })
+            
+            data.rules.variables = newVars;   
+            
+            return Promise.resolve(data);
+            })
+            .then(rules => {
+                return this._updatePropertyRules(propertyLookup,version,rules);
+        })
+    }
+
 
     setOrigin(propertyLookup, origin, forward) {
         let version = WebSite._getLatestVersion(propertyLookup);
