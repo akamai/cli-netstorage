@@ -911,6 +911,9 @@ class WebSite {
                     this._edge.auth(request);
 
                     this._edge.send(function (data, response) {
+                        if (!response) {
+                            reject();
+                        }
                         console.info(response.statusCode);
                         console.info(response.body);
                         if (response.statusCode >= 200 && response.statusCode <= 400) {
@@ -984,6 +987,52 @@ class WebSite {
 
             });
     };
+    
+    _moveProperty(propertyLookup, destGroup) {
+        console.time('... moving property');
+        if (destGroup.match("grp_")) {
+            destGroup = destGroup.substring(4);
+        }
+
+
+        return this._getProperty(propertyLookup)
+            .then(data => {
+                // User admin API uses non-PAPI strings
+                // Turning grp_12345 into 12345, for
+                // Group, property and account
+                let sourceGroup = data.groupId.substring(4);
+                let propertyId = data.propertyId.substring(4);
+                let accountId = data.accountId.substring(4);
+                return new Promise((resolve, reject) => {
+                    let moveData = {
+                        "sourceGroupId":sourceGroup,
+                        "destinationGroupId":destGroup
+                    }
+
+                    let request = {
+                                    method: 'POST',
+                                    path: `/user-admin/v1/accounts/${accountId}/properties/${propertyId}`,
+                                    body: moveData
+                    }; 
+
+                    this._edge.auth(request);
+
+                    this._edge.send(function (data, response) {
+                        if (!response) {
+                            reject();
+                        }
+                        console.info(response.statusCode);
+                        console.info(response.body);
+                        if (response && response.statusCode >= 200 && response.statusCode <= 400) {
+                            let parsed = JSON.parse(response.body);
+                            resolve(parsed);
+                        } else {
+                            reject(response.body);
+                        }
+                    })
+                })
+        });
+    }
 
     _deleteConfig(property) {
         return new Promise((resolve, reject) => {
@@ -1565,6 +1614,18 @@ class WebSite {
             })
     }
 
+    /**
+     * Moves the specified property to a new group
+     *
+     * @param {string} property Lookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
+     *     If the host name is moving between property configurations, use lookupPropertyIdFromHost()
+     */
+    moveProperty(propertyLookup, destGroup) {
+        //TODO: deactivate first
+        console.info(`Moving ${propertyLookup} to ` + destGroup);
+
+        return this._moveProperty(propertyLookup, destGroup)
+    }
 
     delHostnames(propertyLookup, hostnames) {
         const version = WebSite._getLatestVersion(propertyLookup);

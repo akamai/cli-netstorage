@@ -205,6 +205,13 @@ function modifyProperty(property, targetProperty, options) {
              return Promise.resolve();
             }
     }) 
+    .then(() => {
+        if (options.move) {
+            return property.moveProperty(targetProperty, options.move)
+        } else {
+            return Promise.resolve();
+        }
+    })
 }
 
 function numberVersion(version) {
@@ -368,6 +375,7 @@ function main()
       '\t\t\t\t   }]'
 )
         .option("--forward <forward host>", "Forward host header (origin|incoming|<hostname>")
+        .option("--move <groupId>", "Move the property to specified group.")
         .action(function(target, opts) {
             targetProperty = target;
             options = opts;
