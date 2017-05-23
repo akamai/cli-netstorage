@@ -1,12 +1,30 @@
 # AkamaiConfigKit - PREVIEW
 
+*NOTE:* This is a preview release.  There are various limitations and we're still working on feature completeness.  We will respond to opened issues promptly during business hours.  Caveats can be found at the [bottom](#caveats) of this readme file.
+
+## Get Started
+To get started using the library, you will need to choose between a docker install or a local install.
+
+### Docker Install
+Stuff goes here
+
+### Local Install
+* Node 7
+* npm install akamaiconfigkit
+* Ensure that the 'bin' subdirectory is in your path
+
+### Credentials
+In order to use this configuration, you need to:
+* Set up your credential files as described in the [authorization](https://developer.akamai.com/introduction/Prov_Creds.html) and [credentials](https://developer.akamai.com/introduction/Conf_Client.html) sections of the Get Started pagegetting started guide on developer.akamai.comthe developer portal.  When working through this process you need to give grants for the property manager API and the User Admin API (if you will want to move properties).  The section in your configuration file should be called 'papi'.
 
 ## Overview
-This is a set of nodejs libraries use to wrap Akamai's {OPEN} APIs to help simplify the operations and interactions
-with Akamai for common configuration tasks.  This kit can be used in different ways:
-* Just want a no-fuss tool? [Use the command line utility](#updateWebSite) to interact with the library
-* Want to integrate into your own Node.js application? [Include the library](#library) 
-* Leverage the [gulp integration](#gulp) to integrate with your Continuous Integration/Continuous Deployment toolset
+The Akamai Config Kit is a set of nodejs libraries that wraps Akamai's {OPEN} APIs to help simplify common configuration tasks.  
+
+This kit can be used in different ways:
+* [As a no-fuss command line utility](#updateWebSite) to interact with the library.
+* [As a library](#library) you can integrate into your own Node.js application.
+* [As a gulp integration](#gulp) to integrate with your Continuous Integration/Continuous Deployment toolset.
+
 
 ## Functionality (version 0.0.1)
 The initial version of the ConfigKit provides the following functionality:
@@ -21,12 +39,10 @@ The initial version of the ConfigKit provides the following functionality:
 ## akamaiProperty
 This script wraps all of the functionality from the [library](#library) into a command line utility which can be used to support the following use cases.  All of the functions accept a property ID, the config name or a hostname from the property.
 * [Create property](#create)
-* [Clone property](#clone)
 * [Retrieve property rules](#retrieve)
 * [Update a property](#update)
-* [Copy a property's config to another property](#copy)
 * [Activate or deactivate](#activate)
-* [Add Origin or Hostname](#add)
+* [Modify a property](#modify)
 
 ### Create
 Creating a new property requires only a single parameter, the target property.  
@@ -54,7 +70,7 @@ The flags of interest for create are:
 
 ```
 ### Retrieve
-This function retrieves the specified ruleset, either to STDOUT or the --outfile flag
+This function retrieves the specified ruleset, either to STDOUT or the file specified by the --file flag
 
 ```bash
 % akamaiProperty retrieve new.property.name
@@ -70,10 +86,11 @@ The flags of interest for retrieve are:
 ```
 
 ### Update
-Update the current property version with the rules from a local file.
+Update the current property version with the rules from a local file, or copy from another property.
 
 ```bash
 % akamaiProperty update my.property.com --srcprop this.other.property.com
+% akamaiProperty update my.property.com --file myrules.json
 ```
 
 The flags of interest for update are:
@@ -101,7 +118,11 @@ Possible options are:
 ```
 
 ### Modify
-Add origin or hostname to the specified property (or delete hostname)
+Modify meta information about the property such as:
+* Origin server
+* Hostnames associated with the property
+* Edge hostnames
+* Group
 
 ```bash
 % akamaiProperty modify my.property.com --origin new.origin.hostname
@@ -114,8 +135,8 @@ Possible options are:
     --addhosts <hostnames>         Comma delimited list of hostnames to add
     --delhosts <hostnames>         Comma delimited list of hostnames to delete
     --edgehostname <edgehostname>  Edge hostname to switch the property to
-    --origin <origin>              Origin 
-    --edgehostname <ehn>           TODO: Edge hostname
+    --origin <origin>              Switch the property origin server
+    --move <group>                 Move property to a new property group
 ```
 
 ## Gulp
@@ -179,3 +200,10 @@ constructor object
 ```
 let exampleDotCom = new WebSite({clientToken:"a1b2", clientSecret: "c3d4", accessToken: "e5f6", host: "g7h8.luna.akamaiapis.net"});
 ```
+
+## Caveats
+The Akamai CLI is a new tool and as such we have made some design choices worth mentioning.
+* Edge Hostnames - if not specified, the system will select an edge hostname from the account to use.  Watch the output to know what host to point your DNS at
+* CPCodes - there is currently a fairly strict limitation on creation of CPCodes.  To work around this, pass in a specific CPCode to use.  Your account team can create a bunch of CPCodes which you could then use with your properties.
+* Credentials - the tool expects your credentials to be stored under a 'papi' section in your ~/.edgerc file.  If you are unfamiliar with the authentication and provisioning for OPEN APIs, see the "Get Started" section of https://developer.akamai.com
+* Activations - there is currently an intermittent issue with activations not working.  It should resolve after another try, and there is an existing internal issue to resolve this.
