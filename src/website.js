@@ -475,6 +475,10 @@ class WebSite {
                     this._edge.auth(request);
 
                     this._edge.send(function (data, response) {
+
+                        if (!response) {
+                            reject("No response from server.  Please retry.");
+                        }
                         console.timeEnd('... retrieving');
                         if (response && response.statusCode >= 200 && response.statusCode < 400) {
                             let parsed = JSON.parse(response.body);
@@ -987,22 +991,64 @@ class WebSite {
 
             });
     };
+
+    _getAssetIds(accountId, groupId) {
+        return new Promise((resolve, reject) => {
+            console.info('Gathering asset ID for property');
+            console.time('... requesting');
+            
+            let request = {
+                method: 'GET',
+                path: `/user-admin/v1/accounts/${accountId}/groups/${groupId}/properties`
+            };
+
+            this._edge.auth(request);
+
+            this._edge.send((data, response) => {
+                console.timeEnd('... requesting');
+                if (response.statusCode >= 200 && response.statusCode < 400) {
+                    let parsed = JSON.parse(response.body);
+                    resolve(parsed);
+                } else {
+                    reject("Unable to access user administration.  Please ensure your credentials allow user admin access.");
+                }
+            });
+        });
+    }
+
     
     _moveProperty(propertyLookup, destGroup) {
+        let sourceGroup, propertyId, accountId, propertyName;
+
         console.time('... moving property');
         if (destGroup.match("grp_")) {
             destGroup = destGroup.substring(4);
         }
-
 
         return this._getProperty(propertyLookup)
             .then(data => {
                 // User admin API uses non-PAPI strings
                 // Turning grp_12345 into 12345, for
                 // Group, property and account
-                let sourceGroup = data.groupId.substring(4);
-                let propertyId = data.propertyId.substring(4);
-                let accountId = data.accountId.substring(4);
+                sourceGroup = Number(data.groupId.substring(4));
+                propertyId = data.propertyId.substring(4);
+                accountId = data.accountId.substring(4);
+                destGroup = Number(destGroup);
+                propertyName = data.propertyName;
+                return this._getAssetIds(accountId, sourceGroup)
+        })
+        .then(assetIds => {
+            let assetId;
+            for (let entry of assetIds) {
+                if (entry.assetName == propertyName) {
+                    assetId = entry.assetId;
+                    break;
+                }
+            }
+
+            if (!assetId) {
+                reject("No matching property found");
+            }
                 return new Promise((resolve, reject) => {
                     let moveData = {
                         "sourceGroupId":sourceGroup,
@@ -1010,8 +1056,8 @@ class WebSite {
                     }
 
                     let request = {
-                                    method: 'POST',
-                                    path: `/user-admin/v1/accounts/${accountId}/properties/${propertyId}`,
+                                    method: 'PUT',
+                                    path: `/user-admin/v1/accounts/${accountId}/properties/${assetId}`,
                                     body: moveData
                     }; 
 
@@ -1020,12 +1066,10 @@ class WebSite {
                     this._edge.send(function (data, response) {
                         if (!response) {
                             reject();
-                        }
-                        console.info(response.statusCode);
-                        console.info(response.body);
-                        if (response && response.statusCode >= 200 && response.statusCode <= 400) {
-                            let parsed = JSON.parse(response.body);
-                            resolve(parsed);
+                        } else if (response.statusCode == 204) {
+                            resolve();
+                        } else if (response.statusCode >= 200 && response.statusCode <= 400) {
+                            resolve(response.body);
                         } else {
                             reject(response.body);
                         }

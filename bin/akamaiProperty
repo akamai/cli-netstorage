@@ -36,6 +36,8 @@ let app = appName();
 let section = "papi";
 let targetProperty;
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 function activateProperty(property, targetProperty, options) {
     
     let env = options.network.toUpperCase();
