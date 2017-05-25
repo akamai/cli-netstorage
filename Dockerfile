@@ -9,4 +9,5 @@ RUN /usr/local/bin/npm install
 RUN export PATH=${PATH}:/opt/bin
 RUN git clone https://github.com/akamai-open/api-kickstart
 RUN git clone https://github.com/stedolan/jq.git
+RUN cp /opt/.bashrc /root/.bashrc
 ENTRYPOINT ["/bin/bash"]
