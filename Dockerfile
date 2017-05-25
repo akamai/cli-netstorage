@@ -6,3 +6,4 @@ RUN apt-get install -y -q libssl-dev python-all wget vim
 ADD . /opt
 RUN git clone https://github.com/akamai-open/api-kickstart
 RUN git clone https://github.com/stedolan/jq.git
+ENTRYPOINT ["/bin/bash"]
