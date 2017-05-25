@@ -5,6 +5,7 @@
   "repository": "https://github.com/akamai-open/akamaiconfigkit.git",
   "license": "Apache-2.0",
   "scripts": {
+    "start": "node index.js",
     "test": "./node_modules/.bin/mocha --reporter spec"
   },
   "main": "./index.js",
