@@ -8,7 +8,3 @@ RUN npm install
 RUN npm install -g n; n 5.0.0
 RUN git clone https://github.com/akamai-open/api-kickstart
 RUN git clone https://github.com/stedolan/jq.git
-RUN cd jq
-RUN autoreconf -i
-RUN ./configure --disable-maintainer-mode
-RUN make install
