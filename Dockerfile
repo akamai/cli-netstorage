@@ -5,7 +5,8 @@ RUN apt-get install -y curl patch gawk g++ gcc make libc6-dev patch libreadline6
 RUN apt-get install -y -q libssl-dev python-all wget vim
 ADD . /opt
 WORKDIR /opt
-RUN /usr/local/bin/npm install -g
+RUN /usr/local/bin/npm install
+RUN export PATH=${PATH};/opt/bin
 RUN git clone https://github.com/akamai-open/api-kickstart
 RUN git clone https://github.com/stedolan/jq.git
 ENTRYPOINT ["/bin/bash"]
