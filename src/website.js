@@ -1042,7 +1042,6 @@ class WebSite {
             for (let entry of assetIds) {
                 if (entry.assetName == propertyName) {
                     assetId = entry.assetId;
-                    break;
                 }
             }
 
@@ -1067,6 +1066,7 @@ class WebSite {
                         if (!response) {
                             reject();
                         } else if (response.statusCode == 204) {
+                            console.log("Successfully moved " + propertyName + " to group " + destGroup)
                             resolve();
                         } else if (response.statusCode >= 200 && response.statusCode <= 400) {
                             resolve(response.body);
