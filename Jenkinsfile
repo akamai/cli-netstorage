@@ -13,7 +13,16 @@ pipeline {
     }
     stage('Retrieve') {
       steps {
-        sh 'bin/akamaiProperty retrieve jenkins.$BUILD_NUMBER.com --file rules.json'
+        parallel(
+          "Retrieve": {
+            sh 'bin/akamaiProperty retrieve jenkins.$BUILD_NUMBER.com --file rules.json'
+            
+          },
+          "Modify": {
+            sh 'bin/akamaiProperty modify jenkins.$BUILD_NUMBER.com --origin jenkins.origin.com'
+            
+          }
+        )
       }
     }
   }
