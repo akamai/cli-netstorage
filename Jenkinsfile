@@ -29,5 +29,10 @@ pipeline {
         sh 'bin/akamaiProperty update jenkins.$BUILD_NUMBER.com --file rules.json'
       }
     }
+    stage('Activate') {
+      steps {
+        sh 'bin/akamaiProperty activate jenkins.$BUILD_NUMBER.com --network BOTH'
+      }
+    }
   }
 }
