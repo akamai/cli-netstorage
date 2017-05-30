@@ -1,7 +1,7 @@
 pipeline {
   agent any
   stages {
-    stage('Create') {
+    stage('Initialize') {
       steps {
         sh '''npm install
 cd test'''
