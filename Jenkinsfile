@@ -11,18 +11,15 @@ pipeline {
         sh 'bin/akamaiProperty create jenkins.$BUILD_NUMBER.com --clone jenkins.base.property'
       }
     }
+    stage('Modify') {
+      steps {
+        sh 'bin/akamaiProperty modify jenkins.$BUILD_NUMBER.com --origin jenkins.origin.com'
+        sh 'bin/akamaiProperty modify jenkins.$BUILD_NUMBER.com --origin origin.jenkins.com'
+      }
+    }
     stage('Retrieve') {
       steps {
-        parallel(
-          "Retrieve": {
-            sh 'bin/akamaiProperty retrieve jenkins.$BUILD_NUMBER.com --file rules.json'
-            
-          },
-          "Modify": {
-            sh 'bin/akamaiProperty modify jenkins.$BUILD_NUMBER.com --origin jenkins.origin.com'
-            
-          }
-        )
+        sh 'bin/akamaiProperty retrieve jenkins.$BUILD_NUMBER.com --file rules.json'
       }
     }
   }
