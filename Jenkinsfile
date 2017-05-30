@@ -8,7 +8,7 @@ pipeline {
     }
     stage('Create') {
       steps {
-        sh '../bin/akamaiProperty create jenkins.$BUILD_NUMBER.com --clone jenkins.base.property'
+        sh 'bin/akamaiProperty create jenkins.$BUILD_NUMBER.com --clone jenkins.base.property'
       }
     }
   }
