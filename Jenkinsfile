@@ -39,5 +39,10 @@ pipeline {
         sh 'bin/akamaiProperty deactivate jenkins.$BUILD_NUMBER.com --network BOTH'
       }
     }
+    stage('Delete') {
+      steps {
+        sh 'bin/akamaiProperty delete jenkins.$BUILD_NUMBER.com'
+      }
+    }
   }
 }
