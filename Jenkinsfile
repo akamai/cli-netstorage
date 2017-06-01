@@ -3,7 +3,7 @@ pipeline {
   stages {
     stage('Initialize') {
       steps {
-        sh '''git pull
+        sh '''git pull origin master
 npm install'''
         echo 'Initialization complete'
       }
