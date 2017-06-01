@@ -289,7 +289,7 @@ class WebSite {
             })
     };
 
-    _getGroupList() {
+    _getGroupList(fallThrough=false) {
         return new Promise((resolve, reject) => {
             console.info('... retrieving list of Group Ids');
 
@@ -302,7 +302,13 @@ class WebSite {
             this._edge.auth(request);
 
             this._edge.send(function (data, response) {
-                if (response && response.statusCode >= 200 && response.statusCode < 400) {
+                if (!response && fallThrough) {
+                     console.log("... No response from server for groups")
+                     reject();
+                } else if (!response) {
+                    console.log("Grabbing groups again")
+                      return this._getGroupList(1)
+                } else if (response && response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
                 } else {
@@ -313,7 +319,7 @@ class WebSite {
     };
 
     //TODO: this will only be called for LATEST, CURRENT_PROD and CURRENT_STAGE. How do we handle collecting hostnames of different versions?
-    _getHostnameList(propertyId, version, newConfig=false) {
+    _getHostnameList(propertyId, version, newConfig=false, fallThrough=false) {
         if (newConfig) {
             return Promise.resolve();
         }
@@ -324,6 +330,7 @@ class WebSite {
                 const contractId = property.contractId;
                 const groupId = property.groupId;
                 const propertyId = property.propertyId;
+                let Website = this;
 
                 return new Promise((resolve, reject) => {
                     //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
@@ -344,9 +351,11 @@ class WebSite {
                         this._edge.auth(request);
 
                         this._edge.send(function (data, response) {
-                            if (!response) {
+                            if (!response && fallThrough) {
                                 console.log("... No response from server for " + propertyId)
                                 resolve(propertyId);
+                            } else if (!response) {
+                                return Website._getHostnameList(propertyId, version, false, 1)
                             }
                             if (response && response.statusCode >= 200 && response.statusCode < 400) {
                                 let parsed = JSON.parse(response.body);
@@ -427,7 +436,7 @@ class WebSite {
             });
     };
 
-    _getPropertyList(contractId, groupId) {
+    _getPropertyList(contractId, groupId, fallThrough=false) {
         return new Promise((resolve, reject) => {
             //console.info('... retrieving list of properties {%s : %s}', contractId, groupId);
 
@@ -438,7 +447,12 @@ class WebSite {
             this._edge.auth(request);
 
             this._edge.send(function (data, response) {
-                if (response && response.statusCode >= 200 && response.statusCode < 400) {
+                if (!response && fallThrough) {
+                     console.log("... No response from server for property list")
+                        resolve(propertyId);
+                } else if (!response) {
+                      return this._getPropertyList(contractId, groupId, 1)
+                } else if (response && response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
                 } else if (response.statusCode == 403) {
@@ -451,7 +465,7 @@ class WebSite {
         });
     };
 
-    _getPropertyRules(propertyLookup, version) {
+    _getPropertyRules(propertyLookup, version, fallThrough=false) {
         return this._getProperty(propertyLookup)
             .then((data) => {
                 //set basic data like contract & group
@@ -476,8 +490,10 @@ class WebSite {
 
                     this._edge.send(function (data, response) {
 
-                        if (!response) {
+                        if (!response && fallThrough) {
                             reject("No response from server.  Please retry.");
+                        } else if (!response) {
+                            return this._getPropertyRules(propertyLookup, version, 1)
                         }
                         console.timeEnd('... retrieving');
                         if (response && response.statusCode >= 200 && response.statusCode < 400) {
@@ -823,7 +839,7 @@ class WebSite {
                 const propertyId = data.propertyId;
                 return new Promise((resolve, reject) => {
                     console.time('... activating');
-                    console.info(`... activating property (${propertyLookup}) v${versionId}`);
+                    console.info(`... activating property (${propertyLookup}) v${versionId} on ${env}`);
 
                     let activationData = {
                         propertyVersion: versionId,
@@ -846,6 +862,7 @@ class WebSite {
                     this._edge.send(function (data, response) {
                         if (response.statusCode >= 200 && response.statusCode <= 400) {
                             let parsed = JSON.parse(response.body);
+                            console.log("PARSED IS " + parsed)
                             resolve(parsed);
                         } else {
                             reject(response.body);
@@ -894,7 +911,7 @@ class WebSite {
                 const propertyId = data.propertyId;
                 return new Promise((resolve, reject) => {
                     console.time('... deactivating');
-                    console.info(`... deactivating property (${propertyLookup}) v${versionId}`);
+                    console.info(`... deactivating property (${propertyLookup}) v${versionId} on ${env}`);
 
                     let activationData = {
                         propertyVersion: versionId,
@@ -918,8 +935,6 @@ class WebSite {
                         if (!response) {
                             reject();
                         }
-                        console.info(response.statusCode);
-                        console.info(response.body);
                         if (response.statusCode >= 200 && response.statusCode <= 400) {
                             let parsed = JSON.parse(response.body);
                             let matches = !parsed.activationLink ? null : parsed.activationLink.match('activations/([a-z0-9_]+)\\b');
@@ -929,7 +944,10 @@ class WebSite {
                             } else {
                                 resolve(matches[1])
                             }
-                        } else {
+                        } else if (response.statusCode == '500' && response.body.match('https://problems.luna.akamaiapis.net/papi/v0/toolkit/property_version_not_active_in')){
+                            console.log("Version not active on " + env)
+                            resolve();
+                      } else {
                             reject(response.body);
                         }
                     });
@@ -977,7 +995,7 @@ class WebSite {
                 let pending = false;
                 let active = false;
                 data.activations.items.map(status => {
-                    pending = pending || 'PENDING' === status.status || 'ZONE_2' === status.status;
+                    pending = pending || 'ACTIVE' != status.status;
                     active = !pending && 'ACTIVE' === status.status;
                 });
                 if (pending) {
@@ -1017,7 +1035,7 @@ class WebSite {
     }
 
     
-    _moveProperty(propertyLookup, destGroup) {
+    _moveProperty(propertyLookup, destGroup, fallThrough=false) {
         let sourceGroup, propertyId, accountId, propertyName;
 
         console.time('... moving property');
@@ -1063,8 +1081,10 @@ class WebSite {
                     this._edge.auth(request);
 
                     this._edge.send(function (data, response) {
-                        if (!response) {
+                        if (!response && fallthrough) {
                             reject();
+                        } else if (!response) {
+                            return this._moveProperty(propertyLookup, destGroup,1);
                         } else if (response.statusCode == 204) {
                             console.log("Successfully moved " + propertyName + " to group " + destGroup)
                             resolve();
@@ -1603,6 +1623,9 @@ class WebSite {
                 return this._deactivateProperty(property, deactivationVersion, networkEnv, notes, email)
             })
             .then(activationId => {
+                if (!activationId) {
+                    return Promise.resolve();
+                }
                 if (networkEnv === AKAMAI_ENV.STAGING)
                     property.stagingVersion = null;
                 else

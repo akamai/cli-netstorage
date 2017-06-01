@@ -230,7 +230,7 @@ function numberVersion(version) {
         } else if (versionstring.match(/^late/i)) {
             returnstring = 0;
             resolve(returnstring)
-        } else {
+        } else if (!versionstring.match(/^\d*$/)){
             Promise.reject("Unable to parse version string")
         }
     })
@@ -426,12 +426,20 @@ function main()
                                 return Promise.resolve();
                             }
                         })
+                        .then(() => {
+                            console.log("Creation complete")
+                            return Promise.resolve();
+                        })
                         break;
                     case "deactivate":
                         return deactivateProperty(property, targetProperty, options)
                         break;
                     case "delete":
-                        return deleteProperty(property, targetProperty, options)
+                        options.network = "BOTH"
+                        return deactivateProperty(property, targetProperty, options)
+                        .then(() => {
+                            return deleteProperty(property, targetProperty, options)
+                        })
                         break;
                     case "modify":
                         return modifyProperty(property, targetProperty, options)
