@@ -3,7 +3,8 @@ pipeline {
   stages {
     stage('Initialize') {
       steps {
-        sh 'npm install'
+        sh '''git pull
+npm install'''
         echo 'Initialization complete'
       }
     }
