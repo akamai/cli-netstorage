@@ -3,10 +3,7 @@
 *NOTE:* This is a preview release.  There are various limitations and we're still working on feature completeness.  We will respond to opened issues promptly during business hours.  Caveats can be found at the [bottom](#caveats) of this readme file.
 
 ## Get Started
-To get started using the library, you will need to choose between a docker install or a local install.
-
-### Docker Install
-Stuff goes here
+To get started using the library, you will need to set up your system for a local install.  A docker image is coming soon.
 
 ### Local Install
 * Node 7
@@ -15,7 +12,8 @@ Stuff goes here
 
 ### Credentials
 In order to use this configuration, you need to:
-* Set up your credential files as described in the [authorization](https://developer.akamai.com/introduction/Prov_Creds.html) and [credentials](https://developer.akamai.com/introduction/Conf_Client.html) sections of the Get Started pagegetting started guide on developer.akamai.comthe developer portal.  When working through this process you need to give grants for the property manager API and the User Admin API (if you will want to move properties).  The section in your configuration file should be called 'papi'.
+* Set up your credential files as described in the [authorization](https://developer.akamai.com/introduction/Prov_Creds.html) and [credentials](https://developer.akamai.com/introduction/Conf_Client.html) sections of the Get Started pagegetting started guide on developer.akamai.comthe developer portal.  
+* When working through this process you need to give grants for the property manager API and the User Admin API (if you will want to move properties).  The section in your configuration file should be called 'papi'.
 
 ## Overview
 The Akamai Config Kit is a set of nodejs libraries that wraps Akamai's {OPEN} APIs to help simplify common configuration tasks.  
