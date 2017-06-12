@@ -127,7 +127,7 @@ function createProperty(property, targetProperty, options) {
                                         options.group,
                                         options.cpcode,
                                         options.origin,
-                                        options.ehname);
+                                        options.edgehostname);
 
         } else {
             return property.create(hostnames, 
@@ -137,7 +137,7 @@ function createProperty(property, targetProperty, options) {
                                         options.group,
                                         null,
                                         options.origin,
-                                        options.ehname)
+                                        options.edgehostname)
         }
     } else {
         return property.createFromExisting(options.clone, 
@@ -148,7 +148,7 @@ function createProperty(property, targetProperty, options) {
                                         options.contract, 
                                         options.group,
                                         options.origin,
-                                        options.ehname,
+                                        options.edgehostname,
                                         options.cpcode
                                         )
     }
