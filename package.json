@@ -1,6 +1,6 @@
 {
   "name": "akamaiconfigkit",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A wrapping development kit to interface common tasks with akamai's {OPEN} API.",
   "repository": "https://github.com/akamai-open/akamaiconfigkit-public.git",
   "license": "Apache-2.0",

@@ -141,7 +141,6 @@ class WebSite {
             })
             .then(hostListList => {
                 hostListList.map(hostList => {
-
                     if (!hostList || !hostList.propertyId || !hostList.propertyVersion) {
                         console.log("ignoring: ", hostList);
                         return;
@@ -195,7 +194,7 @@ class WebSite {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
                 } else if (response && response.statusCode == 403) {
-                    console.info('... no permissions, ignoring  {%s : %s}', contractId, groupId);
+                    console.info('... your client credentials have no access to this group, skipping {%s : %s}', contractId, groupId);
                     resolve(null);
                 } else {
                     reject(response);
@@ -323,7 +322,7 @@ class WebSite {
         if (newConfig) {
             return Promise.resolve();
         }
-
+        
         return this._getProperty(propertyId)
             .then(property => {
                 //set basic data like contract & group
@@ -342,28 +341,27 @@ class WebSite {
                         this._propertyHostnameList[propertyId][version]) {
                         resolve(this._propertyHostnameList[propertyId][version]);
                     } else {
-
                         let request = {
                             method: 'GET',
                             path: `/papi/v0/properties/${propertyId}/versions/${version}/hostnames/?contractId=${contractId}&groupId=${groupId}`,
                             followRedirect: false
                         };
                         this._edge.auth(request);
-
+                        
                         this._edge.send(function (data, response) {
-                            if (!response && fallThrough) {
-                                console.log("... No response from server for " + propertyId)
+                            if ((response == false) || (response == undefined)) {
+                                console.log("... No response from server for " + propertyId + ", skipping")
                                 resolve(propertyId);
-                            } else if (!response) {
-                                return Website._getHostnameList(propertyId, version, false, 1)
-                            }
-                            if (response && response.statusCode >= 200 && response.statusCode < 400) {
+                            } 
+                            if (response && response.body && response.statusCode >= 200 && response.statusCode < 400) {
                                 let parsed = JSON.parse(response.body);
                                 resolve(parsed);
                             } else if (response && response.statusCode == 500) {
                                 // Work around PAPI bug
-                                resolve(propertyId)
+                                console.log("... Error from server for " + propertyId)
+                                resolve(propertyId);
                             } else {
+                                console.log(response)
                                 reject(response);
                             }
                         })
@@ -407,7 +405,7 @@ class WebSite {
                         }
                     });
                 } else if (response.statusCode == 403) {
-                    console.info('... no permissions, ignoring  {%s : %s}', contractId, groupId);
+                    console.info('... your credentials do not have permission for this group, skipping  {%s : %s}', contractId, groupId);
                     resolve(null);
                 } else {
                     reject(response);
@@ -862,7 +860,6 @@ class WebSite {
                     this._edge.send(function (data, response) {
                         if (response.statusCode >= 200 && response.statusCode <= 400) {
                             let parsed = JSON.parse(response.body);
-                            console.log("PARSED IS " + parsed)
                             resolve(parsed);
                         } else {
                             reject(response.body);
@@ -1419,7 +1416,7 @@ class WebSite {
         return this._getProperty(propertyLookup)
             .then(property => {
                 let version = (versionLookup && versionLookup > 0) ? versionLookup : WebSite._getLatestVersion(property, versionLookup)
-                console.info(`Retrieving ${property} v${version}`);
+                console.info(`Retrieving ${property.propertyVersion} v${version}`);
                 return this._getPropertyRules(property.propertyId, version)
             });
     }
@@ -1650,7 +1647,7 @@ class WebSite {
                 groupId = data.groupId;
                 configName = data.propertyName;
                 propertyId = data.propertyId;
-                return this._getHostnameList(configName, version)
+                return this._getHostnameList(configName, version, false)
             })
             .then(hostnamelist => {
                 hostlist = hostnamelist.hostnames.items;
