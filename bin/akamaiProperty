@@ -164,7 +164,7 @@ function retrieveProperty(property, targetProperty, options) {
     } else {
         return property.retrieve(targetProperty, 
                                 options.propver,
-                                '-')
+                                false)
         .then(data => {
             console.log(JSON.stringify(data,'',2));
             return Promise.resolve();
@@ -172,7 +172,28 @@ function retrieveProperty(property, targetProperty, options) {
     }
 }
 
-function modifyProperty(property, targetProperty, options) {
+function retrieveNewestFormat(property) {
+    return property.retrieveFormats(true)
+    .then(data => {
+        console.log(data);
+    })
+}
+
+function retrieveFormats(property, options) {
+    return property.retrieveFormats()
+    .then(data => {
+        console.log(JSON.stringify(data,'',2))
+    })
+}
+
+function retrieveHostnames(property) {
+    return property.retrieve(targetProperty, 0, true)
+    .then(data => {
+        console.log(data);
+    })
+}
+
+function modifyProperty(property, targetProperty, options, command) {
     let version = options.version ? options.version : 0;
     return new Promise ((resolve, reject) => {
         if (options.addhosts) {
@@ -196,8 +217,8 @@ function modifyProperty(property, targetProperty, options) {
         }
     })
     .then(() => {
-        if (options.edgehostname) {
-            return property.assignEdgeHostname(targetProperty, version, options.edgehostname);
+        if (options.edgehostname && command != "create") {
+            return property.assignEdgeHostname(targetProperty, version, options.edgehostname, options.new);
         }else {
             return Promise.resolve();
         }
@@ -331,9 +352,10 @@ function main()
 
     program
         .command('formats')
-        .action(function() {
+        .option("--newest","Retrieve only the newest fixed format.")
+        .action(function(opts) {
             command = "formats";
-            
+            options = opts;
             console.log('Retrieving rules formats')
         })
 
@@ -352,6 +374,7 @@ function main()
         .command('retrieve <property>')
         .option("--file <file>", "Output file (default is STDOUT)")
         .option("--format", "Retrieve the rules format only")
+        .option("--hostnames", "Retrieve the hostnames for the property")
         .option("--propver <version>", "Property version, latest/staging/prod or number")
         .option("--section <section>","Section of the credentials file")
         .action(function(target, opts) {
@@ -437,7 +460,7 @@ function main()
                         return createProperty(property, targetProperty, options)
                         .then(() => {
                             if (options.forward || options.variables) {
-                                return modifyProperty(property, targetProperty, options)
+                                return modifyProperty(property, targetProperty, options, command)
                             } else {
                                 return Promise.resolve();
                             }
@@ -461,13 +484,21 @@ function main()
                         return modifyProperty(property, targetProperty, options)
                         break;
                     case "retrieve":
-                        return retrieveProperty(property, targetProperty, options)
+                        if (options.hostnames) {
+                            return retrieveHostnames(property, targetProperty)
+                        } else {
+                            return retrieveProperty(property, targetProperty, options)
+                        }
                         break;
                     case "update":
                         return updateProperty(property, targetProperty, options)
                         break;
                     case "formats":
-                        return property.retrieveFormats()
+                        if (options.newest) {
+                            return retrieveNewestFormat(property)
+                        } else {
+                            return retrieveFormats(property)
+                        }
                         break;
                 }
             })
