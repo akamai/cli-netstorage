@@ -155,11 +155,12 @@ function createProperty(property, targetProperty, options) {
 }
 
 function retrieveProperty(property, targetProperty, options) {
-
     if (options.file) {
         return property.retrieveToFile( targetProperty, 
                                         options.file, 
                                         options.propver);
+    } else if (options.format) {
+        return property.retrievePropertyRuleFormat(targetProperty, options.propver)
     } else {
         return property.retrieve(targetProperty, 
                                 options.propver,
@@ -350,6 +351,7 @@ function main()
     program
         .command('retrieve <property>')
         .option("--file <file>", "Output file (default is STDOUT)")
+        .option("--format", "Retrieve the rules format only")
         .option("--propver <version>", "Property version, latest/staging/prod or number")
         .option("--section <section>","Section of the credentials file")
         .action(function(target, opts) {

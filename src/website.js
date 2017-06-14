@@ -695,15 +695,15 @@ class WebSite {
     }
 
     //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
-    _createHostname(groupId, contractId, configName, productId, edgeHostnameId=null, force=false, secure=false) {
+    _createHostname(groupId, contractId, configName, productId, edgeHostnameId=null, edgeHostname=null, force=false, secure=false) {
         if (edgeHostnameId) {
             return Promise.resolve(edgeHostnameId);
         }
         return this._getEdgeHostnames(groupId, contractId)
             .then(edgeHostnames => {
-                let edgeHostnameId = "";
                 edgeHostnames.edgeHostnames.items.map(item => {
-                    if (item["domainPrefix"] === configName) {
+                    if (item["domainPrefix"] === configName || item["domainPrefix"] === edgeHostname ||
+                    item["edgeHostnameDomain"] === configName || item["edgeHostnameDomain"] === edgeHostname) {
                         console.info("Hostname already exists");
                         edgeHostnameId = item["edgeHostnameId"]
                         if (this._propertyByHost[item["domainPrefix"]] ) {
@@ -1403,7 +1403,6 @@ class WebSite {
 
     /**
      * Retrieve the rules formats for use with PAPI
-     *
      */
     _retrieveFormats() {
         return new Promise((resolve, reject) => {
@@ -1484,6 +1483,18 @@ class WebSite {
                         });
                     });
                 }
+            });
+    }
+
+    /**
+     * Retrieve the rule format for a given property at the specified version.
+     */
+    
+    retrievePropertyRuleFormat(propertyLookup, versionLookup = LATEST_VERSION.LATEST) {
+        return this.retrieve(propertyLookup, versionLookup)
+            .then(data => {
+                console.log(JSON.stringify(data.ruleFormat));
+                return Promise.resolve(data);
             });
     }
 
@@ -2019,7 +2030,9 @@ class WebSite {
                     return this._createHostname(groupId,
                     contractId,
                     configName,
-                    productId);
+                    productId,
+                    null,
+                    edgeHostname);
                 }
             })
             .then(edgeHostnameId => {
@@ -2106,12 +2119,12 @@ class WebSite {
                 }
             })
             .then(() => {
-                    
                 return this._createHostname(groupId,
                             contractId,
                             configName,
                             productId,
-                            edgeHostnameId);
+                            edgeHostnameId,
+                            edgeHostname);
                 })
             .then(data => {
                 edgeHostnameId = data;
