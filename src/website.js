@@ -361,7 +361,6 @@ class WebSite {
                                 console.log("... Error from server for " + propertyId)
                                 resolve(propertyId);
                             } else {
-                                console.log(response)
                                 reject(response);
                             }
                         })
@@ -1403,6 +1402,44 @@ class WebSite {
     }
 
     /**
+     * Retrieve the rules formats for use with PAPI
+     *
+     */
+    _retrieveFormats() {
+        return new Promise((resolve, reject) => {
+            console.time('... retrieved rules formats');
+            let request = {
+                method: 'GET',
+                path: `/papi/v0/rule-formats`
+            }
+
+            this._edge.auth(request);
+            this._edge.send((data, response) => {
+                console.timeEnd('... retrieved rules formats');
+                if (response.statusCode >= 200 && response.statusCode < 400) {
+                    response = JSON.parse(response.body);
+                    resolve(response);
+                } else {
+                    reject(response);
+                }
+
+            })
+        })
+
+            resolve();
+    }
+
+    retrieveFormats() {
+        return this._retrieveFormats()
+        .then(result => {
+            result.ruleFormats.items.map(item => {
+                console.log(item);
+            })
+            return Promise.resolve();
+        })
+    }
+
+/**
      * Retrieve the configuration rules for a given property. Use either Host or PropertyId to use as the lookup
      * for the rules
      *
@@ -1420,7 +1457,6 @@ class WebSite {
                 return this._getPropertyRules(property.propertyId, version)
             });
     }
-
       /**
      * Retrieve the configuration rules for a given property. Use either Host or PropertyId to use as the lookup
      * for the rules
@@ -1634,15 +1670,16 @@ class WebSite {
     }
 
     assignEdgeHostname(propertyLookup, edgeHostname) {
-        const version = WebSite._getLatestVersion(propertyLookup);
         let contractId, 
             groupId, 
             productId, 
             propertyId,
-            configName;
+            configName,
+            version;
 
         return this._getProperty(propertyLookup)
             .then(data => {
+                version = WebSite._getLatestVersion(data, LATEST_VERSION.PRODUCTION)
                 contractId = data.contractId;
                 groupId = data.groupId;
                 configName = data.propertyName;
@@ -1692,7 +1729,6 @@ class WebSite {
     }
 
     delHostnames(propertyLookup, hostnames) {
-        const version = WebSite._getLatestVersion(propertyLookup);
         let contractId, 
             groupId, 
             productId, 
@@ -1707,6 +1743,7 @@ class WebSite {
 
         return this._getProperty(propertyLookup)
             .then(data => {
+                version = WebSite._getLatestVersion(data, LATEST_VERSION.PRODUCTION)
                 contractId = data.contractId;
                 groupId = data.groupId;
                 configName = data.propertyName;
@@ -1727,7 +1764,7 @@ class WebSite {
             })
     }
 
-    addHostnames(propertyLookup, hostnames, edgeHostname=null) {
+    addHostnames(propertyLookup, version=0, hostnames, edgeHostname=null) {
         let contractId, 
             groupId, 
             productId, 
@@ -1738,11 +1775,11 @@ class WebSite {
         let names = this._getConfigAndHostname(propertyLookup, hostnames);
         configName = names[0];
         hostnames = names[1];
-        const version = WebSite._getLatestVersion(configName);
         
-
         return this._getProperty(configName)
             .then(data => {
+                version = WebSite._getLatestVersion(data, version)
+                
                 contractId = data.contractId;
                 groupId = data.groupId;
                 configName = data.propertyName;
@@ -1773,79 +1810,82 @@ class WebSite {
             })
     }
 
-      setVariables(propertyLookup, variablefile) {
-        let version = WebSite._getLatestVersion(propertyLookup);
+    setVariables(propertyLookup, version=0, variablefile) {
         let changeVars = {
             "delete":[],
             "create":[],
             "update":[]
         };
-        
-        return new Promise ((resolve, reject) => {
+
+        return this._getProperty(configName)
+            .then(data => {
+                version = WebSite._getLatestVersion(data, version)
+            })
+            .then(() =>
+            {
             fs.readFile(untildify(variablefile), (err, data) => {
-                if (err)
-                    reject(err);
-                else
-                    resolve(JSON.parse(data));
-            });
-        })
-        .then(data => {
-            data.map(variable => {
-                variable.action.map(action => {
-                    changeVars[action].push(variable);
+                    if (err)
+                        Promise.reject(err);
+                    else
+                        Promise.resolve(JSON.parse(data));
+                });
+            })
+            .then(data => {
+                data.map(variable => {
+                    variable.action.map(action => {
+                        changeVars[action].push(variable);
+                    })
                 })
+                return this._getPropertyRules(propertyLookup, version)
             })
-            return this._getPropertyRules(propertyLookup, version)
-        })
-        .then(data => {
-            let newVars = data.rules.variables || [];
+            .then(data => {
+                let newVars = data.rules.variables || [];
 
-            changeVars['create'].map(variable => {
+                changeVars['create'].map(variable => {
 
-                let index_check = newVars.findIndex(elt=>elt.name==variable.name);
-                
-                if (index_check < 0) {
-                    delete variable.action;
-                    newVars.push(variable)
-                    changeVars['update'].splice(
-                        changeVars['update'].findIndex(
-                            elt => elt.name === variable.name
+                    let index_check = newVars.findIndex(elt=>elt.name==variable.name);
+                    
+                    if (index_check < 0) {
+                        delete variable.action;
+                        newVars.push(variable)
+                        changeVars['update'].splice(
+                            changeVars['update'].findIndex(
+                                elt => elt.name === variable.name
+                            )
                         )
-                    )
-                } else {
-                    console.log("... not creating existing variable " + variable.name)
-                }
-            })
+                    } else {
+                        console.log("... not creating existing variable " + variable.name)
+                    }
+                })
 
-            changeVars['delete'].map(variable => {
-                newVars.splice(
-                    newVars.findIndex(
-                        elt => elt.name === variable.name)
-                    )
-                    console.log("... deleting variable " + variable.name)
-            })
+                changeVars['delete'].map(variable => {
+                    newVars.splice(
+                        newVars.findIndex(
+                            elt => elt.name === variable.name)
+                        )
+                        console.log("... deleting variable " + variable.name)
+                })
 
-            changeVars['update'].map(variable => {
-                let ind = newVars.findIndex(elt=>elt.name==variable.name);
-                if (ind >= 0 ) {
-                    delete variable.action;
-                    console.log("... updating existing variable " + variable.name)
-                    newVars[ind] = variable;
-                }
+                changeVars['update'].map(variable => {
+                    let ind = newVars.findIndex(elt=>elt.name==variable.name);
+                    if (ind >= 0 ) {
+                        delete variable.action;
+                        console.log("... updating existing variable " + variable.name)
+                        newVars[ind] = variable;
+                    }
+                })
+                
+                data.rules.variables = newVars;   
+                
+                return Promise.resolve(data);
+                })
+                .then(rules => {
+                    return this._updatePropertyRules(propertyLookup,version,rules);
             })
-            
-            data.rules.variables = newVars;   
-            
-            return Promise.resolve(data);
-            })
-            .then(rules => {
-                return this._updatePropertyRules(propertyLookup,version,rules);
-        })
-    }
+}
 
 
-    setOrigin(propertyLookup, origin, forward) {
-        let version = WebSite._getLatestVersion(propertyLookup);
+    setOrigin(propertyLookup, version=0, origin, forward) {
         let forwardHostHeader;
         let customForward = "";
 
@@ -1857,8 +1897,11 @@ class WebSite {
             forwardHostHeader = "CUSTOM"
             customForward = forward
         }
-           
-          return this._getPropertyRules(propertyLookup, version)
+          return this._getProperty(propertyLookup)
+          .then(property => {
+                version = WebSite._getLatestVersion(property);
+                return this._getPropertyRules(property, version)
+          })
             .then(data => {
                 let behaviors = [];
 
