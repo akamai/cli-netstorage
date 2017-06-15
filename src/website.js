@@ -117,11 +117,8 @@ class WebSite {
                 propList.map(v => {
                     if (!v || !v.properties || !v.properties.items) return;
                     return v.properties.items.map(item => {
-                        let letters = "/^[0-9a-zA-Z\\_\\-\\.]+$/";
                         let configName = item.propertyName;
-                        if (!configName.match(letters)) {
-                            configName = configName.replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_')
-                        }
+                        configName = configName.replace(/[^\w.-]/gi, '_')
                         item.propertyName = configName;
                         //TODO: should use toJSON() instead of the primitive toString()
                         item.toString = function () {
@@ -372,6 +369,9 @@ class WebSite {
                                 // Work around PAPI bug
                                 console.log("... Error from server for " + propertyId)
                                 resolve(propertyId);
+                            } else if (response && response.statusCode == 403) {
+                                console.log("... No permissions for property " + propertyId)
+                                resolve(propertyId)
                             } else {
                                 reject(response);
                             }
@@ -429,7 +429,7 @@ class WebSite {
     _getProperty(propertyLookup, hostnameEnvironment = LATEST_VERSION.STAGING) {
         if (propertyLookup && propertyLookup.groupId && propertyLookup.propertyId && propertyLookup.contractId)
             return Promise.resolve(propertyLookup);
-        propertyLookup = propertyLookup.replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_');
+        propertyLookup = propertyLookup.replace(/[^\w.-]/gi, '_');
         return this._init()
             .then(() => {
                 let prop = this._propertyById[propertyLookup] || this._propertyByName[propertyLookup];
@@ -1289,7 +1289,7 @@ class WebSite {
             configName = hostnames[0]
         let letters = "/^[0-9a-zA-Z\\_\\-\\.]+$/";
         if (!configName.match(letters)) {
-            configName = configName.replace(/[^0-9a-zA-Z\\_\\-\\.]/gi, '_')
+            configName = configName.replace(/[^\w.-]/gi, '_')
         }
 
         return ([configName, hostnames])
