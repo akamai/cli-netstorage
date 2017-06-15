@@ -4,6 +4,9 @@
   "description": "A wrapping development kit to interface common tasks with akamai's {OPEN} API.",
   "repository": "https://github.com/akamai-open/akamaiconfigkit.git",
   "license": "Apache-2.0",
+  "engines" : { 
+	"node" : ">=7.0.0" 
+  }, 
   "scripts": {
     "start": "node bin/akamaiProperty",
     "test": "./node_modules/.bin/mocha --reporter spec"
