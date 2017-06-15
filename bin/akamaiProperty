@@ -28,6 +28,11 @@ let WebSite = require('../index').WebSite;
 
 let program = require('commander');
 
+if ((process.versions["node"]).split('.')[0] < 7) {
+    console.log("The Akamai CLI for Property Manager requires Node 7 or later.")
+    process.exit()
+}
+
 function appName() {
     return process.argv[1].replace(/.*\//, "");
 }
@@ -127,7 +132,8 @@ function createProperty(property, targetProperty, options) {
                                         options.group,
                                         options.cpcode,
                                         options.origin,
-                                        options.edgehostname);
+                                        options.edgehostname,
+                                        options.ruleformat);
 
         } else {
             return property.create(hostnames, 
@@ -137,7 +143,8 @@ function createProperty(property, targetProperty, options) {
                                         options.group,
                                         null,
                                         options.origin,
-                                        options.edgehostname)
+                                        options.edgehostname,
+                                        options.ruleformat)
         }
     } else {
         return property.createFromExisting(options.clone, 
@@ -149,7 +156,8 @@ function createProperty(property, targetProperty, options) {
                                         options.group,
                                         options.origin,
                                         options.edgehostname,
-                                        options.cpcode
+                                        options.cpcode,
+                                        options.ruleformat
                                         )
     }
 }
@@ -237,6 +245,14 @@ function modifyProperty(property, targetProperty, options, command) {
             return Promise.resolve();
         }
     })
+    .then(() => {
+        if (options.ruleformat) {
+            return property.setRuleFormat(targetProperty, version, options.ruleformat)
+        } else {
+            return Promise.resolve();
+        }
+    })
+
 }
 
 function numberVersion(version) {
@@ -311,6 +327,7 @@ function main()
         .option("--section <section>","Section of the credentials file")
         .option("--nocopy", "Do not copy source property's hostnames")
         .option("--forward <forward host>", "Forward host header (origin|incoming|<hostname>")
+        .option("--ruleformat <format>", "Rule format to use")
         .action(function(target, opts) {
             targetProperty = target;
             options = opts;
@@ -407,6 +424,7 @@ function main()
         .option("--origin <origin>", "Origin ")
         .option("--edgehostname <ehn>", "TODO: Edge hostname")
         .option("--version <version>", "Version to operate on")
+        .option("--ruleformat <format>", "Rule format to use")
         .option("--variables <file>", "User variables file.  Format should be\n" +
                 "\t\t\t\t   [{\n" + 
         '\t\t\t\t\t"name": "PMUSER_TEST",' + "\n" +
