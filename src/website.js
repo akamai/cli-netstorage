@@ -64,7 +64,6 @@ class WebSite {
         this._propertyByName = {};
         this._propertyByHost = {};
         this._initComplete = false;
-        this._useNewestFormat = false;
         this._propertyHostnameList = {};
         this._ehnByHostname = {};
         this._newestRulesFormat = "";
@@ -365,7 +364,7 @@ class WebSite {
                             if (response && response.body && response.statusCode >= 200 && response.statusCode < 400) {
                                 let parsed = JSON.parse(response.body);
                                 resolve(parsed);
-                            } else if (response && response.statusCode == 500) {
+                            } else if (response && (response.statusCode == 500 || response.statusCode == 400)) {
                                 // Work around PAPI bug
                                 console.log("... Error from server for " + propertyId)
                                 resolve(propertyId);
@@ -456,11 +455,9 @@ class WebSite {
             this._edge.auth(request);
 
             this._edge.send(function (data, response) {
-                if (!response && fallThrough) {
+                if (!response) {
                     console.log("... No response from server for property list")
-                    resolve(propertyId);
-                } else if (!response) {
-                    return this._getPropertyList(contractId, groupId, 1)
+                    resolve();
                 } else if (response && response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
@@ -638,9 +635,7 @@ class WebSite {
                 rules.rules.options = { "is_secure": true }
             }
             rules.rules.children.behaviors = children_behaviors;
-            if (this._useNewestFormat) {
-                rules.ruleFormat = this._newestRulesFormat
-            }
+            
             delete rules.errors;
             resolve(rules);
         })
@@ -658,19 +653,19 @@ class WebSite {
                     console.info(`... updating property (${propertyLookup}) v${version}`);
 
                     let request;
-                    if (this._useNewestFormat == false) {
-                            request = {
-                                method: 'PUT',
-                                path: `/papi/v0/properties/${propertyId}/versions/${version}/rules?contractId=${contractId}&groupId=${groupId}`,
-                                body: rules
-                            }
-                    } else {
-                            request = {
+                    if (rules.ruleFormat != "latest") {
+                        request = {
                                 method: 'PUT',
                                 path: `/papi/v0/properties/${propertyId}/versions/${version}/rules?contractId=${contractId}&groupId=${groupId}`,
                                 body: rules,
-                                headers: {'Content-Type':'application/vnd.akamai.papirules.' + this._newestRulesFormat + '+json'}
-                            }
+                                headers: {'Content-Type':'application/vnd.akamai.papirules.' + rules.ruleFormat + '+json'}
+                        }
+                    } else {
+                        request = {
+                                method: 'PUT',
+                                path: `/papi/v0/properties/${propertyId}/versions/${version}/rules?contractId=${contractId}&groupId=${groupId}`,
+                                body: rules
+                        }
                     }
 
                     this._edge.auth(request);
@@ -1777,6 +1772,20 @@ class WebSite {
         return this._moveProperty(propertyLookup, destGroup)
     }
 
+    setRuleFormat(propertyLookup, version, ruleformat) {
+        
+        return this._getProperty(propertyLookup)
+            .then(data => {
+                version = WebSite._getLatestVersion(data, version)
+                return this._getPropertyRules(propertyLookup, version)
+            })
+            .then(rules => {
+                rules.ruleFormat = ruleformat;
+                return this._updatePropertyRules(propertyLookup, version, rules);
+            })
+    }
+
+
     delHostnames(propertyLookup, hostnames) {
         let contractId,
             groupId,
@@ -2134,9 +2143,7 @@ class WebSite {
             .then(data => {
                 cloneFrom = data;
                 productId = data.productId;
-                if (cloneFrom.ruleFormat == "latest") {
-                    this._useNewestFormat = true;
-                }
+                
                 if (!cpcode) {
                     cpcode = data.cpcode;
                 }
@@ -2186,6 +2193,9 @@ class WebSite {
                 return this._setRules(groupId, contractId, propertyId, configName, cpcode, hostnames, origin, secure)
             })
             .then(rules => {
+                if (rules.ruleFormat == "latest") {
+                    rules.ruleFormat = this._newestRulesFormat;
+                }
                 return this._updatePropertyRules(configName,
                     1,
                     rules);
