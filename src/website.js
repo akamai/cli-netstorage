@@ -66,6 +66,7 @@ class WebSite {
         this._initComplete = false;
         this._propertyHostnameList = {};
         this._ehnByHostname = {};
+        this._edgeHostnames = [];
         this._newestRulesFormat = "";
         if (auth.create) {
             this._initComplete = true;
@@ -176,7 +177,21 @@ class WebSite {
                 console.timeEnd('Init PropertyManager cache');
             })
             .then(() => {
-                return this.retrieveFormats(true)
+                return Promise.all(groupcontractList.map(v => {
+                    return this._retrieveEdgeHostnames(v.contractId, v.groupId)
+                }));
+            })
+            .then(edgeHostList => {
+                edgeHostList.map(edgeLookup => {
+                    if (!edgeLookup) {
+                        return;
+                    }
+                    edgeLookup.edgeHostnames.items.map(hostname => {
+                        this._ehnByHostname[hostname.domainPrefix] = hostname.edgeHostnameId;
+                        this._ehnByHostname[hostname.edgeHostnameDomain] = hostname.edgeHostnameId;
+                    })
+                })
+                return Promise.resolve();
             })
             .then(format => {
                 this._newestRulesFormat = format;
@@ -444,6 +459,32 @@ class WebSite {
             });
     };
 
+    _retrieveEdgeHostnames(contractId, groupId) {
+        return new Promise((resolve, reject) => {
+
+            let request = {
+                method: 'GET',
+                path: `/papi/v0/edgehostnames?contractId=${contractId}&groupId=${groupId}`,
+            };
+            this._edge.auth(request);
+
+            this._edge.send(function (data, response) {
+                if (!response) {
+                    console.log("... No response from server for edgehostname list")
+                    resolve();
+                } else if (response && response.statusCode >= 200 && response.statusCode < 400) {
+                    let parsed = JSON.parse(response.body);
+                    resolve(parsed);
+                } else if (response.statusCode == 403) {
+                    console.info('... no permissions, ignoring  {%s : %s}', contractId, groupId);
+                    resolve(null);
+                } else {
+                    reject(response);
+                }
+            });
+        });
+    };
+
     _getPropertyList(contractId, groupId, fallThrough = false) {
         return new Promise((resolve, reject) => {
             //console.info('... retrieving list of properties {%s : %s}', contractId, groupId);
@@ -653,7 +694,7 @@ class WebSite {
                     console.info(`... updating property (${propertyLookup}) v${version}`);
 
                     let request;
-                    if (rules.ruleFormat != "latest") {
+                    if (rules.ruleFormat != "latest" && rules.ruleFormat) {
                         request = {
                                 method: 'PUT',
                                 path: `/papi/v0/properties/${propertyId}/versions/${version}/rules?contractId=${contractId}&groupId=${groupId}`,
@@ -667,7 +708,7 @@ class WebSite {
                                 body: rules
                         }
                     }
-
+                    
                     this._edge.auth(request);
 
                     this._edge.send(function (data, response) {
@@ -718,23 +759,16 @@ class WebSite {
         if (edgeHostnameId) {
             return Promise.resolve(edgeHostnameId);
         }
-        return this._getEdgeHostnames(groupId, contractId)
-            .then(edgeHostnames => {
-                edgeHostnames.edgeHostnames.items.map(item => {
-                    if (item["domainPrefix"] === configName || item["domainPrefix"] === edgeHostname ||
-                        item["edgeHostnameDomain"] === configName || item["edgeHostnameDomain"] === edgeHostname) {
-                        console.info("Hostname already exists");
-                        edgeHostnameId = item["edgeHostnameId"]
-                        if (this._propertyByHost[item["domainPrefix"]]) {
-                            let property = this._propertyByHost[item["domainPrefix"]]
-                            console.info("Hostname assigned to " + property["propertyName"])
-                        }
-                        return Promise.resolve(edgeHostnameId);
-                    }
-                });
-                return Promise.resolve(edgeHostnameId);
+        console.log("Creating hostname");
+        return this._getEdgeHostnames()
+            .then(() => {
+                console.log("HERE");
+                console.log(edgeHostname)
+                console.log(this._ehnByHostname[edgeHostname])
+                return Promise.resolve(this._ehnByHostname[edgeHostname])
             })
             .then(edgeHostnameId => {
+                console.log(edgeHostnameId)
                 if (edgeHostnameId) {
                     return Promise.resolve(edgeHostnameId);
                 } else {
@@ -1154,6 +1188,7 @@ class WebSite {
                         hostnames = [configName];
                     }
 
+                    console.log("Creating the hostname array now")
                     if (!deleteHosts) {
                         newHostnameArray = assignHostnameArray;
                         hostnames.map(hostname => {
@@ -1213,26 +1248,9 @@ class WebSite {
             })
     }
 
-    _getEdgeHostnames(groupId, contractId) {
+    _getEdgeHostnames() {
         return new Promise((resolve, reject) => {
-            console.info('Checking for existing edge hostname');
-            console.time('... checking edge hostnames');
-            let request = {
-                method: 'GET',
-                path: `/papi/v0/edgehostnames?contractId=${contractId}&groupId=${groupId}`
-            }
-
-            this._edge.auth(request);
-            this._edge.send((data, response) => {
-                console.timeEnd('... checking edge hostnames');
-                if (response.statusCode >= 200 && response.statusCode < 400) {
-                    response = JSON.parse(response.body);
-                    resolve(response);
-                } else {
-                    reject(response);
-                }
-
-            })
+            resolve(this._edgeHostnames)
         })
     }
 
@@ -2165,7 +2183,10 @@ class WebSite {
                     return Promise.resolve();
                 }
             })
-            .then(() => {
+            .then(edgeHostnameId => {
+                if (!edgeHostnameId && edgeHostname) {
+                    return Promise.reject("Cannot find hostname " + edgeHostname)
+                }
                 return this._createHostname(groupId,
                     contractId,
                     configName,
