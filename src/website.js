@@ -2019,7 +2019,6 @@ class WebSite {
             })
             .then(data => {
                 let children = [];
-                console.log("In the property now")
                 data.rules.children.map(child => {
                     let behaviors = []
                     child.behaviors.map(behavior => {
@@ -2040,14 +2039,14 @@ class WebSite {
                         }
                         behaviors.push(behavior);
                     })
-                    children.push(behaviors)
+                    child.behaviors = behaviors;
+                    children.push(child)
                 })
+                
                 data.rules.children = children;
-                Promise.resolve(data);   
+                return Promise.resolve(data);   
             })
             .then(rules => {
-                console.log(JSON.stringify(rules, null, 2))
-                console.log(propertyLookup)
                 return this._updatePropertyRules(propertyLookup,version,rules);
             })
     }
