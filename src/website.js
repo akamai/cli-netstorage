@@ -427,8 +427,15 @@ class WebSite {
                                 contractId: contractId
                             }
                             resolve(productInfo);
+                        } else if (item.productId == "prd_Alta") {
+                            productInfo = {
+                                productId: "prd_Alta",
+                                productName: "Alta",
+                                groupId: groupId,
+                                contractId: contractId
+                            }
                         }
-                    });
+                    })
                 } else if (response.statusCode == 403) {
                     console.info('... your credentials do not have permission for this group, skipping  {%s : %s}', contractId, groupId);
                     resolve(null);
@@ -694,7 +701,7 @@ class WebSite {
                     console.info(`... updating property (${propertyLookup}) v${version}`);
 
                     let request;
-                    if (rules.ruleFormat != "latest" && rules.ruleFormat) {
+                    if (rules.ruleFormat && rules.ruleFormat != "latest" ) {
                         request = {
                                 method: 'PUT',
                                 path: `/papi/v0/properties/${propertyId}/versions/${version}/rules?contractId=${contractId}&groupId=${groupId}`,
@@ -1617,6 +1624,7 @@ class WebSite {
      * @returns {Promise} returns a promise with the TResult of boolean
      */
     copy(fromProperty, fromVersion = LATEST_VERSION.LATEST, toProperty) {
+        console.log("The source version is " + fromVersion)
         return this.retrieve(fromProperty, fromVersion)
             .then(fromRules => {
                 console.info(`Copy ${fromProperty} v${fromRules.propertyVersion} to ${toProperty}`);
@@ -1979,7 +1987,6 @@ class WebSite {
             })
             .then(data => {
                 let behaviors = [];
-
                 data.rules.behaviors.map(behavior => {
                     if (behavior.name == "origin") {
                         if (origin) {
@@ -2001,6 +2008,47 @@ class WebSite {
             })
             .then(rules => {
                 return this._updatePropertyRules(propertyLookup, version, rules);
+            })
+    }
+
+    setSureRoute(propertyLookup, version=0, sureroutemap, surerouteto, sureroutetohost) {
+        return this._getProperty(propertyLookup)
+            .then(property => {
+                version = WebSite._getLatestVersion(property, version);
+                return this._getPropertyRules(property, version)
+            })
+            .then(data => {
+                let children = [];
+                console.log("In the property now")
+                data.rules.children.map(child => {
+                    let behaviors = []
+                    child.behaviors.map(behavior => {
+                        if (behavior.name == "sureRoute") {
+                            if (sureroutemap) {
+                                behavior.options.customMap = sureroutemap;
+                                behavior.options.type = "CUSTOM_MAP";
+                            }
+                            if (surerouteto) {
+                                console.log(behavior)
+                                behavior.options.testObjectUrl = surerouteto;
+                                console.log(behavior)
+                            }
+                            if (sureroutetohost) {
+                                behavior.options.toHost = sureroutetohost;
+                                behavior.options.toHostStatus = "OTHER";
+                            }
+                        }
+                        behaviors.push(behavior);
+                    })
+                    children.push(behaviors)
+                })
+                data.rules.children = children;
+                Promise.resolve(data);   
+            })
+            .then(rules => {
+                console.log(JSON.stringify(rules, null, 2))
+                console.log(propertyLookup)
+                return this._updatePropertyRules(propertyLookup,version,rules);
             })
     }
 
