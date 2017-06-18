@@ -6,7 +6,7 @@
     {
       "name": "property",
       "version": "0.1.0",
-      "description": "Manage configurations for Akamai properties",
+      "description": "Manage configurations for Akamai properties"
     }
   ]
 }

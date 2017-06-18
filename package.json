@@ -1,8 +1,8 @@
 {
-  "name": "akamaiconfigkit",
-  "version": "0.0.4",
+  "name": "akamaicliproperty",
+  "version": "0.0.5",
   "description": "A wrapping development kit to interface common tasks with akamai's {OPEN} API.",
-  "repository": "https://github.com/akamai-open/akamaiconfigkit-public.git",
+  "repository": "https://github.com/akamai/cli-property",
   "license": "Apache-2.0",
   "engines" : { 
 	"node" : ">=7.0.0" 
