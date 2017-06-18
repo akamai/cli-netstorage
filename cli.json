@@ -1,0 +1,12 @@
+{
+  "requirements": {
+    "node": "7.0.0"
+  },
+  "commands": [
+    {
+      "name": "property",
+      "version": "0.1.0",
+      "description": "Manage configurations for Akamai properties",
+    }
+  ]
+}
