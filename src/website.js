@@ -184,7 +184,7 @@ class WebSite {
             .then(edgeHostList => {
                 edgeHostList.map(edgeLookup => {
                     if (!edgeLookup) {
-                        return;
+                        return Promise.resolve();
                     }
                     edgeLookup.edgeHostnames.items.map(hostname => {
                         this._ehnByHostname[hostname.domainPrefix] = hostname.edgeHostnameId;
@@ -192,6 +192,10 @@ class WebSite {
                     })
                 })
                 return Promise.resolve();
+            })
+            .then(() => {
+                console.log("Retrieving formats")
+                return this.retrieveFormats(true)
             })
             .then(format => {
                 this._newestRulesFormat = format;
