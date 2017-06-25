@@ -80,10 +80,19 @@ class WebSite {
             this._initComplete = true;
             return Promise.resolve();
         }
+        console.log("Retrieving formats")
+        return this.retrieveFormats(true)
+            .then(format => {
+                this._newestRulesFormat = format;
+                return Promise.resolve();
+            })
+    };
 
+    _initPropertyCache() {
         let groupcontractList = [];
         console.time('Init PropertyManager cache');
         console.info('Init PropertyManager cache (hostnames and property list)');
+
         return this._getGroupList()
             .then(data => {
                 return new Promise((resolve, reject) => {
@@ -193,14 +202,7 @@ class WebSite {
                 })
                 return Promise.resolve();
             })
-            .then(() => {
-                console.log("Retrieving formats")
-                return this.retrieveFormats(true)
-            })
-            .then(format => {
-                this._newestRulesFormat = format;
-            })
-    };
+    }
 
     _getNewProperty(propertyId, groupId, contractId) {
         return new Promise((resolve, reject) => {
@@ -451,9 +453,94 @@ class WebSite {
         });
     };
 
+    _searchByValue(queryObj) {
+            return new Promise((resolve, reject) => {
+            console.info('... searching ' + Object.keys(queryObj) + ' for ' + queryObj[Object.keys(queryObj)[0]]);
+
+            let request = {
+                method: 'POST',
+                path: `/papi/v1/search/find-by-value`,
+                body: queryObj
+            };
+            this._edge.auth(request);
+            this._edge.send(function (data, response) {
+                if (response && response.statusCode >= 200 && response.statusCode < 400) {
+                    let parsed = JSON.parse(response.body);
+                    resolve(parsed);
+                }
+            })
+        })
+    }
+
+    _getPropertyMetadata(propertyId, groupId, contractId) {
+         return new Promise((resolve, reject) => {
+            console.info('... getting info for ' + propertyId);
+
+            let request = {
+                method: 'GET',
+                path: `/papi/v1/properties/${propertyId}?contractId=${contractId}&groupId=${groupId}`,
+            };
+            this._edge.auth(request);
+            this._edge.send(function (data, response) {
+                if (response && response.statusCode >= 200 && response.statusCode < 400) {
+                    let parsed = JSON.parse(response.body);
+                    resolve(parsed.properties.items[0]);
+                }
+            })
+        })
+    }
+
+
+    _findProperty(propertyLookup) {
+        let searchObj = {"propertyName" : propertyLookup}
+        return this._searchByValue(searchObj)
+        .then(data => {
+            if (data.versions.items.length == 0) {
+                return Promise.resolve()
+            }
+            let versions = data.versions.items;
+            return Promise.resolve(versions);
+        })
+        .then(data => {
+            if (data && data.versions.items.length > 0) {
+                return Promise.resolve(data);
+            } else {
+                let searchObj = {"hostname" : propertyLookup}
+                return this._searchByValue(searchObj)
+            }
+        })
+        .then(data => {
+            if (data && data.versions.items.length > 0) {
+                return Promise.resolve(data);
+            } else {
+                let searchObj = {"edgeHostname" : propertyLookup}
+                return this._searchByValue(searchObj)
+            }
+        })
+        .then(data => {
+            if (data && data.versions.items.length == 0) {
+                return Promise.resolve();
+            }
+            let groupId = data[0].groupId;
+            let contractId = data[0].contractId;
+            let propertyId = data[0].propertyId;
+            return this._getPropertyMetadata(propertyId, groupId, contractId)
+        })
+        .then(property => {
+            if (!property) {
+                console.log("Cannot locate property using search")
+                return Promise.resolve();
+            }
+            this._propertyByName[property.propertyName] = property;
+            this._propertyById[property.propertyId] = property;
+            return Promise.resolve(property);
+        })
+    }
+
     _getProperty(propertyLookup, hostnameEnvironment = LATEST_VERSION.STAGING) {
         if (propertyLookup && propertyLookup.groupId && propertyLookup.propertyId && propertyLookup.contractId)
             return Promise.resolve(propertyLookup);
+
         propertyLookup = propertyLookup.replace(/[^\w.-]/gi, '_');
         return this._init()
             .then(() => {
@@ -463,7 +550,37 @@ class WebSite {
                     if (host)
                         prop = hostnameEnvironment === LATEST_VERSION.STAGING ? host.staging : host.production;
                 }
+                if (prop) {
+                    return Promise.resolve(prop);
+                }
+                if (!propertyLookup.match("prp_")) {
+                    return this._findProperty(propertyLookup)
+                } else {
+                    return Promise.resolve()
+                }
+            })
+            .then(prop => {
+                if (prop) {
+                    return Promise.resolve(prop)
+                } else {
+                    if (Object.keys(this._propertyById).length == 0) {  
+                        console.log("Initializing property cache")
+                        return this._initPropertyCache()
+                    } else {
+                        return Promise.resolve()
+                    }
+                }
+            })
+            .then(prop => {
+               if (prop) { return Promise.resolve(prop) }
+               prop = this._propertyById[propertyLookup] || this._propertyByName[propertyLookup];
+                if (!prop) {
+                    let host = this._propertyByHost[propertyLookup];
+                    if (host)
+                        prop = hostnameEnvironment === LATEST_VERSION.STAGING ? host.staging : host.production;
+                }
 
+                
                 if (!prop)
                     return Promise.reject(Error(`Cannot find property: ${propertyLookup}`));
                 return Promise.resolve(prop);
@@ -2032,9 +2149,7 @@ class WebSite {
                                 behavior.options.type = "CUSTOM_MAP";
                             }
                             if (surerouteto) {
-                                console.log(behavior)
                                 behavior.options.testObjectUrl = surerouteto;
-                                console.log(behavior)
                             }
                             if (sureroutetohost) {
                                 behavior.options.toHost = sureroutetohost;
