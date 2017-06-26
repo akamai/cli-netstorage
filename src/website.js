@@ -774,21 +774,15 @@ class WebSite {
             let children_behaviors = [];
             let cpCodeExists = 0;
 
-            console.log("CPCODE: " + cpcode)
-
             rules.rules.behaviors.map(behavior => {
-                console.log(JSON.stringify(behavior, '', 2))
                 if (behavior.name == "origin" && origin) {
                     behavior.options.hostname = origin;
                 }
                 if (behavior.name == "cpCode") {
-                    console.log("CPCODE EXISTS")
                     cpCodeExists = 1;
                     if (behavior.options.value) {
-                        console.log("VALUE")
                         behavior.options.value = { "id": Number(cpcode) };
                     } else {
-                        console.log("CPCODE")
                         behavior.options.cpcode = { "id": Number(cpcode) };
                     }
                 }
@@ -1765,7 +1759,6 @@ class WebSite {
      * @returns {Promise} returns a promise with the TResult of boolean
      */
     copy(fromProperty, fromVersion = LATEST_VERSION.LATEST, toProperty) {
-        console.log("The source version is " + fromVersion)
         return this.retrieve(fromProperty, fromVersion)
             .then(fromRules => {
                 console.info(`Copy ${fromProperty} v${fromRules.propertyVersion} to ${toProperty}`);
@@ -2258,8 +2251,6 @@ class WebSite {
                 return this._setRules(groupId, contractId, propertyId, configName, cpcode, hostnames, origin, secure, newRules)
             })
             .then(rules => {
-                console.log("NEW RULES " + JSON.stringify(rules,'',2));
-                
                 return this._updatePropertyRules(configName,
                     1,
                     rules);
