@@ -772,20 +772,32 @@ class WebSite {
         return new Promise((resolve, reject) => {
             let behaviors = [];
             let children_behaviors = [];
+            let cpCodeExists = 0;
+
+            console.log("CPCODE: " + cpcode)
 
             rules.rules.behaviors.map(behavior => {
+                console.log(JSON.stringify(behavior, '', 2))
                 if (behavior.name == "origin" && origin) {
                     behavior.options.hostname = origin;
                 }
                 if (behavior.name == "cpCode") {
+                    console.log("CPCODE EXISTS")
+                    cpCodeExists = 1;
                     if (behavior.options.value) {
+                        console.log("VALUE")
                         behavior.options.value = { "id": Number(cpcode) };
                     } else {
+                        console.log("CPCODE")
                         behavior.options.cpcode = { "id": Number(cpcode) };
                     }
                 }
                 behaviors.push(behavior);
             })
+            if (!cpCodeExists) {
+                let behavior = { "options": { "value" : { "id": Number(cpcode) } } }
+                behaviors.push(behavior);
+            }
             rules.rules.behaviors = behaviors;
 
             rules.rules.children.map(child => {
@@ -1440,7 +1452,8 @@ class WebSite {
     }
 
 
-    _setRules(groupId, contractId, productId, configName, cpcode = null, hostnames = [], origin = null, secure = false) {
+    _setRules(groupId, contractId, productId, configName, cpcode = null, hostnames = [], origin = null, secure = false, baserules=null) {
+        
         return new Promise((resolve, reject) => {
             if (cpcode) {
                 return resolve(cpcode)
@@ -1453,7 +1466,11 @@ class WebSite {
         })
             .then(data => {
                 cpcode = data;
-                return this.retrieve(configName)
+                if (baserules) {
+                    return Promise.resolve(baserules)
+                } else {
+                    return this.retrieve(configName)
+                }
             })
             .then(rules => {
                 return this._updatePropertyBehaviors(rules,
@@ -2198,7 +2215,7 @@ class WebSite {
         let names = this._getConfigAndHostname(configName, hostnames);
         configName = names[0];
         hostnames = names[1];
-
+        
         if (!origin) {
             origin = "origin-" + configName;
         }
@@ -2238,13 +2255,11 @@ class WebSite {
                 this._propertyById[propInfo.propertyId] = propInfo;
                 this._propertyByName[configName] = propInfo;
 
-                if (newRules) {
-                    return Promise.resolve(newRules)
-                } else {
-                    return this._setRules(groupId, contractId, propertyId, configName, cpcode, hostnames, origin, secure)
-                }
+                return this._setRules(groupId, contractId, propertyId, configName, cpcode, hostnames, origin, secure, newRules)
             })
             .then(rules => {
+                console.log("NEW RULES " + JSON.stringify(rules,'',2));
+                
                 return this._updatePropertyRules(configName,
                     1,
                     rules);
@@ -2293,11 +2308,16 @@ class WebSite {
                 else
                     resolve(JSON.parse(data));
             });
-
         })
-            .then(rules => {
-                return this.create(hostnames, cpcode, configName, contractId, groupId, rules, origin, edgeHostname)
-            })
+        .then(rules => {
+            if (!groupId) {
+                    groupId = rules.groupId;
+            }
+            if (!contractId) {
+                contractId = rules.contractId;
+            }
+            return this.create(hostnames, cpcode, configName, contractId, groupId, rules, origin, edgeHostname)
+        })
 
     }
 
@@ -2321,7 +2341,6 @@ class WebSite {
             productName,
             propertyId,
             edgeHostnameId;
-
 
         return this._getProperty(srcProperty)
             .then(data => {

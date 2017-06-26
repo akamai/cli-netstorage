@@ -124,9 +124,9 @@ function createProperty(property, targetProperty, options) {
     }
 
     if (!options.clone) {
-        if (options.srcfile) {
+        if (options.file) {
           return property.createFromFile(hostnames, 
-                                        options.srcfile,
+                                        options.file,
                                         targetProperty,
                                         options.contract, 
                                         options.group,
@@ -321,7 +321,7 @@ function main()
             if ("BOTH" != env && 
                 !env.startsWith("STAG") && 
                 !env.startsWith("PROD"))
-            program.help("activate <property> --network (STAGING, PRODUCTION, BOTH)"); 
+            program.help(); 
 
         })
 
@@ -351,10 +351,7 @@ function main()
             console.log('Creating new property %s', targetProperty);
 
             if ((options.group || options.contract) && (!(options.group && options.contract))) 
-                program.help("Need both contract and group")
-
-            if ((options.cpcode) && (!(options.group && options.contract)) && !options.clone) 
-                program.help("CPCode requires both contract and group")
+                program.help()
         })
 
     program
@@ -376,7 +373,7 @@ function main()
             if ("BOTH" != env && 
                 !env.startsWith("STAG") && 
                 !env.startsWith("PROD"))
-            program.help("deactivate <property> --network (STAGING, PRODUCTION, BOTH)");
+            program.help();
         })
 
     program
