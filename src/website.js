@@ -80,7 +80,6 @@ class WebSite {
             this._initComplete = true;
             return Promise.resolve();
         }
-        console.log("Retrieving formats")
         return this.retrieveFormats(true)
             .then(format => {
                 this._newestRulesFormat = format;
@@ -462,6 +461,7 @@ class WebSite {
                 path: `/papi/v1/search/find-by-value`,
                 body: queryObj
             };
+
             this._edge.auth(request);
             this._edge.send(function (data, response) {
                 if (response && response.statusCode >= 200 && response.statusCode < 400) {
@@ -499,10 +499,10 @@ class WebSite {
                 return Promise.resolve()
             }
             let versions = data.versions.items;
-            return Promise.resolve(versions);
+            return Promise.resolve(data);
         })
         .then(data => {
-            if (data && data.versions.items.length > 0) {
+            if (data && data.versions && data.versions.items.length > 0) {
                 return Promise.resolve(data);
             } else {
                 let searchObj = {"hostname" : propertyLookup}
@@ -521,9 +521,9 @@ class WebSite {
             if (data && data.versions.items.length == 0) {
                 return Promise.resolve();
             }
-            let groupId = data[0].groupId;
-            let contractId = data[0].contractId;
-            let propertyId = data[0].propertyId;
+            let groupId = data.versions.items[0].groupId;
+            let contractId = data.versions.items[0].contractId;
+            let propertyId = data.versions.items[0].propertyId;
             return this._getPropertyMetadata(propertyId, groupId, contractId)
         })
         .then(property => {
@@ -589,7 +589,6 @@ class WebSite {
 
     _retrieveEdgeHostnames(contractId, groupId) {
         return new Promise((resolve, reject) => {
-
             let request = {
                 method: 'GET',
                 path: `/papi/v0/edgehostnames?contractId=${contractId}&groupId=${groupId}`,
@@ -750,7 +749,7 @@ class WebSite {
 
             let request = {
                 method: 'POST',
-                path: `/papi/v0/properties/?contractId=${contractId}&groupId=${groupId}`,
+                path: `/papi/v1/properties/?contractId=${contractId}&groupId=${groupId}`,
                 body: propertyObj
             };
 
@@ -887,16 +886,21 @@ class WebSite {
         if (edgeHostnameId) {
             return Promise.resolve(edgeHostnameId);
         }
-        console.log("Creating hostname");
-        return this._getEdgeHostnames()
+        if (edgeHostname) {
+            return Promise.resolve(edgeHostname);
+        }
+        return this._initPropertyCache()
             .then(() => {
-                console.log("HERE");
-                console.log(edgeHostname)
-                console.log(this._ehnByHostname[edgeHostname])
-                return Promise.resolve(this._ehnByHostname[edgeHostname])
+                return this._getEdgeHostnames()
+            })
+            .then(() => {
+                if (this._ehnByHostname[edgeHostname]) {
+                    return Promise.resolve(this._ehnByHostname[edgeHostname])
+                } else {
+                    return Promise.resolve()
+                }
             })
             .then(edgeHostnameId => {
-                console.log(edgeHostnameId)
                 if (edgeHostnameId) {
                     return Promise.resolve(edgeHostnameId);
                 } else {
@@ -1316,7 +1320,6 @@ class WebSite {
                         hostnames = [configName];
                     }
 
-                    console.log("Creating the hostname array now")
                     if (!deleteHosts) {
                         newHostnameArray = assignHostnameArray;
                         hostnames.map(hostname => {
@@ -2251,8 +2254,8 @@ class WebSite {
                     if (edgeHostname.indexOf("edgekey") > -1) {
                         secure = true;
                     }
-                    edgeHostnameId = this._ehnByHostname[edgeHostname];
-                    return Promise.resolve(edgeHostnameId);
+                    edgeHostnameId = edgeHostname;
+                    return Promise.resolve(edgeHostname);
                 } else if (data.edgeHostnameId) {
                     edgeHostnameId = data.edgeHostnameId;
                     return Promise.resolve(edgeHostnameId);
@@ -2340,7 +2343,7 @@ class WebSite {
                     if (edgeHostname.indexOf("edgekey") > -1) {
                         secure = true;
                     }
-                    edgeHostnameId = this._ehnByHostname[edgeHostname];
+                    edgeHostnameId = edgeHostname;
                     return Promise.resolve(edgeHostnameId);
                 } else if (data.edgeHostnameId) {
                     edgeHostnameId = data.edgeHostnameId;
@@ -2350,9 +2353,6 @@ class WebSite {
                 }
             })
             .then(edgeHostnameId => {
-                if (!edgeHostnameId && edgeHostname) {
-                    return Promise.reject("Cannot find hostname " + edgeHostname)
-                }
                 return this._createHostname(groupId,
                     contractId,
                     configName,
