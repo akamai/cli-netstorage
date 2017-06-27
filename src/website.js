@@ -26,7 +26,7 @@ const LATEST_VERSION = {
     LATEST: 0
 };
 
-const SEARCH_OPTIMIZATION = 1;
+const SEARCH_OPTIMIZATION = 0;
 
 //export
 const AKAMAI_ENV = {
