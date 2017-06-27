@@ -2101,7 +2101,22 @@ class WebSite {
             })
     }
 
-
+    setComments(propertyLookup, version = 0, comment) {
+        console.log("... adding version notes")
+        return this._getProperty(propertyLookup)
+            .then(property => {
+                version = WebSite._getLatestVersion(property, version);
+                return this._getPropertyRules(property, version)
+            })
+            .then(data => {
+                data.comments = comment;
+                return Promise.resolve(data);
+            })
+            .then(rules => {
+                return this._updatePropertyRules(propertyLookup, version, rules);
+            })
+    }
+    
     setOrigin(propertyLookup, version = 0, origin, forward) {
         let forwardHostHeader;
         let customForward = "";
@@ -2201,7 +2216,14 @@ class WebSite {
      * @param {string} origin
      */
 
-    create(hostnames = [], cpcode = null, configName = null, contractId = null, groupId = null, newRules = null, origin = null, edgeHostname = null, secure = false) {
+    create(hostnames = [],  cpcode = null, 
+                            configName = null, 
+                            contractId = null, 
+                            groupId = null, 
+                            newRules = null, 
+                            origin = null, 
+                            edgeHostname = null, 
+                            secure = false) {
         if (!configName && !hostnames) {
             return Promise.reject("Configname or hostname are required.")
         }

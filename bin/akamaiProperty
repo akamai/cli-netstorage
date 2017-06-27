@@ -232,6 +232,14 @@ function modifyProperty(property, targetProperty, options, command) {
         }
     })
     .then(() => {
+        if (options.notes) {
+            return property.setComments(targetProperty, version, options.notes);
+        } else {
+            return Promise.resolve();
+        }
+    })
+
+    .then(() => {
             if (options.variables) {
                 return property.setVariables(targetProperty, version, options.variables);
             } else {
@@ -340,6 +348,7 @@ function main()
         .option("--nocopy", "Do not copy source property's hostnames")
         .option("--forward <forward host>", "Forward host header (origin|incoming|<hostname>")
         .option("--ruleformat <format>", "Rule format to use")
+        .option("--notes <notes>", "Version notes for this property version")
         .action(function(target, opts) {
             targetProperty = target;
             options = opts;
@@ -437,6 +446,7 @@ function main()
         .option("--sureroutemap <map>", "SureRoute map to use")
         .option("--surerouteto <object>", "Test object for SureRoute")
         .option("--sureroutetohost <host>", "Host for SureRoute test object")
+        .option("--notes <notes>", "Version notes for this property version")
         .option("--variables <file>", "User variables file.  Format should be\n" +
                 "\t\t\t\t   [{\n" + 
         '\t\t\t\t\t"name": "PMUSER_TEST",' + "\n" +
@@ -493,7 +503,7 @@ function main()
                     case "create":
                         return createProperty(property, targetProperty, options)
                         .then(() => {
-                            if (options.forward || options.variables) {
+                            if (options.forward || options.variables || options.notes) {
                                 return modifyProperty(property, targetProperty, options, command)
                             } else {
                                 return Promise.resolve();
