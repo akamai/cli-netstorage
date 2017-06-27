@@ -2035,19 +2035,25 @@ class WebSite {
             "update": []
         };
 
-        return this._getProperty(configName)
+        let variables;
+
+        return new Promise((resolve, reject) => {
+            fs.readFile(untildify(variablefile), (err, data) => {
+                if (err)
+                    reject(err);
+                else
+                    variables = JSON.parse(data);
+                    resolve(JSON.parse(data));
+                });
+            })
+            .then(()=> {
+                return this._getProperty(propertyLookup)
+            })
             .then(data => {
                 version = WebSite._getLatestVersion(data, version)
             })
-            .then(() => {
-                fs.readFile(untildify(variablefile), (err, data) => {
-                    if (err)
-                        Promise.reject(err);
-                    else
-                        Promise.resolve(JSON.parse(data));
-                });
-            })
             .then(data => {
+                data = variables;
                 data.map(variable => {
                     variable.action.map(action => {
                         changeVars[action].push(variable);
@@ -2098,6 +2104,30 @@ class WebSite {
             })
             .then(rules => {
                 return this._updatePropertyRules(propertyLookup, version, rules);
+            })
+    }
+
+    getVariables(propertyLookup, versionLookup=0, filename=null) {       
+        return this._getProperty(propertyLookup)
+            .then(property => {
+                    let version = (versionLookup && versionLookup > 0) ? versionLookup : WebSite._getLatestVersion(property, versionLookup)
+                    console.info(`Retrieving variables for ${property.propertyName} v${version}`);
+                    return this._getPropertyRules(property.propertyId, version)
+            })
+            .then(rules => {
+                if (!filename) {
+                    console.log(JSON.stringify(rules.rules.variables, '', 2));
+                    return Promise.resolve();
+                } else {
+                    return new Promise((resolve, reject) => {
+                        fs.writeFile(untildify(filename), JSON.stringify(rules.rules.variables, '', 2), (err) => {
+                            if (err)
+                                reject(err);
+                            else
+                                resolve(rules);
+                        });
+                    });
+                }
             })
     }
 

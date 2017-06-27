@@ -169,6 +169,8 @@ function retrieveProperty(property, targetProperty, options) {
                                         options.propver);
     } else if (options.format) {
         return property.retrievePropertyRuleFormat(targetProperty, options.propver)
+    } else if (options.variables) {
+        return property.getVariables(targetProperty, options.propver, options.file)
     } else {
         return property.retrieve(targetProperty, 
                                 options.propver,
@@ -410,6 +412,7 @@ function main()
         .option("--file <file>", "Output file (default is STDOUT)")
         .option("--format", "Retrieve the rules format only")
         .option("--hostnames", "Retrieve the hostnames for the property")
+        .option("--variables", "Retrieve the variables for the property")
         .option("--propver <version>", "Property version, latest/staging/prod or number")
         .option("--section <section>","Section of the credentials file")
         .action(function(target, opts) {
