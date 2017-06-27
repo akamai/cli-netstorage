@@ -572,12 +572,8 @@ class WebSite {
                 if (prop) {
                     return Promise.resolve(prop)
                 } else {
-                    if (Object.keys(this._propertyById).length == 0) {  
-                        console.log("Initializing property cache")
-                        return this._initPropertyCache()
-                    } else {
-                        return Promise.resolve()
-                    }
+                    console.log("Initializing property cache")
+                    return this._initPropertyCache()
                 }
             })
             .then(prop => {
