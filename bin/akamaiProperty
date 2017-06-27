@@ -199,7 +199,7 @@ function retrieveFormats(property, options) {
 function retrieveHostnames(property) {
     return property.retrieve(targetProperty, 0, true)
     .then(data => {
-        console.log(data);
+        console.log(JSON.stringify(data.hostnames.items, '', 2));
     })
 }
 
