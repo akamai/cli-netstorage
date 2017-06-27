@@ -26,6 +26,8 @@ const LATEST_VERSION = {
     LATEST: 0
 };
 
+const SEARCH_OPTIMIZATION = 1;
+
 //export
 const AKAMAI_ENV = {
     STAGING: 'STAGING',
@@ -453,6 +455,9 @@ class WebSite {
     };
 
     _searchByValue(queryObj) {
+        if (!SEARCH_OPTIMIZATION) {
+            return Promise.resolve();
+        }
             return new Promise((resolve, reject) => {
             console.info('... searching ' + Object.keys(queryObj) + ' for ' + queryObj[Object.keys(queryObj)[0]]);
 
@@ -467,6 +472,8 @@ class WebSite {
                 if (response && response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
+                } else {
+                    reject(response);
                 }
             })
         })
@@ -495,7 +502,7 @@ class WebSite {
         let searchObj = {"propertyName" : propertyLookup}
         return this._searchByValue(searchObj)
         .then(data => {
-            if (data.versions.items.length == 0) {
+            if (!data || data.versions.items.length == 0) {
                 return Promise.resolve()
             }
             let versions = data.versions.items;
@@ -518,7 +525,7 @@ class WebSite {
             }
         })
         .then(data => {
-            if (data && data.versions.items.length == 0) {
+            if ((data && data.versions.items.length == 0) || !data) {
                 return Promise.resolve();
             }
             let groupId = data.versions.items[0].groupId;
@@ -528,7 +535,9 @@ class WebSite {
         })
         .then(property => {
             if (!property) {
-                console.log("Cannot locate property using search")
+                if (SEARCH_OPTIMIZATION) {
+                    console.log("Cannot locate property using search")
+                }
                 return Promise.resolve();
             }
             this._propertyByName[property.propertyName] = property;
