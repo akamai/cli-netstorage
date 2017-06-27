@@ -551,7 +551,10 @@ function main()
             })
             .catch((error) => {
                 console.error("ERROR: ", error.body || JSON.stringify(error));
-                if (error.stack) console.log(error.stack);
+                if (error.stack) {
+			console.log(error.stack);
+			process.exit(0)
+		}
             });
     }
 
