@@ -138,10 +138,9 @@ class WebSite {
                         this._propertyById[item.propertyId] = item;
                         if (item.productionVersion != null)
                             promiseList.push(this._getHostnameList(item.propertyId, item.productionVersion));
-                        if (item.productionVersion && item.productionVersion != item.stagingVersion)
+                        if (item.stagingVersion != null)
                             promiseList.push(this._getHostnameList(item.propertyId, item.stagingVersion));
-                        if (item.productionVersion == null)
-                            promiseList.push(this._getHostnameList(item.propertyId, item.latestVersion))
+                        promiseList.push(this._getHostnameList(item.propertyId, item.latestVersion))
                     });
                 });
 
@@ -360,12 +359,13 @@ class WebSite {
                 const groupId = property.groupId;
                 const propertyId = property.propertyId;
                 let Website = this;
+                if (!version) {
+                    version = WebSite._getLatestVersion(property, 0)
+                }
 
                 return new Promise((resolve, reject) => {
                     //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
-                    if (version == null || !version) {
-                        version = 1;
-                    }
+                    
                     if (this._propertyHostnameList &&
                         this._propertyHostnameList[propertyId] &&
                         this._propertyHostnameList[propertyId][version]) {
@@ -1310,15 +1310,23 @@ class WebSite {
         })
     }
 
-    _assignHostnames(groupId, contractId, configName, edgeHostnameId, propertyId, hostnames, deleteHosts = false, newConfig = false) {
+    _assignHostnames(groupId, contractId, configName, edgeHostnameId, propertyId, hostnames, deleteHosts=null, newConfig = false) {
         let assignHostnameArray, myDelete = false;
         let newHostnameArray = [];
-        return this._getHostnameList(configName, LATEST_VERSION.LATEST, newConfig)
+        let hostsToProcess = []
+        if (!hostnames) {
+            hostnames = []
+        }
+            
+        return this._getHostnameList(configName)
             .then(hostnamelist => {
                 if (hostnamelist) {
-                    assignHostnameArray = hostnamelist.hostnames.items;
-                } else {
-                    assignHostnameArray = [];
+                    hostnamelist.hostnames.items.map(host => {
+                        hostnames.push(host.cnameFrom)
+                        if (!edgeHostnameId) {
+                            edgeHostnameId = host.cnameTo ? host.cnameTo : host.edgeHostnameId
+                        }
+                    })
                 }
                 let property = this._propertyById[propertyId];
                 let version = property.latestVersion;
@@ -1326,47 +1334,41 @@ class WebSite {
                 return new Promise((resolve, reject) => {
                     console.info('Updating property hostnames');
                     console.time('... updating hostname');
-
-                    if (hostnames.length == 0) {
-                        hostnames = [configName];
-                    }
-
-                    if (!deleteHosts) {
-                        newHostnameArray = assignHostnameArray;
-                        hostnames.map(hostname => {
-                            let assignHostnameObj;
-                            if (edgeHostnameId.includes("ehn_")) {
-                                assignHostnameObj = {
-                                    "cnameType": "EDGE_HOSTNAME",
-                                    "edgeHostnameId": edgeHostnameId,
-                                    "cnameFrom": hostname
-                                }
-                            } else {
-                                assignHostnameObj = {
-                                    "cnameType": "EDGE_HOSTNAME",
-                                    "cnameTo": edgeHostnameId,
-                                    "cnameFrom": hostname
-                                }
-                            }
-
-                            console.log("Adding hostname " + assignHostnameObj["cnameFrom"]);
-                            newHostnameArray.push(assignHostnameObj);
-                        })
-                    } else {
-                        assignHostnameArray.map(host => {
+                    if (deleteHosts) {
+                        hostnames.map(host => {
                             myDelete = false;
-                            for (let i = 0; i < hostnames.length; i++) {
-                                if (hostnames[i] == host["cnameFrom"]) {
+                            for (let i = 0; i < deleteHosts.length; i++) {
+                                if (deleteHosts[i] == host) {
                                     myDelete = true;
-                                    console.log("Removing hostname " + host["cnameFrom"]);
                                 }
                             }
                             if (!myDelete) {
-                                newHostnameArray.push(host);
-                                console.log("Not removing hostname " + host["cnameFrom"]);
+                                hostsToProcess.push(host);
                             }
                         })
+                    } else {
+                        hostsToProcess = hostnames;
                     }
+                    
+                    hostsToProcess.map(hostname => {
+                        let assignHostnameObj;
+                        if (edgeHostnameId.includes("ehn_")) {
+                            assignHostnameObj = {
+                                "cnameType": "EDGE_HOSTNAME",
+                                "edgeHostnameId": edgeHostnameId,
+                                "cnameFrom": hostname
+                            }
+                        } else {
+                            assignHostnameObj = {
+                                "cnameType": "EDGE_HOSTNAME",
+                                "cnameTo": edgeHostnameId,
+                                "cnameFrom": hostname
+                            }
+                        }
+
+                        console.log("Adding hostname " + assignHostnameObj["cnameFrom"]);
+                        newHostnameArray.push(assignHostnameObj);
+                    })
 
                     let request = {
                         method: 'PUT',
@@ -1438,6 +1440,7 @@ class WebSite {
         } else if (typeof hostnames == "string") {
             hostnames = [hostnames];
         } else if (hostnames.length == 0) {
+            // TODO: Does this look like a hostname?
             hostnames = [configName]
         }
         if (!configName)
@@ -1878,32 +1881,27 @@ class WebSite {
             })
     }
 
-    assignEdgeHostname(propertyLookup, edgeHostname) {
+    assignEdgeHostname(propertyLookup, version = 0, edgeHostname) {
         let contractId,
             groupId,
             productId,
             propertyId,
-            configName,
-            version;
+            configName;
 
         return this._getProperty(propertyLookup)
             .then(data => {
-                version = WebSite._getLatestVersion(data, LATEST_VERSION.PRODUCTION)
+                version = WebSite._getLatestVersion(data, version)
                 contractId = data.contractId;
                 groupId = data.groupId;
                 configName = data.propertyName;
                 propertyId = data.propertyId;
-                return this._getHostnameList(configName, version, false)
-            })
-            .then(hostnamelist => {
-                hostlist = hostnamelist.hostnames.items;
                 return this._assignHostnames(groupId,
                     contractId,
                     configName,
-                    null,
+                    edgeHostname,
                     propertyId,
                     null,
-                    true);
+                    null);
             }).then(data => {
                 return Promise.resolve();
             })
@@ -1951,7 +1949,7 @@ class WebSite {
     }
 
 
-    delHostnames(propertyLookup, hostnames) {
+    delHostnames(propertyLookup, version, hostnames) {
         let contractId,
             groupId,
             productId,
@@ -1966,7 +1964,7 @@ class WebSite {
 
         return this._getProperty(propertyLookup)
             .then(data => {
-                version = WebSite._getLatestVersion(data, LATEST_VERSION.PRODUCTION)
+                version = WebSite._getLatestVersion(data, 0)
                 contractId = data.contractId;
                 groupId = data.groupId;
                 configName = data.propertyName;
@@ -1980,8 +1978,8 @@ class WebSite {
                     configName,
                     null,
                     propertyId,
-                    hostnames,
-                    true);
+                    null,
+                    hostnames);
             }).then(data => {
                 return Promise.resolve();
             })
