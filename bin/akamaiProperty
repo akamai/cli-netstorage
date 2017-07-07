@@ -148,7 +148,7 @@ function createProperty(property, targetProperty, options) {
         }
     } else {
         return property.createFromExisting(options.clone, 
-                                        options.sourceversion, 
+                                        options.srcver, 
                                         options.nocopy,
                                         hostnames,
                                         targetProperty, 
@@ -204,7 +204,7 @@ function retrieveHostnames(property) {
 }
 
 function modifyProperty(property, targetProperty, options, command) {
-    let version = options.version ? options.version : 0;
+    let version = options.propver ? options.propver : 0;
     return new Promise ((resolve, reject) => {
         if (options.addhosts) {
             return property.addHostnames(targetProperty, version, options.addhosts.split(','), options.edgehostname);
@@ -279,6 +279,7 @@ function numberVersion(version) {
     if (version == null) {
         return 0;
     }
+    
     let versionstring = version.toString();
     let returnstring;
 
@@ -444,7 +445,7 @@ function main()
         .option("--edgehostname <edgehostname>", "Edge hostname to switch the property to")
         .option("--origin <origin>", "Origin ")
         .option("--edgehostname <ehn>", "TODO: Edge hostname")
-        .option("--version <version>", "Version to operate on")
+        .option("--propver <version>", "Version to operate on")
         .option("--ruleformat <format>", "Rule format to use")
         .option("--sureroutemap <map>", "SureRoute map to use")
         .option("--surerouteto <object>", "Test object for SureRoute")
@@ -489,9 +490,6 @@ function main()
         }
         if (options.srcver) {
             options.srcver = numberVersion(options.srcver)
-        }
-        if (options.version) {
-            options.version = numberVersion(options.srcver)
         }
     } else {
         property = new WebSite({path:"~/.edgerc", section: section});

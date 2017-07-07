@@ -228,7 +228,7 @@ class WebSite {
         });
     }
 
-    _getCloneConfig(srcProperty, srcVersion = LATEST_VERSION.STAGING) {
+    _getCloneConfig(srcProperty, srcVersion = LATEST_VERSION.LATEST) {
         let cloneFrom = {};
         let contractId,
             groupId,
@@ -259,9 +259,12 @@ class WebSite {
                     contractId: contractId,
                     edgeHostnameId: edgeHostnameId
                 };
-                return WebSite._getLatestVersion(cloneFromProperty)
+                return WebSite._getLatestVersion(cloneFromProperty, srcVersion)
             })
             .then(version => {
+                if (!version) {
+                    return Promise.reject("Unable to find requested version")
+                }
                 cloneFrom.version = version;
                 return new Promise((resolve, reject) => {
                     console.info('... retrieving clone info');
@@ -687,14 +690,14 @@ class WebSite {
     }
 
     static _getLatestVersion(property, env = LATEST_VERSION) {
-        if (env === LATEST_VERSION.PRODUCTION)
+       if (env === LATEST_VERSION.PRODUCTION)
             return property.productionVersion;
         else if (env === LATEST_VERSION.STAGING)
             return property.stagingVersion;
         else if (property.latestVersion)
             return property.latestVersion;
         else
-            return 1;
+            return env;
     };
 
     _copyPropertyVersion(propertyLookup, versionId) {
@@ -2164,7 +2167,7 @@ class WebSite {
         }
         return this._getProperty(propertyLookup)
             .then(property => {
-                version = WebSite._getLatestVersion(property);
+                version = WebSite._getLatestVersion(property, version);
                 return this._getPropertyRules(property, version)
             })
             .then(data => {
@@ -2394,6 +2397,7 @@ class WebSite {
 
         return this._getProperty(srcProperty)
             .then(data => {
+                console.log(srcVersion)
                 return this._getCloneConfig(srcProperty, srcVersion = srcVersion)
             })
             .then(data => {
