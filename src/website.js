@@ -2362,9 +2362,13 @@ class WebSite {
             if (!contractId) {
                 contractId = rules.contractId;
             }
+            rules.rules.behaviors.map(behavior => {
+                if (behavior.name == "cpCode" && !cpcode) {
+                   cpcode = behavior.options.value.id
+                }
+            })
             return this.create(hostnames, cpcode, configName, contractId, groupId, rules, origin, edgeHostname)
         })
-
     }
 
     createFromExisting(srcProperty,
