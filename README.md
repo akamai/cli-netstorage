@@ -7,7 +7,7 @@ To get started using the library, you will need to set up your system for a loca
 
 ### Local Install
 * Node 7
-* npm install akamaiconfigkit
+* npm install
 * Ensure that the 'bin' subdirectory is in your path
 
 ### Credentials
