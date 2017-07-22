@@ -19,6 +19,10 @@ let md5 = require('md5');
 let fs = require('fs');
 let tmpDir = require('os').tmpdir();
 
+let responses = 0;
+let empty_responses = 0;
+let fivexx_responses = 0;
+
 //export
 const LATEST_VERSION = {
     STAGING: -2,
@@ -350,25 +354,29 @@ class WebSite {
     };
 
     //TODO: this will only be called for LATEST, CURRENT_PROD and CURRENT_STAGE. How do we handle collecting hostnames of different versions?
-    _getHostnameList(propertyId, version, newConfig = false, fallThrough = false) {
+    _getHostnameList(propertyId, version, newConfig = false, fallThrough = 0) {
+        let property;
         if (newConfig) {
             return Promise.resolve();
         }
 
         return this._getProperty(propertyId)
-            .then(property => {
+            .then(result => {
+                property = result
+                return sleep(fallThrough * 1000)
+            })
+            .then(() => {
                 //set basic data like contract & group
                 const contractId = property.contractId;
                 const groupId = property.groupId;
                 const propertyId = property.propertyId;
-                let Website = this;
+                let WebSite = this;
                 if (!version) {
                     version = WebSite._getLatestVersion(property, 0)
                 }
 
                 return new Promise((resolve, reject) => {
                     //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
-                    
                     if (this._propertyHostnameList &&
                         this._propertyHostnameList[propertyId] &&
                         this._propertyHostnameList[propertyId][version]) {
@@ -382,17 +390,28 @@ class WebSite {
                         this._edge.auth(request);
 
                         this._edge.send(function (data, response) {
+                            if (fallThrough) {
+                                console.log("FALLTHROUGH " + fallThrough)
+                                console.log(response.statusCode)
+                                console.log(response.body)
+                            }
                             if ((response == false) || (response == undefined)) {
-                                console.log("... No response from server for " + propertyId + ", skipping")
-                                resolve(propertyId);
+                                empty_responses += 1;
+                                console.log("... No response from server for " + propertyId + ", retrying")
+                                if (fallThrough > 3) {
+                                    resolve(propertyId);
+                                } else {
+                                    console.log("RETURNING" + fallThrough)
+                                    return WebSite._getHostnameList(propertyId, version, false, fallThrough+1)
+                                    //resolve(propertyId);
+                                }
                             }
                             if (response && response.body && response.statusCode >= 200 && response.statusCode < 400) {
                                 let parsed = JSON.parse(response.body);
                                 resolve(parsed);
                             } else if (response && (response.statusCode == 500 || response.statusCode == 400)) {
                                 // Work around PAPI bug
-                                console.log("... Error from server for " + propertyId)
-                                resolve(propertyId);
+                                fivexx_responses += 1;
                             } else if (response && response.statusCode == 403) {
                                 console.log("... No permissions for property " + propertyId)
                                 resolve(propertyId)

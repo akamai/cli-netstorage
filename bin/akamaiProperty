@@ -39,6 +39,7 @@ function appName() {
 let app = appName();
 
 let section = "papi";
+let debug = false;
 let targetProperty;
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -313,6 +314,7 @@ function main()
         
      program
         .command('activate <property>')
+	.option("--debug", "Turns on debugging output")
         .option('--network <network>', "Network to activate, PROD/STAG/BOTH")
         .option("--propver <version>", "Property version, latest/staging/prod or number")
         .option("--section <section>","Section of the credentials file")
@@ -338,6 +340,7 @@ function main()
 
        program
         .command('create <property>')
+	.option("--debug", "Turns on debugging output")
         .option("--clone <property>", "Source property to clone from")
         .option("--srcver <version>", "Version for source property stag/prod/latest/<number> (default is latest)")
         .option("--file <file>", "Source file for new property rules")
@@ -368,6 +371,7 @@ function main()
 
     program
         .command('deactivate <property>')
+	.option("--debug", "Turns on debugging output")
         .option('--network <network>', "Network to activate, PROD/STAG/BOTH")
         .option("--section <section>","Section of the credentials file")
         .option("--email <email>","Email to use for confirmation")
@@ -390,6 +394,7 @@ function main()
 
     program
         .command('formats')
+	.option("--debug", "Turns on debugging output")
         .option("--newest","Retrieve only the newest fixed format.")
         .action(function(opts) {
             command = "formats";
@@ -399,6 +404,7 @@ function main()
 
     program
         .command('delete <property>')
+	.option("--debug", "Turns on debugging output")
         .option("--section <section>","Section of the credentials file")
         .action(function(target, opts) {
             targetProperty = target;
@@ -410,6 +416,7 @@ function main()
 
     program
         .command('retrieve <property>')
+	.option("--debug", "Turns on debugging output")
         .option("--file <file>", "Output file (default is STDOUT)")
         .option("--format", "Retrieve the rules format only")
         .option("--hostnames", "Retrieve the hostnames for the property")
@@ -425,6 +432,7 @@ function main()
         })
     program
         .command('update <property>')
+	.option("--debug", "Turns on debugging output")
         .option("--srcprop <property>", "Source property to copy rules from")
         .option("--srcver <version>", "Version for source property stag/prod/latest/<number>  (default is latest)")
         .option("--file <file>", "Source file for property rules")
@@ -439,6 +447,7 @@ function main()
 
     program
         .command('modify <property>')
+	.option("--debug", "Turns on debugging output")
         .option("--section <section>","Section of the credentials file")
         .option("--addhosts <hostnames>", "Comma delimited list of hostnames to add")
         .option("--delhosts <hostnames>", "Comma delimited list of hostnames to delete")
@@ -483,7 +492,8 @@ function main()
 
     if (options) {
         section = options.section || section;
-        property = new WebSite({path:"~/.edgerc", section: section});
+	debug = options.debug || debug;
+        property = new WebSite({path:"~/.edgerc", section: section, debug: debug});
     
         if (options.propver) {
             options.propver = numberVersion(options.propver)
