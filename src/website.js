@@ -390,11 +390,6 @@ class WebSite {
                         this._edge.auth(request);
 
                         this._edge.send(function (data, response) {
-                            if (fallThrough) {
-                                console.log("FALLTHROUGH " + fallThrough)
-                                console.log(response.statusCode)
-                                console.log(response.body)
-                            }
                             if ((response == false) || (response == undefined)) {
                                 empty_responses += 1;
                                 console.log("... No response from server for " + propertyId + ", retrying")
