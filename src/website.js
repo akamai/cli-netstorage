@@ -1152,7 +1152,7 @@ class WebSite {
                             } else {
                                 resolve(matches[1])
                             }
-                        } else if (response.statusCode == '500' && response.body.match('https://problems.luna.akamaiapis.net/papi/v1/toolkit/property_version_not_active_in')) {
+                        } else if (response.body.match('https://problems.luna.akamaiapis.net/papi/v0/toolkit/property_version_not_active_in')) {
                             console.log("Version not active on " + env)
                             resolve();
                         } else {
