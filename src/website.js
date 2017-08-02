@@ -154,8 +154,7 @@ class WebSite {
             .then(hostListList => {
                 hostListList.map(hostList => {
                     if (!hostList || !hostList.propertyId || !hostList.propertyVersion) {
-                        console.log("ignoring: ", hostList);
-                        return;
+                        return Promise.resolve();
                     }
                     let prop = this._propertyById[hostList.propertyId];
                     let version = hostList.propertyVersion;
@@ -391,14 +390,8 @@ class WebSite {
 
                         this._edge.send(function (data, response) {
                             if ((response == false) || (response == undefined)) {
-                                empty_responses += 1;
-                                console.log("... No response from server for " + propertyId + ", retrying")
-                                if (fallThrough > 3) {
-                                    resolve(propertyId);
-                                } else {
-                                    return WebSite._getHostnameList(propertyId, version, false, fallThrough+1)
-                                    //resolve(propertyId);
-                                }
+                                //console.log("... No response from server for " + propertyId + ", skipping")
+                                resolve(propertyId);
                             }
                             if (response && response.body && response.statusCode >= 200 && response.statusCode < 400) {
                                 let parsed = JSON.parse(response.body);
