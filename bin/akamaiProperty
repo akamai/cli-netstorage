@@ -509,7 +509,11 @@ function main()
             .then(() => {
                 switch(command) {
                     case "activate":
-                        return activateProperty(property, targetProperty, options);
+                        return activateProperty(property, targetProperty, options)
+                        .then(() => {
+                            console.log("Activation Complete")
+                            console.timeEnd(app)
+                        })
                         break;
                     case "create":
                         return createProperty(property, targetProperty, options)
@@ -527,6 +531,10 @@ function main()
                         break;
                     case "deactivate":
                         return deactivateProperty(property, targetProperty, options)
+                        .then(() => {
+                            console.log("Deactivation Complete")
+                            console.timeEnd(app)
+                        })
                         break;
                     case "delete":
                         options.network = "BOTH"
@@ -534,6 +542,11 @@ function main()
                         .then(() => {
                             return deleteProperty(property, targetProperty, options)
                         })
+                        .then(() => {
+                            console.log("Delete Complete")
+                            console.timeEnd(app)
+                        })
+
                         break;
                     case "modify":
                         return modifyProperty(property, targetProperty, options)
@@ -547,6 +560,11 @@ function main()
                         break;
                     case "update":
                         return updateProperty(property, targetProperty, options)
+                        .then(() => {
+                            console.log("Update Complete")
+                            console.timeEnd(app)
+                        })
+
                         break;
                     case "formats":
                         if (options.newest) {

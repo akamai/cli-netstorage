@@ -398,7 +398,7 @@ class WebSite {
                                 resolve(parsed);
                             } else if (response && (response.statusCode == 500 || response.statusCode == 400)) {
                                 // Work around PAPI bug
-                                fivexx_responses += 1;
+                                resolve(propertyId)
                             } else if (response && response.statusCode == 403) {
                                 console.log("... No permissions for property " + propertyId)
                                 resolve(propertyId)
@@ -450,7 +450,16 @@ class WebSite {
                                 groupId: groupId,
                                 contractId: contractId
                             }
+                        } else if (item.productId == "prd_Rich_Media_Accel") {
+                             productInfo = {
+                                 productId: "prd_Rich_Media_Accel",
+                                 productName: "Rich_Media_Accel",
+                                 groupId: groupId,
+                                 contractId: contractId
+                             }
+                             resolve(productInfo);
                         }
+
                     })
                 } else if (response.statusCode == 403) {
                     console.info('... your credentials do not have permission for this group, skipping  {%s : %s}', contractId, groupId);
