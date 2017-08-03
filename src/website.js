@@ -1865,7 +1865,7 @@ class WebSite {
                     activationVersion = WebSite._getLatestVersion(property, version);
 
                 console.info(`Activating ${propertyLookup} to ${networkEnv}`);
-                return this._activateProperty(property, activationVersion, networkEnv, notes, emailNotification)
+                return this._activateProperty(propertyLookup, activationVersion, networkEnv, notes, emailNotification)
             })
             .then(activationId => {
                 if (networkEnv === AKAMAI_ENV.STAGING)
@@ -1901,7 +1901,7 @@ class WebSite {
                 property = data;
                 console.info(`Deactivating ${propertyLookup} to ${networkEnv}`);
                 let deactivationVersion = WebSite._getLatestVersion(property, networkEnv == AKAMAI_ENV.STAGING ? LATEST_VERSION.STAGING : LATEST_VERSION.PRODUCTION) || 1;
-                return this._deactivateProperty(property, deactivationVersion, networkEnv, notes, email)
+                return this._deactivateProperty(propertyLookup, deactivationVersion, networkEnv, notes, email)
             })
             .then(activationId => {
                 if (!activationId) {
