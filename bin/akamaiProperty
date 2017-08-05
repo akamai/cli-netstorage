@@ -123,7 +123,9 @@ function createProperty(property, targetProperty, options) {
     if (options.hostnames) {
         hostnames = options.hostnames.split(',')
     }
-
+    if (options.edgehostname) {
+        process.env.USE_PROVIDED_HOSTNAME = 1;
+    }
     if (!options.clone) {
         if (options.file) {
           return property.createFromFile(hostnames, 

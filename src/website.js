@@ -23,6 +23,10 @@ let responses = 0;
 let empty_responses = 0;
 let fivexx_responses = 0;
 
+var Bottleneck = require("bottleneck");
+var limiter = new Bottleneck(1, 2000);
+
+
 //export
 const LATEST_VERSION = {
     STAGING: -2,
@@ -93,8 +97,9 @@ class WebSite {
             })
     };
 
-    _initPropertyCache() {
+    _initPropertyCache(propertyLookup) {
         let groupcontractList = [];
+        let foundProperty = "";
         console.time('Init PropertyManager cache');
         console.info('Init PropertyManager cache (hostnames and property list)');
 
@@ -127,7 +132,7 @@ class WebSite {
             })
             .then(propList => {
                 let promiseList = [];
-
+                
                 propList.map(v => {
                     if (!v || !v.properties || !v.properties.items) return;
                     return v.properties.items.map(item => {
@@ -140,16 +145,24 @@ class WebSite {
                         };
                         this._propertyByName[item.propertyName] = item;
                         this._propertyById[item.propertyId] = item;
-                        if (item.productionVersion != null)
-                            promiseList.push(this._getHostnameList(item.propertyId, item.productionVersion));
-                        if (item.stagingVersion != null)
-                            promiseList.push(this._getHostnameList(item.propertyId, item.stagingVersion));
-                        promiseList.push(this._getHostnameList(item.propertyId, item.latestVersion))
+                        if (item.propertyName == propertyLookup) {
+                            foundProperty = item;
+                            promiseList = []
+                        }
+                        if (!foundProperty) {
+                            if (item.productionVersion != null)
+                                promiseList.push(this._getHostnameList(item.propertyId, item.productionVersion));
+                            if (item.stagingVersion != null)
+                                promiseList.push(this._getHostnameList(item.propertyId, item.stagingVersion));
+                            promiseList.push(this._getHostnameList(item.propertyId, item.latestVersion))
+                        }
                     });
                 });
-
-                console.info('... retrieving Hosts from %s properties', Object.keys(this._propertyById).length);
+                if (promiseList) {
+                    console.info('... retrieving Hosts from %s properties', Object.keys(this._propertyById).length);
+                }    
                 return Promise.all(promiseList);
+                
             })
             .then(hostListList => {
                 hostListList.map(hostList => {
@@ -189,11 +202,18 @@ class WebSite {
                 console.timeEnd('Init PropertyManager cache');
             })
             .then(() => {
-                return Promise.all(groupcontractList.map(v => {
-                    return this._retrieveEdgeHostnames(v.contractId, v.groupId)
-                }));
+                if (!process.env.USE_PROVIDED_HOSTNAME) {
+                    return Promise.all(groupcontractList.map(v => {
+                        return this._retrieveEdgeHostnames(v.contractId, v.groupId)
+                    }));
+                } else {
+                    return Promise.resolve();
+                }
             })
             .then(edgeHostList => {
+                if (!edgeHostList) {
+                    return Promise.resolve();
+                }
                 edgeHostList.map(edgeLookup => {
                     if (!edgeLookup) {
                         return Promise.resolve();
@@ -591,7 +611,7 @@ class WebSite {
                     return Promise.resolve(prop)
                 } else {
                     console.log("Initializing property cache")
-                    return this._initPropertyCache()
+                    return this._initPropertyCache(propertyLookup)
                 }
             })
             .then(prop => {
