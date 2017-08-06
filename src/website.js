@@ -23,10 +23,6 @@ let responses = 0;
 let empty_responses = 0;
 let fivexx_responses = 0;
 
-var Bottleneck = require("bottleneck");
-var limiter = new Bottleneck(1, 2000);
-
-
 //export
 const LATEST_VERSION = {
     STAGING: -2,
