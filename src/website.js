@@ -30,7 +30,7 @@ const LATEST_VERSION = {
     LATEST: 0
 };
 
-const SEARCH_OPTIMIZATION = process.env.SEARCH_OPTIMIZATION ? process.env.SEARCH_OPTIMIZATION : 0;
+const SEARCH_OPTIMIZATION = process.env.SEARCH_OPTIMIZATION ? process.env.SEARCH_OPTIMIZATION : 1;
 
 //export
 const AKAMAI_ENV = {
