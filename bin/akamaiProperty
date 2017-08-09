@@ -556,7 +556,7 @@ function main()
                         .then(() => {
                             console.log("Delete Complete")
                             var end=Date.now();
-                            var timeSpent=int((end-begin)/1000/60)+" mins";
+                            var timeSpent=(end-begin)/1000/60 +" mins";
                             console.log("Delete: " + timeSpent)
 
                         })
@@ -566,7 +566,7 @@ function main()
                         return modifyProperty(property, targetProperty, options)
                         .then(() => {
                             var end=Date.now();
-                            var timeSpent=int((end-begin)/1000/60)+" mins";
+                            var timeSpent=(end-begin)/1000/60 +" mins";
                             console.log("Modify: " + timeSpent)
                         })                                                    
 
@@ -583,7 +583,7 @@ function main()
                         .then(() => {
                             console.log("Update Complete")
                             var end=Date.now();
-                            var timeSpent=int((end-begin)/1000/60)+" mins";
+                            var timeSpent=(end-begin)/1000/60 +" mins";
                             console.log("Update: " + timeSpent)
                         })
 

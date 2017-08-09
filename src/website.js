@@ -19,9 +19,9 @@ let md5 = require('md5');
 let fs = require('fs');
 let tmpDir = require('os').tmpdir();
 
-let responses = 0;
-let empty_responses = 0;
-let fivexx_responses = 0;
+let concurrent_requests = 0;
+let request_throttle = 50;
+let cache_complete = 0;
 
 //export
 const LATEST_VERSION = {
@@ -196,6 +196,7 @@ class WebSite {
                     })
                 });
                 console.timeEnd('Init PropertyManager cache');
+                cache_complete = 1;
             })
             .then(() => {
                 if (!process.env.USE_PROVIDED_HOSTNAME) {
@@ -369,18 +370,23 @@ class WebSite {
     };
 
     //TODO: this will only be called for LATEST, CURRENT_PROD and CURRENT_STAGE. How do we handle collecting hostnames of different versions?
-    _getHostnameList(propertyId, version, newConfig = false, fallThrough = 0) {
+    _getHostnameList(propertyId, version, newConfig = false) {
         let property;
-        if (newConfig) {
+        if (newConfig || cache_complete) {
             return Promise.resolve();
         }
 
         return this._getProperty(propertyId)
             .then(result => {
                 property = result
-                return sleep(fallThrough * 1000)
+                return sleep(10)
             })
             .then(() => {
+                if (concurrent_requests >= request_throttle) {
+                    return this._getHostnameList(property.propertyId, version, false);                    
+                } 
+                concurrent_requests += 1;
+                
                 //set basic data like contract & group
                 const contractId = property.contractId;
                 const groupId = property.groupId;
@@ -404,9 +410,10 @@ class WebSite {
                         };
                         this._edge.auth(request);
 
-                        this._edge.send(function (data, response) {
+                        this._edge.send((data, response) => {
+                            concurrent_requests -= 1;
                             if ((response == false) || (response == undefined)) {
-                                //console.log("... No response from server for " + propertyId + ", skipping")
+                                console.log("... No response from server for " + propertyId + ", skipping")
                                 resolve(propertyId);
                             }
                             if (response && response.body && response.statusCode >= 200 && response.statusCode < 400) {
@@ -414,6 +421,7 @@ class WebSite {
                                 resolve(parsed);
                             } else if (response && (response.statusCode == 500 || response.statusCode == 400)) {
                                 // Work around PAPI bug
+                                console.log("... Error from server for " + propertyId + ", skipping")
                                 resolve(propertyId)
                             } else if (response && response.statusCode == 403) {
                                 console.log("... No permissions for property " + propertyId)
@@ -661,10 +669,10 @@ class WebSite {
             };
             this._edge.auth(request);
 
-            this._edge.send(function (data, response) {
+            this._edge.send((data, response) => {
                 if (!response) {
                     console.log("... No response from server for property list")
-                    resolve();
+                    this._getPropertyList(contractId, groupId)
                 } else if (response && response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
