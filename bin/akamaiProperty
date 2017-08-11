@@ -253,7 +253,7 @@ function modifyProperty(property, targetProperty, options, command) {
     }) 
     .then(() => {
         if (options.move) {
-            return property.moveProperty(targetProperty, version, options.move)
+            return property.moveProperty(targetProperty, options.move)
         } else {
             return Promise.resolve();
         }
