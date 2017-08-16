@@ -20,7 +20,7 @@ let fs = require('fs');
 let tmpDir = require('os').tmpdir();
 
 let concurrent_requests = 0;
-let request_throttle = 25;
+let request_throttle = 20;
 let cache_complete = 0;
 
 //export
