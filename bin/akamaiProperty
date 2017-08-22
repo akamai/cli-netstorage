@@ -601,7 +601,7 @@ function main()
                 console.error("ERROR: ", error.body || JSON.stringify(error));
                 if (error.stack) {
 			console.log(error.stack);
-			process.exit(0)
+			process.exit(1)
 		}
             });
     }

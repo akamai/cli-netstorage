@@ -20,7 +20,7 @@ let fs = require('fs');
 let tmpDir = require('os').tmpdir();
 
 let concurrent_requests = 0;
-let request_throttle = 20;
+const REQUEST_THROTTLE = process.env.REQUEST_THROTTLE ? process.env.REQUEST_THROTTLE : 20;
 let cache_complete = 0;
 
 //export
@@ -382,7 +382,7 @@ class WebSite {
                 return sleep(10)
             })
             .then(() => {
-                if (concurrent_requests >= request_throttle) {
+                if (concurrent_requests >= REQUEST_THROTTLE) {
                     return this._getHostnameList(property.propertyId, version, false);                    
                 } 
                 concurrent_requests += 1;
