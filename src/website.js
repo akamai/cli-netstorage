@@ -1178,7 +1178,7 @@ class WebSite {
                             } else {
                                 resolve(matches[1])
                             }
-                        } else if (response.body.match('https://problems.luna.akamaiapis.net/papi/v0/toolkit/property_version_not_active_in')) {
+                        } else if (response.body.match('property_version_not_active')) {
                             console.log("Version not active on " + env)
                             resolve();
                         } else {

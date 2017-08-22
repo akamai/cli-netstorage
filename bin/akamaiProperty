@@ -93,7 +93,7 @@ function deactivateProperty(property, targetProperty, options) {
                                             WebSite.AKAMAI_ENV.PRODUCTION,
                                             "Automatically deactivating on prod.", 
                                             options.email);
-            return Promise.resolve(data);
+            return Promise.resolve();
         });
 }
 
