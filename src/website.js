@@ -1292,13 +1292,13 @@ class WebSite {
             .then(assetIds => {
                 let assetId;
                 for (let entry of assetIds) {
-                    if (entry.assetName == propertyName) {
+                    if (entry.assetName.toLowerCase() == propertyName.toLowerCase()) {
                         assetId = entry.assetId;
                     }
                 }
 
                 if (!assetId) {
-                    reject("No matching property found");
+                    return Promise.reject("No matching property found");
                 }
                 return new Promise((resolve, reject) => {
                     let moveData = {
