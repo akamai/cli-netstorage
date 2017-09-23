@@ -20,7 +20,7 @@ let fs = require('fs');
 let tmpDir = require('os').tmpdir();
 
 let concurrent_requests = 0;
-const REQUEST_THROTTLE = process.env.REQUEST_THROTTLE ? process.env.REQUEST_THROTTLE : 2;
+const REQUEST_THROTTLE = process.env.REQUEST_THROTTLE ? process.env.REQUEST_THROTTLE : 10;
 let cache_complete = 0;
 
 //export
@@ -122,7 +122,7 @@ class WebSite {
                 // get the  list of all properties for the known list of contracts and groups now
                 console.info('... retrieving properties from %s groups', groupcontractList.length);
                 return Promise.all(groupcontractList.map(v => {
-                    return this._getPropertyList(v.contractId, v.groupId);
+                    return this._getPropertyList(v.contractId, v.groupId, propertyLookup);
                 }));
             })
             .then(propList => {
@@ -148,30 +148,6 @@ class WebSite {
                 });
                 console.timeEnd('Init PropertyManager cache');
                 cache_complete = 1;
-            })
-            .then(() => {
-                if (!process.env.USE_PROVIDED_HOSTNAME) {
-                    return Promise.all(groupcontractList.map(v => {
-                        return this._retrieveEdgeHostnames(v.contractId, v.groupId)
-                    }));
-                } else {
-                    return Promise.resolve();
-                }
-            })
-            .then(edgeHostList => {
-                if (!edgeHostList) {
-                    return Promise.resolve();
-                }
-                edgeHostList.map(edgeLookup => {
-                    if (!edgeLookup) {
-                        return Promise.resolve();
-                    }
-                    edgeLookup.edgeHostnames.items.map(hostname => {
-                        this._ehnByHostname[hostname.domainPrefix] = hostname.edgeHostnameId;
-                        this._ehnByHostname[hostname.edgeHostnameDomain] = hostname.edgeHostnameId;
-                    })
-                })
-                return Promise.resolve();
             })
     }
 
@@ -602,16 +578,16 @@ class WebSite {
         });
     };
 
-    _getPropertyList(contractId, groupId, fallThrough = false) {
+    _getPropertyList(contractId, groupId, propertyLookup) {
+        if (concurrent_requests >= REQUEST_THROTTLE) {
+            return sleep(1000 * concurrent_requests)
+            .then(() => {
+                return this._getPropertyList(contractId, groupId);                 
+            })
+        } 
         return new Promise((resolve, reject) => {
             //console.info('... retrieving list of properties {%s : %s}', contractId, groupId);
 
-            if (concurrent_requests >= REQUEST_THROTTLE) {
-                resolve(sleep(1000))
-                .then(() => {
-                    resolve(this._getPropertyList(contractId, groupId)); 
-                })               
-            } 
             concurrent_requests += 1;
 
             let request = {
