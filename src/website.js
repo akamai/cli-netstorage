@@ -20,7 +20,7 @@ let fs = require('fs');
 let tmpDir = require('os').tmpdir();
 
 let concurrent_requests = 0;
-const REQUEST_THROTTLE = process.env.REQUEST_THROTTLE ? process.env.REQUEST_THROTTLE : 20;
+const REQUEST_THROTTLE = process.env.REQUEST_THROTTLE ? process.env.REQUEST_THROTTLE : 2;
 let cache_complete = 0;
 
 //export
@@ -70,8 +70,8 @@ class WebSite {
         this._propertyByName = {};
         this._propertyByHost = {};
         this._initComplete = false;
-        this._propertyHostnameList = {};
         this._ehnByHostname = {};
+        this._propertyHostnameList = {};
         this._edgeHostnames = [];
         this._newestRulesFormat = "";
         if (auth.create) {
@@ -106,7 +106,6 @@ class WebSite {
                 })
             })
             .then(data => {
-                this._propertyHostnameList = data.propertyHostnameList || {};
                 if (data.groups && data.groups.items)
                     data.groups.items.map(item => {
                         if (item.contractIds)
@@ -145,55 +144,7 @@ class WebSite {
                             foundProperty = item;
                             promiseList = []
                         }
-                        if (!foundProperty) {
-                            if (item.productionVersion != null)
-                                promiseList.push(this._getHostnameList(item.propertyId, item.productionVersion));
-                            if (item.stagingVersion != null)
-                                promiseList.push(this._getHostnameList(item.propertyId, item.stagingVersion));
-                            promiseList.push(this._getHostnameList(item.propertyId, item.latestVersion))
-                        }
                     });
-                });
-                if (promiseList) {
-                    console.info('... retrieving Hosts from %s properties', Object.keys(this._propertyById).length);
-                }    
-                return Promise.all(promiseList);
-                
-            })
-            .then(hostListList => {
-                hostListList.map(hostList => {
-                    if (!hostList || !hostList.propertyId || !hostList.propertyVersion) {
-                        return Promise.resolve();
-                    }
-                    let prop = this._propertyById[hostList.propertyId];
-                    let version = hostList.propertyVersion;
-                    if (prop.latestVersion != version ||
-                        prop.latestVersion == prop.stagingVersion ||
-                        prop.latestVersion == prop.productionVersion) {
-                        if (!this._propertyHostnameList[hostList.propertyId]) {
-                            this._propertyHostnameList[hostList.propertyId] = {}
-                        }
-                        this._propertyHostnameList[hostList.propertyId][version] = hostList;
-                    }
-
-                    if (prop.latestVersion && prop.latestVersion === hostList.propertyVersion)
-                        prop.latestHosts = hostList.hostnames.items;
-                    if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
-                        prop.stagingHosts = hostList.hostnames.items;
-                    if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
-                        prop.productionHosts = hostList.hostnames.items;
-
-                    hostList.hostnames.items.map(host => {
-                        let hostRef = this._propertyByHost[host.cnameFrom];
-                        if (!hostRef)
-                            hostRef = this._propertyByHost[host.cnameFrom] = {};
-                        this._ehnByHostname[host.cnameTo] = host.edgeHostnameId;
-
-                        if (prop.stagingVersion && prop.stagingVersion === hostList.propertyVersion)
-                            hostRef.staging = prop;
-                        if (prop.productionVersion && prop.productionVersion === hostList.propertyVersion)
-                            hostRef.production = prop;
-                    })
                 });
                 console.timeEnd('Init PropertyManager cache');
                 cache_complete = 1;
@@ -372,20 +323,13 @@ class WebSite {
     //TODO: this will only be called for LATEST, CURRENT_PROD and CURRENT_STAGE. How do we handle collecting hostnames of different versions?
     _getHostnameList(propertyId, version, newConfig = false) {
         let property;
-        if (newConfig || cache_complete) {
+        if (newConfig) {
             return Promise.resolve();
         }
 
         return this._getProperty(propertyId)
             .then(result => {
                 property = result
-                return sleep(10)
-            })
-            .then(() => {
-                if (concurrent_requests >= REQUEST_THROTTLE) {
-                    return this._getHostnameList(property.propertyId, version, false);                    
-                } 
-                concurrent_requests += 1;
                 
                 //set basic data like contract & group
                 const contractId = property.contractId;
@@ -397,7 +341,7 @@ class WebSite {
                 }
 
                 return new Promise((resolve, reject) => {
-                    //console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
+                    console.info('... retrieving list of hostnames {%s : %s : %s}', contractId, groupId, propertyId);
                     if (this._propertyHostnameList &&
                         this._propertyHostnameList[propertyId] &&
                         this._propertyHostnameList[propertyId][version]) {
@@ -411,7 +355,6 @@ class WebSite {
                         this._edge.auth(request);
 
                         this._edge.send((data, response) => {
-                            concurrent_requests -= 1;
                             if ((response == false) || (response == undefined)) {
                                 console.log("... No response from server for " + propertyId + ", skipping")
                                 resolve(propertyId);
@@ -663,13 +606,23 @@ class WebSite {
         return new Promise((resolve, reject) => {
             //console.info('... retrieving list of properties {%s : %s}', contractId, groupId);
 
+            if (concurrent_requests >= REQUEST_THROTTLE) {
+                resolve(sleep(1000))
+                .then(() => {
+                    resolve(this._getPropertyList(contractId, groupId)); 
+                })               
+            } 
+            concurrent_requests += 1;
+
             let request = {
                 method: 'GET',
                 path: `/papi/v1/properties?contractId=${contractId}&groupId=${groupId}`,
             };
             this._edge.auth(request);
 
+            console.log (`/papi/v1/properties?contractId=${contractId}&groupId=${groupId}`)
             this._edge.send((data, response) => {
+                concurrent_requests -= 1;
                 if (!response) {
                     console.log("... No response from server for property list")
                     this._getPropertyList(contractId, groupId)
@@ -2320,7 +2273,9 @@ class WebSite {
         if (!configName && !hostnames) {
             return Promise.reject("Configname or hostname are required.")
         }
+        console.log("Getting config and hostname")
         let names = this._getConfigAndHostname(configName, hostnames);
+        console.log("Done")
         configName = names[0];
         hostnames = names[1];
         
@@ -2352,9 +2307,6 @@ class WebSite {
             })
             .then(data => {
                 propertyId = data;
-                return this._getProperty(propertyId, groupId, contractId);
-            })
-            .then(data => {
                 return this._getNewProperty(propertyId, groupId, contractId);
             })
             .then(data => {
