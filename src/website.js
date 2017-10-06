@@ -596,7 +596,6 @@ class WebSite {
             };
             this._edge.auth(request);
 
-            console.log (`/papi/v1/properties?contractId=${contractId}&groupId=${groupId}`)
             this._edge.send((data, response) => {
                 concurrent_requests -= 1;
                 if (!response) {
