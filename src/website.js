@@ -588,7 +588,6 @@ class WebSite {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
                 } else if (response.statusCode == 403) {
-                    console.info('... no permissions, ignoring  {%s : %s}', contractId, groupId);
                     resolve(null);
                 } else {
                     reject(response);
@@ -1192,10 +1191,10 @@ class WebSite {
         if (!hostnames) {
             hostnames = []
         }
-            
+
         return this._getHostnameList(configName)
             .then(hostnamelist => {
-                if (hostnamelist) {
+                if (hostnamelist.hostnames.items.length > 0) {
                     hostnamelist.hostnames.items.map(host => {
                         hostnames.push(host.cnameFrom)
                         if (!edgeHostnameId) {
@@ -1205,8 +1204,11 @@ class WebSite {
                 }
                 let property = this._propertyById[propertyId];
                 let version = property.latestVersion;
-
-                return new Promise((resolve, reject) => {
+                if (!edgeHostnameId) {
+                    reject("\n\nNo edgehostnames found for property.  Please specify edgehostname.\n\n")
+                }
+            return new Promise((resolve, reject) => {
+                    
                     console.info('Updating property hostnames');
                     console.time('... updating hostname');
                     if (deleteHosts) {
@@ -1227,13 +1229,13 @@ class WebSite {
                     
                     hostsToProcess.map(hostname => {
                         let assignHostnameObj;
-                        if (edgeHostnameId.includes("ehn_")) {
+                        if (edgeHostnameId && edgeHostnameId.includes("ehn_")) {
                             assignHostnameObj = {
                                 "cnameType": "EDGE_HOSTNAME",
                                 "edgeHostnameId": edgeHostnameId,
                                 "cnameFrom": hostname
                             }
-                        } else {
+                        } else if (edgeHostnameId) {
                             assignHostnameObj = {
                                 "cnameType": "EDGE_HOSTNAME",
                                 "cnameTo": edgeHostnameId,
@@ -1250,7 +1252,7 @@ class WebSite {
                         path: `/papi/v1/properties/${propertyId}/versions/${version}/hostnames/?contractId=${contractId}&groupId=${groupId}`,
                         body: newHostnameArray
                     }
-
+                    
                     this._edge.auth(request);
                     this._edge.send((data, response) => {
                         console.timeEnd('... updating hostname');
@@ -1896,10 +1898,13 @@ class WebSite {
                 return this._getHostnameList(configName, version)
             })
             .then(hostnamelist => {
+                let ehn = edgeHostname;
                 hostlist = hostnamelist.hostnames.items;
-                let ehn = hostlist[0]["edgeHostnameId"]
-                if (!ehn) {
-                    ehn = hostlist[0]["cnameTo"]
+                if (hostlist.length > 0 && !edgeHostname) {
+                    ehn = hostlist[0]["edgeHostnameId"]
+                    if (!ehn) {
+                        ehn = hostlist[0]["cnameTo"]
+                    }
                 }
                 return Promise.resolve(ehn)
             })
@@ -2204,7 +2209,7 @@ class WebSite {
                     edgeHostnameId = data.edgeHostnameId;
                     return Promise.resolve(edgeHostnameId);
                 } else {
-                    console.log("Creating hostname")
+                    edgeHostnameId = configName;
                     return this._createHostname(groupId,
                         contractId,
                         configName,

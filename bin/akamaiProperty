@@ -212,7 +212,7 @@ function modifyProperty(property, targetProperty, options, command) {
         if (options.addhosts) {
             return property.addHostnames(targetProperty, version, options.addhosts.split(','), options.edgehostname);
         } else {
-            return resolve();
+            return Promise.resolve();
         }
     })
     .then(() => {
