@@ -399,9 +399,6 @@ class WebSite {
     };
 
     _searchByValue(queryObj) {
-        if (!SEARCH_OPTIMIZATION) {
-            return Promise.resolve();
-        }
             return new Promise((resolve, reject) => {
             console.info('... searching ' + Object.keys(queryObj) + ' for ' + queryObj[Object.keys(queryObj)[0]]);
 
@@ -1208,7 +1205,6 @@ class WebSite {
                     reject("\n\nNo edgehostnames found for property.  Please specify edgehostname.\n\n")
                 }
             return new Promise((resolve, reject) => {
-                    
                     console.info('Updating property hostnames');
                     console.time('... updating hostname');
                     if (deleteHosts) {

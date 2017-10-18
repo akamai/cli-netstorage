@@ -33,6 +33,11 @@ if ((process.versions["node"]).split('.')[0] < 7) {
     process.exit()
 }
 
+process.on('unhandledRejection', (reason, p) => {
+    console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+    // application specific logging, throwing an error, or other logic here
+  });
+
 function appName() {
     return process.argv[1].replace(/.*\//, "");
 }
@@ -208,75 +213,38 @@ function retrieveHostnames(property) {
 
 function modifyProperty(property, targetProperty, options, command) {
     let version = options.propver ? options.propver : 0;
-    return new Promise ((resolve, reject) => {
         if (options.addhosts) {
             return property.addHostnames(targetProperty, version, options.addhosts.split(','), options.edgehostname);
-        } else {
-            return Promise.resolve();
-        }
-    })
-    .then(() => {
+        } 
         if (options.delhosts) {
             return property.delHostnames(targetProperty, version, options.delhosts.split(','), options.edgehostname)
-        }else {
-            return Promise.resolve();
         }
-    })
-    .then(() => {
         if (options.origin || options.forward) {
             return property.setOrigin(targetProperty, version, options.origin, options.forward);
-        }else {
-            return Promise.resolve();
         }
-    })
-    .then(() => {
         if (options.edgehostname && command != "create") {
             return property.assignEdgeHostname(targetProperty, version, options.edgehostname, options.new);
-        }else {
-            return Promise.resolve();
-        }
-    })
-    .then(() => {
+        } 
         if (options.notes) {
             return property.setComments(targetProperty, version, options.notes);
-        } else {
-            return Promise.resolve();
-        }
-    })
-
-    .then(() => {
-            if (options.variables) {
+        } 
+        if (options.variables) {
                 return property.setVariables(targetProperty, version, options.variables);
-            } else {
-             return Promise.resolve();
-            }
-    }) 
-    .then(() => {
+        }
         if (options.move) {
             return property.moveProperty(targetProperty, options.move)
-        } else {
-            return Promise.resolve();
         }
-    })
-    .then(() => {
         if (options.ruleformat) {
             return property.setRuleFormat(targetProperty, version, options.ruleformat)
-        } else {
-            return Promise.resolve();
-        }
-    })
-    .then(() => {
+        } 
         if (options.sureroutemap || options.surerouteto || options.sureroutetohost) {
             return property.setSureRoute(targetProperty,
                                             version, 
                                             options.sureroutemap, 
                                             options.surerouteto,
                                             options.sureroutetohost);
-        } else {
-            return Promise.resolve();
         }
-    })
-}
+    }
 
 function numberVersion(version) {
     if (version == null) {
