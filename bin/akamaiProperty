@@ -367,8 +367,6 @@ function main()
 
             console.log('Creating new property %s', targetProperty);
 
-            if ((options.group || options.contract) && (!(options.group && options.contract))) 
-                program.help()
         })
 
     program

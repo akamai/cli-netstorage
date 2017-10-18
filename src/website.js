@@ -370,40 +370,23 @@ class WebSite {
                 if (response && response.statusCode >= 200 && response.statusCode < 400) {
                     let parsed = JSON.parse(response.body);
                     parsed.products.items.map(item => {
-                        if (item.productId == "prd_SPM") {
+                        if( ["prd_SPM",
+                            "prd_Dynamic_Site_Del",
+                            "prd_Alta",
+                            "prd_Rich_Media_Accel",
+                            "prd_Download_Delivery",
+                            "prd_IoT"
+                        ].indexOf(item.productId)>= 0) {
                             productInfo = {
-                                productId: "prd_SPM",
-                                productName: "SPM",
                                 groupId: groupId,
-                                contractId: contractId
-                            };
-                            resolve(productInfo);
-                        } else if (item.productId == "prd_Dynamic_Site_Del") {
-                            productInfo = {
-                                productId: "prd_Dynamic_Site_Del",
-                                productName: "Dynamic_Site_Del",
-                                groupId: groupId,
-                                contractId: contractId
+                                contractId: contractId,
+                                productId:item.productId,
+                                productName:item.productId.substring(4)
                             }
-                            resolve(productInfo);
-                        } else if (item.productId == "prd_Alta") {
-                            productInfo = {
-                                productId: "prd_Alta",
-                                productName: "Alta",
-                                groupId: groupId,
-                                contractId: contractId
-                            }
-                        } else if (item.productId == "prd_Rich_Media_Accel") {
-                             productInfo = {
-                                 productId: "prd_Rich_Media_Accel",
-                                 productName: "Rich_Media_Accel",
-                                 groupId: groupId,
-                                 contractId: contractId
-                             }
-                             resolve(productInfo);
+                            
                         }
-
                     })
+                    resolve(productInfo);
                 } else if (response.statusCode == 403) {
                     console.info('... your credentials do not have permission for this group, skipping  {%s : %s}', contractId, groupId);
                     resolve(null);
@@ -870,114 +853,36 @@ class WebSite {
         if (edgeHostname) {
             return Promise.resolve(edgeHostname);
         }
-        return this._initPropertyCache()
-            .then(() => {
-                return this._getEdgeHostnames()
-            })
-            .then(() => {
-                if (this._ehnByHostname[edgeHostname]) {
-                    return Promise.resolve(this._ehnByHostname[edgeHostname])
+        return new Promise((resolve, reject) => {
+            console.info('Creating edge hostname for property: ' + configName);
+            console.time('... creating hostname');
+            let hostnameObj = {
+                "productId": productId,
+                "domainPrefix": configName,
+                "domainSuffix": "edgesuite.net",
+                "secure": false,
+                "ipVersionBehavior": "IPV6_COMPLIANCE",
+            };
+
+            let request = {
+                method: 'POST',
+                path: `/papi/v1/edgehostnames?contractId=${contractId}&groupId=${groupId}`,
+                body: hostnameObj
+            };
+
+            this._edge.auth(request);
+
+            this._edge.send((data, response) => {
+                console.timeEnd('... creating hostname');
+                if (response.statusCode >= 200 && response.statusCode < 400) {
+                    let hostnameResponse = JSON.parse(response.body);
+                    response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
+                    resolve(response);
                 } else {
-                    return Promise.resolve()
+                    reject(response);
                 }
             })
-            .then(edgeHostnameId => {
-                if (edgeHostnameId) {
-                    return Promise.resolve(edgeHostnameId);
-                } else {
-                    return new Promise((resolve, reject) => {
-                        let ehnGroupCounts = {};
-                        let ehnContractCounts = {};
-                        let ehnSecureContractCounts = {};
-                        let ehnSecureGroupCounts = {};
-                        let propertyByHost = this._propertyByHost;
-                        Object.keys(propertyByHost).forEach(function (key) {
-                            let current = propertyByHost[key]["production"] || propertyByHost[key]["staging"]
-                            if (current) {
-                                let hosts = [];
-                                if (current["productionHosts"]) {
-                                    hosts.push.apply(hosts, current["productionHosts"])
-                                }
-                                if (current["stagingHosts"]) {
-                                    hosts.push.apply(hosts, current["stagingHosts"]);
-                                }
-                                if (current.contractId == contractId) {
-                                    hosts.forEach(function (host) {
-                                        if (!ehnContractCounts[host.edgeHostnameId]) {
-                                            if (host.cnameTo.indexOf("edgekey") > -1) {
-                                                ehnSecureContractCounts[host.edgeHostnameId] = 1;
-                                            } else {
-                                                ehnContractCounts[host.edgeHostnameId] = 1;
-                                            }
-                                        } else {
-                                            if (host.cnameTo.indexOf("edgekey") > -1) {
-                                                ehnContractCounts[host.edgeHostnameId] += 1;
-                                            } else {
-                                                ehnSecureContractCounts[host.edgeHostnameId] += 1;
-                                            }
-                                        }
-
-                                        if (current.groupId == groupId) {
-                                            if (!ehnGroupCounts[host.edgeHostnameId]) {
-                                                ehnGroupCounts[host.edgeHostnameId] = 1;
-                                            } else {
-                                                ehnGroupCounts[host.edgeHostnameId] += 1;
-                                            }
-                                        }
-                                    })
-                                }
-                            }
-                        })
-                        let groupSorted = Object.keys(ehnGroupCounts).sort((a, b) => ehnGroupCounts[a] - ehnGroupCounts[b])
-                        let contractSorted = Object.keys(ehnContractCounts).sort((a, b) => ehnContractCounts[b] - ehnContractCounts[a])
-
-                        if (groupSorted.length > 0) {
-                            let edgeHostnameId = groupSorted[0];
-                            resolve(edgeHostnameId);
-                        } else {
-                            let edgeHostnameId = contractSorted[0];
-                            resolve(edgeHostnameId)
-                        }
-                        resolve();
-                    })
-                }
-            })
-            .then(edgeHostnameId => {
-                return new Promise((resolve, reject) => {
-                    if (edgeHostnameId) {
-                        resolve(edgeHostnameId);
-                    } else {
-                        console.info('Creating edge hostname for property: ' + configName);
-                        console.time('... creating hostname');
-                        let hostnameObj = {
-                            "productId": productId,
-                            "domainPrefix": configName,
-                            "domainSuffix": "edgesuite.net",
-                            "secure": false,
-                            "ipVersionBehavior": "IPV6_COMPLIANCE",
-                        };
-
-                        let request = {
-                            method: 'POST',
-                            path: `/papi/v1/edgehostnames?contractId=${contractId}&groupId=${groupId}`,
-                            body: hostnameObj
-                        };
-
-                        this._edge.auth(request);
-
-                        this._edge.send((data, response) => {
-                            console.timeEnd('... creating hostname');
-                            if (response.statusCode >= 200 && response.statusCode < 400) {
-                                let hostnameResponse = JSON.parse(response.body);
-                                response = hostnameResponse["edgeHostnameLink"].split('?')[0].split("/")[4];
-                                resolve(response);
-                            } else {
-                                reject(response);
-                            }
-                        })
-                    }
-                })
-            })
+        })
     }
 
     /**
@@ -1385,19 +1290,10 @@ class WebSite {
             }
             data.groups.items.map(item => {
                 let queryObj = {};
-                if (item.contractIds) {
-                    item.contractIds.map(contract => {
-                        if ((contract === contractId) && (item.groupId === groupId)) {
-                            data.contractId = contractId;
-                            data.groupId = groupId;
-                            resolve(data);
-                        }
-                        if (!item.parentGroupId && !contractId) {
-                            data.contractId = contract;
-                            data.groupId = item.groupId;
-                            resolve(data);
-                        }
-                    })
+                if (groupId == item.groupId) {
+                    data.contractId = item.contractIds[0];
+                    data.groupId = item.groupId;
+                    resolve(data);
                 }
             });
             reject("Group/Contract combination doesn't exist");
@@ -2248,9 +2144,16 @@ class WebSite {
         if (!configName && !hostnames) {
             return Promise.reject("Configname or hostname are required.")
         }
-        console.log("Getting config and hostname")
+
+        if (!groupId) {
+            return Promise.reject("GroupId is required.")
+        }
+
+        if (!edgeHostname) {
+            console.log("EdgeHostname should be included as new edge hostnames take several minutes to appear.")
+        }
+
         let names = this._getConfigAndHostname(configName, hostnames);
-        console.log("Done")
         configName = names[0];
         hostnames = names[1];
         
@@ -2265,15 +2168,8 @@ class WebSite {
 
         return this._getPropertyInfo(contractId, groupId)
             .then(data => {
-                if (!contractId) {
-                    contractId = data.contractId;
-                }
-                if (!groupId) {
-                    groupId = data.groupId;
-                }
-                return this._getMainProduct(groupId, contractId);
-            })
-            .then(data => {
+                groupId = data.groupId;
+                contractId = data.contractId;
                 productId = data.productId;
                 return this._createProperty(groupId,
                     contractId,
@@ -2308,6 +2204,7 @@ class WebSite {
                     edgeHostnameId = data.edgeHostnameId;
                     return Promise.resolve(edgeHostnameId);
                 } else {
+                    console.log("Creating hostname")
                     return this._createHostname(groupId,
                         contractId,
                         configName,
