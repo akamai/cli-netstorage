@@ -375,7 +375,8 @@ class WebSite {
                             "prd_Alta",
                             "prd_Rich_Media_Accel",
                             "prd_Download_Delivery",
-                            "prd_IoT"
+                            "prd_IoT",
+                            "prd_Site_Del"
                         ].indexOf(item.productId)>= 0) {
                             productInfo = {
                                 groupId: groupId,
@@ -383,7 +384,6 @@ class WebSite {
                                 productId:item.productId,
                                 productName:item.productId.substring(4)
                             }
-                            
                         }
                     })
                     resolve(productInfo);
