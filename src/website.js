@@ -654,7 +654,7 @@ class WebSite {
                 const propertyId = data.propertyId;
                 return new Promise((resolve, reject) => {
                     console.time('... copy');
-                    console.info(`... copy property (${propertyLookup}) v${versionId}`);
+                    console.info(`... copy property (${data.propertyName}) v${versionId}`);
                     let body = {};
                     body.createFromVersion = versionId;
 
@@ -778,7 +778,7 @@ class WebSite {
                 const propertyId = data.propertyId;
                 return new Promise((resolve, reject) => {
                     console.time('... updating');
-                    console.info(`... updating property (${propertyLookup}) v${version}`);
+                    console.info(`... updating property (${data.propertyName}) v${version}`);
 
                     let request;
                     if (rules.ruleFormat && rules.ruleFormat != "latest" ) {
@@ -915,6 +915,7 @@ class WebSite {
                             noncomplianceReason: 'NO_PRODUCTION_TRAFFIC'
                         }
                     };
+
                     let request = {
                         method: 'POST',
                         path: `/papi/v1/properties/${propertyId}/activations?contractId=${contractId}&groupId=${groupId}`,
@@ -1594,7 +1595,7 @@ class WebSite {
         return this._getProperty(propertyLookup)
             .then(localProp => {
                 property = localProp;
-                console.info(`Updating ${property}`);
+                console.info(`Updating ${propertyLookup}`);
                 const version = WebSite._getLatestVersion(property);
                 return this._copyPropertyVersion(property, version);
             })

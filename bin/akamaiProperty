@@ -57,12 +57,12 @@ function activateProperty(property, targetProperty, options) {
             return property.lookupPropertyIdFromHost(targetProperty);
         })
         .then(data => {
-            if (!options.ver) {
-                options.ver = data.propertyVersion;
+            if (!options.propver) {
+                options.propver = data.propertyVersion;
             }
             if ("BOTH" === env || env.startsWith("STAG"))
                 return property.activate(   targetProperty, 
-                                            options.ver, 
+                                            options.propver, 
                                             WebSite.AKAMAI_ENV.STAGING,
                                             "Updated Automatically to staging.", 
                                             options.email);
@@ -71,7 +71,7 @@ function activateProperty(property, targetProperty, options) {
         .then(data => {
             if ("BOTH" === env || env.startsWith("PROD"))
                 return property.activate(   targetProperty, 
-                                            options.ver, 
+                                            options.propver, 
                                             WebSite.AKAMAI_ENV.PRODUCTION,
                                             "Updated Automatically to prod.", 
                                             options.email);
