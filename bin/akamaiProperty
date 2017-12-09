@@ -125,7 +125,6 @@ function deleteProperty(property, targetProperty, options) {
 }
 
 function createProperty(property, targetProperty, options) {
-
     let hostnames;
     if (options.hostnames) {
         hostnames = options.hostnames.split(',')
@@ -290,11 +289,43 @@ function main()
 {
     let options, command;
     process.argv[1] = "akamai property"
+    var yargonaut = require('yargonaut')
+    .style('blue.bold')
+    var chalk = yargonaut.chalk()
     let yargs = require('yargs')
     
     options = yargs
 
     // Activate
+    // Search
+    .usage(chalk.bold("\nakamai property [subcommand] <options>"))
+    .command("search", 'search for a property name', (yargs) => {
+        yargs
+            .option('string')
+            .demandOption(['string'], "Enter a string to search for.")
+    })
+    .command("groups", 'retrieve account groups')
+    .command('formats', 'get rules formats', {
+        newest: { default: false }
+    })
+    .command("create [property]", "create a new property", {
+        clone:  { "describe":"Source property to clone from", group:"Source"},
+        srcver: { "describe":"Version for source property",group:"Source"},
+        file:   { "describe":"Source file for new property rules", group:"Source"},
+        hostnames: { "describe":"Comma delimited list of hostnames for property"},
+        origin: { "describe":"Origin to set for property"},
+        edgehostname: { "describe":"Edge hostname to use"},
+        cpcode:   { "describe":"Use specified cpcode for new property",group:"Location"},
+        contract:  { "describe":"Contract for new property",group:"Location"},
+        group:  { "describe":"Group for new property",group:"Location"},
+        nocopy: { "describe":"Do not copy cloned hostnames", group:"Source"},
+        forward:   { "describe":"Forward host header (origin|incoming|<hostname>"},
+        ruleformat:  { "describe":"Use specified rule format"},
+        notes:   { "describe":"Version notes for the property version"},
+        property:   { "demandOption": true, "description":false}
+    })
+
+
     .command("activate [property]", 'activate the property', (yargs) => {
         yargs
             .positional('property', {
@@ -325,17 +356,7 @@ function main()
     }, (argv) => {
         console.log("Doing stuff here")
     })
-    // Search
-    .command("search", 'search for a property name', (yargs) => {
-        yargs
-            .option('string')
-            .demandOption(['string'], "Enter a string to search for.")
-    })
     .command("delete [property]", 'delete a property')
-    .command("groups", 'retrieve account groups')
-    .command('formats', 'get rules formats', {
-        newest: { default: false }
-    })
     .command('update [property]', 'update target property', {
         srcprop: { "describe":"Source property"},
         srcver: { "describe":"Source version"},
@@ -349,23 +370,7 @@ function main()
         propver: { "describe":"Retrieve specified version"},
         property: { "demandOption": true}
     })
-    .command('create [property]', 'create a new property', {
-        clone:  { "describe":"Source property to clone from", group:"Source"},
-        srcver: { "describe":"Version for source property",group:"Source"},
-        file:   { "describe":"Source file for new property rules", group:"Source"},
-        hostnames: { "describe":"Comma delimited list of hostnames for property"},
-        origin: { "describe":"Origin to set for property"},
-        edgehostname: { "describe":"Edge hostname to use"},
-        cpcode:   { "describe":"Use specified cpcode for new property",group:"Location"},
-        contract:  { "describe":"Contract for new property",group:"Location"},
-        group:  { "describe":"Group for new property",group:"Location"},
-        nocopy: { "describe":"Do not copy cloned hostnames", group:"Source"},
-        forward:   { "describe":"Forward host header (origin|incoming|<hostname>"},
-        ruleformat:  { "describe":"Use specified rule format"},
-        notes:   { "describe":"Version notes for the property version"},
-        property:   { "demandOption": true, "description":false}
-    })
-    .command('modify [property]', 'modify the target property', {
+        .command('modify [property]', 'modify the target property', {
         addhosts:  { "describe":"Comma delimited list of hostnames to add", group:"Hostnames"},
         delhosts:  { "describe":"Comma delimited list of hostnames to delete", group:"Hostnames"},
         edgehostname: { "describe":"Edge hostname to use", group:"Hostnames"},
@@ -408,41 +413,6 @@ function main()
     .help('help')
     
     .argv;
-
-    program
-        .command('modify <property>')
-        .option("--addhosts <hostnames>", "Comma delimited list of hostnames to add")
-        .option("--delhosts <hostnames>", "Comma delimited list of hostnames to delete")
-        .option("--edgehostname <edgehostname>", "Edge hostname to switch the property to")
-        .option("--origin <origin>", "Origin ")
-        .option("--edgehostname <ehn>", "TODO: Edge hostname")
-        .option("--propver <version>", "Version to operate on")
-        .option("--ruleformat <format>", "Rule format to use")
-        .option("--sureroutemap <map>", "SureRoute map to use")
-        .option("--surerouteto <object>", "Test object for SureRoute")
-        .option("--sureroutetohost <host>", "Host for SureRoute test object")
-        .option("--notes <notes>", "Version notes for this property version")
-        .option("--variables <file>", "User variables file.  Format should be\n" +
-                "\t\t\t\t   [{\n" + 
-        '\t\t\t\t\t"name": "PMUSER_TEST",' + "\n" +
-        '\t\t\t\t\t"value": "Foobar",' +"\n" +
-        '\t\t\t\t\t"description": "This is my test variable",' +"\n" +
-        '\t\t\t\t\t"hidden": false,' +"\n" +
-        '\t\t\t\t\t"sensitive": false,' +"\n" +
-        '\t\t\t\t\t"action":["delete","update","create"]' +"\n" +
-      '\t\t\t\t   }]'
-)
-        .option("--forward <forward host>", "Forward host header (origin|incoming|<hostname>")
-        .option("--move <groupId>", "Move the property to specified group.")
-        .option("--section <section>", "Credentials section to use (default [papi])")
-        .option("--config <config>", "Credentials file")
-        .action(function(target, opts) {
-            targetProperty = target;
-            options = opts;
-            command = "modify";
- 
-            console.log('Modifying property %s', targetProperty);
-        })
 
     console.time(app);
     var begin=Date.now();

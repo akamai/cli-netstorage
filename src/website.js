@@ -1491,7 +1491,6 @@ class WebSite {
         })
     }
     
-    
     searchProperties(searchString, options) {
         let searchObj = {"propertyName" : searchString}
         return this._searchByValue(searchObj)

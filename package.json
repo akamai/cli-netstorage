@@ -17,11 +17,13 @@
     "src"
   ],
   "dependencies": {
+    "chalk": "^2.3.0",
     "edgegrid": "*",
     "md5": "^2.2.1",
     "mocha": "^3.2.0",
     "request": "^2.74.0",
     "untildify": "*",
+    "yargonaut": "^1.1.2",
     "yargs": "^10.0.3"
   },
   "devDependencies": {
