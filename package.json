@@ -4,9 +4,9 @@
   "description": "A wrapping development kit to interface common tasks with akamai's {OPEN} API.",
   "repository": "https://github.com/akamai/cli-property",
   "license": "Apache-2.0",
-  "engines" : { 
-	"node" : ">=7.0.0" 
-  }, 
+  "engines": {
+    "node": ">=7.0.0"
+  },
   "scripts": {
     "start": "node bin/akamaiProperty",
     "test": "./node_modules/.bin/mocha --reporter spec"
@@ -21,7 +21,8 @@
     "md5": "^2.2.1",
     "mocha": "^3.2.0",
     "request": "^2.74.0",
-    "untildify": "*"
+    "untildify": "*",
+    "yargs": "^10.0.3"
   },
   "devDependencies": {
     "gulp": "^3.9.1",

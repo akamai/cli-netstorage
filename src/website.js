@@ -30,8 +30,6 @@ const LATEST_VERSION = {
     LATEST: 0
 };
 
-const SEARCH_OPTIMIZATION = process.env.SEARCH_OPTIMIZATION ? process.env.SEARCH_OPTIMIZATION : 1;
-
 //export
 const AKAMAI_ENV = {
     STAGING: 'STAGING',
@@ -476,9 +474,6 @@ class WebSite {
         })
         .then(property => {
             if (!property) {
-                if (SEARCH_OPTIMIZATION) {
-                    console.log("Cannot locate property using search")
-                }
                 return Promise.resolve();
             }
             this._propertyByName[property.propertyName] = property;
@@ -1494,6 +1489,22 @@ class WebSite {
                 }
             })
         })
+    }
+    
+    
+    searchProperties(searchString, options) {
+        let searchObj = {"propertyName" : searchString}
+        return this._searchByValue(searchObj)
+            .then(result => {
+                return result;
+            })
+    }
+
+    retrieveGroups() {
+        return this._getGroupList()
+            .then(result => {
+               return Promise.resolve(result.groups.items)
+            })
     }
 
     retrieveFormats(latest=false) {

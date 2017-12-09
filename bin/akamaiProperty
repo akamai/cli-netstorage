@@ -23,7 +23,7 @@
  */
 
 var path = require('path');
-
+let untildify = require('untildify');
 let WebSite = require('../index').WebSite;
 
 let program = require('commander');
@@ -44,8 +44,10 @@ function appName() {
 let app = "akamai property";
 
 let section = "papi";
+let config = untildify("~/.edgerc");
 let debug = false;
 let targetProperty;
+let searchString;
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
@@ -197,6 +199,20 @@ function retrieveNewestFormat(property) {
     })
 }
 
+function retrieveGroups(property) {
+    return property.retrieveGroups()
+    .then(data => {
+        console.log(data);
+    })
+}
+
+function searchProperties(property, searchString, options) {
+    return property.searchProperties(searchString)
+    .then(data => {
+        console.log(JSON.stringify(data,'',2))
+    })
+}
+
 function retrieveFormats(property, options) {
     return property.retrieveFormats()
     .then(data => {
@@ -273,150 +289,128 @@ function numberVersion(version) {
 function main()
 {
     let options, command;
+    process.argv[1] = "akamai property"
+    let yargs = require('yargs')
+    
+    options = yargs
 
-     program
-         .command("help [command]")
-         .action(function(command) {
-             process.argv.splice(2, 1)
-             process.argv.push("--help")
-             program.parse(process.argv)
-         })
-        
-     program
-        .command('activate <property>')
-	.option("--debug", "Turns on debugging output")
-        .option('--network <network>', "Network to activate, PROD/STAG/BOTH")
-        .option("--propver <version>", "Property version, latest/staging/prod or number")
-        .option("--section <section>","Section of the credentials file")
-        .option("--email <email>","Email to use for confirmation")
-        .action(function(target, opts) {
-            targetProperty = target;
-            options = opts;
-            command = "activate";
-            if (!options.network) {
-                console.log("Must provide a network PROD/STAGING/BOTH")
-                program.help()
-            }
-
-            console.log('Activating %s on %s', targetProperty, options.network)
-
-            let env = options.network.toUpperCase();
-            if ("BOTH" != env && 
-                !env.startsWith("STAG") && 
-                !env.startsWith("PROD"))
-            program.help(); 
-
-        })
-
-       program
-        .command('create <property>')
-	.option("--debug", "Turns on debugging output")
-        .option("--clone <property>", "Source property to clone from")
-        .option("--srcver <version>", "Version for source property stag/prod/latest/<number> (default is latest)")
-        .option("--file <file>", "Source file for new property rules")
-        .option("--hostnames <hostnames>", "Comma delimited list of hostnames for property")
-        .option("--origin <origin>", "Origin for new property")
-        .option("--edgehostname <ehn>", "Edge hostname")
-        .option("--cpcode <cpcode>", "CPCode, requires contract and group")
-        .option("--contract <contract>", "Contract for the new property")
-        .option("--group <group>", "Group to place property in")
-        .option("--section <section>","Section of the credentials file")
-        .option("--nocopy", "Do not copy source property's hostnames")
-        .option("--forward <forward host>", "Forward host header (origin|incoming|<hostname>")
-        .option("--ruleformat <format>", "Rule format to use")
-        .option("--notes <notes>", "Version notes for this property version")
-        .action(function(target, opts) {
-            targetProperty = target;
-            options = opts;
-            command = "create";
-            
-            if (!targetProperty)
-                program.help();
-
-            console.log('Creating new property %s', targetProperty);
-
-        })
-
-    program
-        .command('deactivate <property>')
-	.option("--debug", "Turns on debugging output")
-        .option('--network <network>', "Network to activate, PROD/STAG/BOTH")
-        .option("--section <section>","Section of the credentials file")
-        .option("--email <email>","Email to use for confirmation")
-        .action(function(target, opts) {
-            targetProperty = target;
-            options = opts;
-            command = "deactivate";
-
-            if (!options.network) {
-                console.log("Must provide a network PROD/STAGING/BOTH")
-                program.help()
-            }
-           console.log('Deactivating %s on %s', targetProperty, options.network)
-            let env = options.network.toUpperCase();
-            if ("BOTH" != env && 
-                !env.startsWith("STAG") && 
-                !env.startsWith("PROD"))
-            program.help();
-        })
-
-    program
-        .command('formats')
-	.option("--debug", "Turns on debugging output")
-        .option("--newest","Retrieve only the newest fixed format.")
-        .action(function(opts) {
-            command = "formats";
-            options = opts;
-            console.log('Retrieving rules formats')
-        })
-
-    program
-        .command('delete <property>')
-	.option("--debug", "Turns on debugging output")
-        .option("--section <section>","Section of the credentials file")
-        .action(function(target, opts) {
-            targetProperty = target;
-            options = opts;
-            command = "delete";
-            
-            console.log('Deleting %s', targetProperty)
-        })
-
-    program
-        .command('retrieve <property>')
-	.option("--debug", "Turns on debugging output")
-        .option("--file <file>", "Output file (default is STDOUT)")
-        .option("--format", "Retrieve the rules format only")
-        .option("--hostnames", "Retrieve the hostnames for the property")
-        .option("--variables", "Retrieve the variables for the property")
-        .option("--propver <version>", "Property version, latest/staging/prod or number")
-        .option("--section <section>","Section of the credentials file")
-        .action(function(target, opts) {
-            targetProperty = target;
-            options = opts;
-            command="retrieve";
-            
-            console.log('Retrieving %s', targetProperty)
-        })
-    program
-        .command('update <property>')
-	.option("--debug", "Turns on debugging output")
-        .option("--srcprop <property>", "Source property to copy rules from")
-        .option("--srcver <version>", "Version for source property stag/prod/latest/<number>  (default is latest)")
-        .option("--file <file>", "Source file for property rules")
-        .option("--section <section>","Section of the credentials file")
-        .action(function(target, opts) {
-            targetProperty = target;
-            options = opts;
-            command = "update";
-
-            console.log('Updating property %s', targetProperty);
-        })
+    // Activate
+    .command("activate [property]", 'activate the property', (yargs) => {
+        yargs
+            .positional('property', {
+                hidden: true
+            }).option('network', {
+                describe: "Network for activation"
+            })
+            .option('propver', {
+                describe: "Source version to activate"
+            })
+            .option('email', {
+                describe: "Email for confirmation"
+            })
+            .demandOption(['property', 'network'], "Must provide a property and network PROD/STAGING/BOTH")
+    })
+    // Deactivate
+    .command("deactivate [property]", 'deactivate the property', (yargs) => {
+        yargs
+            .positional('property', {
+                hidden: true
+            }).option('network', {
+                describe: "Network for deactivation"
+            })
+            .option('email', {
+                describe: "Email for confirmation"
+            })
+            .demandOption(['property', 'network'], "Must provide a property and network PROD/STAGING/BOTH")
+    }, (argv) => {
+        console.log("Doing stuff here")
+    })
+    // Search
+    .command("search", 'search for a property name', (yargs) => {
+        yargs
+            .option('string')
+            .demandOption(['string'], "Enter a string to search for.")
+    })
+    .command("delete [property]", 'delete a property')
+    .command("groups", 'retrieve account groups')
+    .command('formats', 'get rules formats', {
+        newest: { default: false }
+    })
+    .command('update [property]', 'update target property', {
+        srcprop: { "describe":"Source property"},
+        srcver: { "describe":"Source version"},
+        file: { "describe":"File with JSON rules"},
+        property: { "demandOption": true}
+    })
+    .command('retrieve [property]', 'retrieve rules from target property', {
+        format: { "describe":"Rules format only"},
+        hostnames: { "describe":"Retrieve hostnames for property"},
+        variables: { "describe":"Retrieve user variables"},
+        propver: { "describe":"Retrieve specified version"},
+        property: { "demandOption": true}
+    })
+    .command('create [property]', 'create a new property', {
+        clone:  { "describe":"Source property to clone from", group:"Source"},
+        srcver: { "describe":"Version for source property",group:"Source"},
+        file:   { "describe":"Source file for new property rules", group:"Source"},
+        hostnames: { "describe":"Comma delimited list of hostnames for property"},
+        origin: { "describe":"Origin to set for property"},
+        edgehostname: { "describe":"Edge hostname to use"},
+        cpcode:   { "describe":"Use specified cpcode for new property",group:"Location"},
+        contract:  { "describe":"Contract for new property",group:"Location"},
+        group:  { "describe":"Group for new property",group:"Location"},
+        nocopy: { "describe":"Do not copy cloned hostnames", group:"Source"},
+        forward:   { "describe":"Forward host header (origin|incoming|<hostname>"},
+        ruleformat:  { "describe":"Use specified rule format"},
+        notes:   { "describe":"Version notes for the property version"},
+        property:   { "demandOption": true, "description":false}
+    })
+    .command('modify [property]', 'modify the target property', {
+        addhosts:  { "describe":"Comma delimited list of hostnames to add", group:"Hostnames"},
+        delhosts:  { "describe":"Comma delimited list of hostnames to delete", group:"Hostnames"},
+        edgehostname: { "describe":"Edge hostname to use", group:"Hostnames"},
+        origin: { "describe":"Origin to set for property", group:"Hostnames"},
+        propver: { "describe":"Property version to operate on"},
+        sureroutemap: { "describe":"Settings for SureRoute", group:"SureRoute"},
+        surerouteto: { "describe":"Settings for SureRoute", group:"SureRoute"},
+        sureroutetohost: { "describe":"Settings for SureRoute", group:"SureRoute"},
+        forward:   { "describe":"Forward host header (origin|incoming|<hostname>"},
+        ruleformat:  { "describe":"Use specified rule format"},
+        notes:   { "describe":"Version notes for the property version"},
+        move:   { "describe":"Group to move the property to"},
+        variables: {"describe":"User variables file.  Format should be\n" +
+                "\t\t\t\t   [{\n" + 
+        '\t\t\t\t\t"name": "PMUSER_TEST",' + "\n" +
+        '\t\t\t\t\t"value": "Foobar",' +"\n" +
+        '\t\t\t\t\t"description": "This is my test variable",' +"\n" +
+        '\t\t\t\t\t"hidden": false,' +"\n" +
+        '\t\t\t\t\t"sensitive": false,' +"\n" +
+        '\t\t\t\t\t"action":["delete","update","create"]' +"\n" +
+      '\t\t\t\t   }]'},
+        property:   { "demandOption": true, "description":false}
+    })
+    .option("s", {
+        alias: "section",
+        description: "Configuration section"
+    })
+    .option("c", {
+        alias: "config",
+        description: "Configuration file"
+    })
+    .option("d", {
+        alias: "debug",
+        description: "Turn on debugging"
+    })
+    .showHelpOnFail(true)
+    .version(false)
+    .demandCommand()
+    .epilog("Visit our github repository at https://github.com/akamai/cli-property")
+    .help('help')
+    
+    .argv;
 
     program
         .command('modify <property>')
-	.option("--debug", "Turns on debugging output")
-        .option("--section <section>","Section of the credentials file")
         .option("--addhosts <hostnames>", "Comma delimited list of hostnames to add")
         .option("--delhosts <hostnames>", "Comma delimited list of hostnames to delete")
         .option("--edgehostname <edgehostname>", "Edge hostname to switch the property to")
@@ -440,6 +434,8 @@ function main()
 )
         .option("--forward <forward host>", "Forward host header (origin|incoming|<hostname>")
         .option("--move <groupId>", "Move the property to specified group.")
+        .option("--section <section>", "Credentials section to use (default [papi])")
+        .option("--config <config>", "Credentials file")
         .action(function(target, opts) {
             targetProperty = target;
             options = opts;
@@ -448,21 +444,17 @@ function main()
             console.log('Modifying property %s', targetProperty);
         })
 
-    program.parse(process.argv)
-
-    if ((!targetProperty) && (command != "formats")) {
-        program.help();
-    }
-
     console.time(app);
     var begin=Date.now();
 
     let property;
 
     if (options) {
+        targetProperty = options.property || null;
         section = options.section || section;
-	debug = options.debug || debug;
-        property = new WebSite({path:"~/.edgerc", section: section, debug: debug});
+        config = options.config || config;
+        debug = options.debug || debug;
+        property = new WebSite({path:config, section: section, debug: debug});
     
         if (options.propver) {
             options.propver = numberVersion(options.propver)
@@ -471,12 +463,18 @@ function main()
             options.srcver = numberVersion(options.srcver)
         }
     } else {
-        property = new WebSite({path:"~/.edgerc", section: section});
+        property = new WebSite({path:config, section: section});
     }
     
     Promise.resolve()
             .then(() => {
-                switch(command) {
+                switch(options._[0]) {
+                    case "search":
+                        return searchProperties(property, options.string, options)
+                        .then(() => {
+                            var end=Date.now();
+                            var timeSpent=(end-begin)/1000/60+" mins";
+                        })
                     case "activate":
                         return activateProperty(property, targetProperty, options)
                         .then(() => {
@@ -554,6 +552,9 @@ function main()
                         })
 
                         break;
+                    case "groups":
+                        return retrieveGroups(property)
+                        break;                    
                     case "formats":
                         if (options.newest) {
                             return retrieveNewestFormat(property)
