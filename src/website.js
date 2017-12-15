@@ -840,7 +840,7 @@ class WebSite {
     }
 
     //TODO: should only return one edgesuite host name, even if multiple are called - should lookup to see if there is alrady an existing association
-    _createHostname(groupId, contractId, configName, productId, edgeHostnameId = null, edgeHostname = null, force = false, secure = false) {
+    _createEdgeHostname(groupId, contractId, configName, productId, edgeHostnameId = null, edgeHostname = null, force = false, secure = false) {
         if (edgeHostnameId) {
             return Promise.resolve(edgeHostnameId);
         }
@@ -2263,7 +2263,7 @@ class WebSite {
                     return Promise.resolve(edgeHostnameId);
                 } else {
                     edgeHostnameId = configName;
-                    return this._createHostname(groupId,
+                    return this._createEdgeHostname(groupId,
                         contractId,
                         configName,
                         productId,
@@ -2368,7 +2368,7 @@ class WebSite {
                 return Promise.resolve(edgeHostnameId)
             })
             .then(edgeHostnameId => {
-                return this._createHostname(groupId,
+                return this._createEdgeHostname(groupId,
                     contractId,
                     configName,
                     productId,
