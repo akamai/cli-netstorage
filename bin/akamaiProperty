@@ -312,14 +312,14 @@ function main () {
       .command('groups', {
         desc: 'retrieve account groups',
         run: options => {
-            let app = new WebSite({path:options.config, section: options.section, debug: debug});
+            let app = new WebSite({path:options.config, section: options.section, debug: options.debug});
             return retrieveGroups(app)
         }
       })
       .command('formats', {
         desc: 'get rules formats',
         run: options => {
-            let app = new WebSite({path:options.config, section: options.section, debug: debug});
+            let app = new WebSite({path:options.config, section: options.section, debug: options.debug});
             if (options.newest) {
                 return retrieveNewestFormat(app)
             } else {
@@ -332,7 +332,7 @@ function main () {
         desc: 'search for a property name',
         paramsDesc: 'Enter a string to search for.',
         run: options => {
-            let app = new WebSite({path:options.config, section: options.section, debug: debug});
+            let app = new WebSite({path:options.config, section: options.section, debug: options.debug});
             return searchProperties(app, options.property)
         }
       })
@@ -393,7 +393,7 @@ function main () {
             })
         },
         run: options => {
-            let app = new WebSite({path:options.config, section: options.section, debug: debug});
+            let app = new WebSite({path:options.config, section: options.section, debug: options.debug});
             return createProperty(app, options.property, options)
             .then(() => {
                 if (options.forward || options.variables || options.notes) {
@@ -460,7 +460,7 @@ function main () {
             .file('--variables <file>', { desc: '<REPLACE_ME>' })
         },
         run: options => {
-            let app = new WebSite({path:options.config, section: options.section, debug: debug});
+            let app = new WebSite({path:options.config, section: options.section, debug: options.debug});
             return modifyProperty(app, options.property, options)
         }
     })
@@ -483,7 +483,7 @@ function main () {
             })
         },
         run: options => {
-            let app = new WebSite({path:options.config, section: options.section, debug: debug});
+            let app = new WebSite({path:options.config, section: options.section, debug: options.debug});
             return activateProperty(app, options.property, options)
         }
       })
@@ -502,7 +502,7 @@ function main () {
             })
         },
         run: argv => {
-            let app = new WebSite({path:options.config, section: options.section, debug: debug});
+            let app = new WebSite({path:options.config, section: options.section, debug: options.debug});
             return deactivateProperty(app, options.property, options)
         }
       })
@@ -510,7 +510,7 @@ function main () {
         desc: 'delete a property',
         run: options => {
             options.network = "BOTH"
-            let app = new WebSite({path:options.config, section: options.section, debug: debug});
+            let app = new WebSite({path:options.config, section: options.section, debug: options.debug});
             return deactivateProperty(app, options.property, options)
             .then(() => {
                 return deleteProperty(app, options.property, options)
@@ -533,7 +533,7 @@ function main () {
             })
         },
         run: options => {
-            let app = new WebSite({path:options.config, section: options.section, debug: debug});
+            let app = new WebSite({path:options.config, section: options.section, debug: options.debug});
             return updateProperty(app, options.property, options);
         }
       })
@@ -547,7 +547,7 @@ function main () {
             .boolean('--propver', { desc: 'Retrieve specified version' })
         },
         run: options => {
-            let app = new WebSite({path:options.config, section: options.section, debug: debug});
+            let app = new WebSite({path:options.config, section: options.section, debug: options.debug});
             if (options.hostnames) {
                 return retrieveHostnames(app, options.property)
             } else if (options.variables) {

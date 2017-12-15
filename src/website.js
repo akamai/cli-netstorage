@@ -54,7 +54,7 @@ class WebSite {
      * @param auth {Object} providing the `path`, and `section` for the authentication. Alternatively, you can pass in
      *     `clientToken`, `clientSecret`, `accessToken`, and `host` directly.
      */
-    constructor(auth = { path: "~/.edgerc", section: "default" }) {
+    constructor(auth = { path: "~/.edgerc", section: "default", debug: false}) {
 
         if (auth.clientToken && auth.clientSecret && auth.accessToken && auth.host)
             this._edge = new EdgeGrid(auth.clientToken, auth.clientSecret, auth.accessToken, auth.host, auth.debug);
