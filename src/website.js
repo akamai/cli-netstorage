@@ -647,9 +647,10 @@ class WebSite {
                 const contractId = data.contractId;
                 const groupId = data.groupId;
                 const propertyId = data.propertyId;
+                const propertyName = data.propertyName;
                 return new Promise((resolve, reject) => {
                     console.time('... copy');
-                    console.info(`... copy property (${data.propertyName}) v${versionId}`);
+                    console.info(`... copy property (${propertyName}) v${versionId}`);
                     let body = {};
                     body.createFromVersion = versionId;
 
@@ -771,9 +772,10 @@ class WebSite {
                 const contractId = data.contractId;
                 const groupId = data.groupId;
                 const propertyId = data.propertyId;
+                const propertyName = data.propertyName;
                 return new Promise((resolve, reject) => {
                     console.time('... updating');
-                    console.info(`... updating property (${data.propertyName}) v${version}`);
+                    console.info(`... updating property (${propertyName}) v${version}`);
 
                     let request;
 
@@ -1182,6 +1184,7 @@ class WebSite {
         let assignHostnameArray, myDelete = false;
         let newHostnameArray = [];
         let hostsToProcess = []
+        let version, property;
         if (!hostnames) {
             hostnames = []
         }
@@ -1195,13 +1198,16 @@ class WebSite {
                             edgeHostnameId = host.cnameTo ? host.cnameTo : host.edgeHostnameId
                         }
                     })
-                }
-                let property = this._propertyById[propertyId];
-                let version = property.latestVersion;
+                } 
+                property = this._propertyById[propertyId];
+                version = property.latestVersion;
                 if (!edgeHostnameId) {
-                    reject("\n\nNo edgehostnames found for property.  Please specify edgehostname.\n\n")
-                }
-            return new Promise((resolve, reject) => {
+                    return Promise.reject("\n\nNo edgehostnames found for property.  Please specify edgehostname.\n\n")
+                 }
+            })
+            .then(() => {
+                return new Promise((resolve, reject) => {
+                    
                     console.info('Updating property hostnames');
                     console.time('... updating hostname');
                     if (deleteHosts) {
@@ -1252,14 +1258,15 @@ class WebSite {
                         if (response.statusCode >= 200 && response.statusCode < 400) {
                             response = JSON.parse(response.body);
                             resolve(response);
-                            //} else if (response.statusCode == 400 || response.statusCode == 403) {
-                            //    reject("Unable to assign hostname.  Please try to add the hostname in 30 minutes using the --addhosts flag.")
+                            } else if (response.statusCode == 400 || response.statusCode == 403) {
+                                console.log(response.body)
+                                reject("Unable to assign hostname.  Please try to add the hostname in 30 minutes using the --addhosts flag.")
                         } else {
                             reject(response);
                         }
                     })
                 })
-            })
+                })
     }
 
     _getEdgeHostnames() {
@@ -1592,6 +1599,20 @@ class WebSite {
             });
     }
 
+    createNewPropertyVersion(propertyLookup) {
+        let property = propertyLookup;
+
+        return this._getProperty(propertyLookup)
+            .then(localProp => {
+                property = localProp;
+                let propertyName = localProp.propertyName;
+                console.info(`Creating new version for ${propertyName}`);
+                const version = WebSite._getLatestVersion(property);
+                property.latestVersion += 1;
+                return this._copyPropertyVersion(property, version);
+        })
+    }
+ 
     /**
      *
      * @param {string} propertyLookup either colloquial host name (www.example.com) or canonical PropertyId (prp_123456).
@@ -1605,7 +1626,8 @@ class WebSite {
         return this._getProperty(propertyLookup)
             .then(localProp => {
                 property = localProp;
-                console.info(`Updating ${propertyLookup}`);
+                let propertyName = localProp.propertyName;
+                console.info(`Updating ${propertyName}`);
                 const version = WebSite._getLatestVersion(property);
                 return this._copyPropertyVersion(property, version);
             })
@@ -1904,7 +1926,7 @@ class WebSite {
             propertyId,
             configName,
             hostlist;
-
+            
         let names = this._getConfigAndHostname(propertyLookup, hostnames);
         configName = names[0];
         hostnames = names[1];

@@ -37,16 +37,13 @@ describe('Create a new property from scratch', function () {
             .then(data => {
                 return akamaiweb.delete(akamaiweb.propertyId)
             })
-            .then(data => {
-                return akamaiweb.retrieve(akamaiweb.propertyId)
-            })
             .catch((error) =>  {
                 assert(error);
             })
     })
     it ('should clone a new property, activate, deactivate and delete', function() {
         akamaiweb.propertyName = "test.mocha.com";
-        options = {"srcProperty":"bc.akamaiapibootcamp.com"};
+        options = {"srcProperty":"jenkins.base.property"};
         return akamaiweb.createProperty(akamaiweb, options)
             .then(data => {
                 akamaiweb.propertyId = data.propertyId;
@@ -57,9 +54,6 @@ describe('Create a new property from scratch', function () {
             })
             .then(data => {
                 return akamaiweb.delete(akamaiweb.propertyId)
-            })
-            .then(data => {
-                return akamaiweb.retrieve(akamaiweb.propertyId)
             })
             .catch((error) =>  {
                 assert(error);
