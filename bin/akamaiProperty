@@ -565,7 +565,7 @@ function main () {
       .showHelpByDefault()
       .help('--help', { group: "Command"})
       .version('--version', { group: "Command"})
-      .epilogue('Visit http://github.com/akamai/cli-property for detailed documentation')
+      .epilogue('Copyright (C) Akamai Technologies, Inc\nVisit http://github.com/akamai/cli-property for detailed documentation\n')
       .style({
         // you can style several other things too
         // and even style things differently when validation fails for them
@@ -583,13 +583,6 @@ function main () {
       })
       .outputSettings({ maxWidth: 100 })
       .parseAndExit()
-      .catch((error) => {
-        console.error("ERROR: ", error.body || JSON.stringify(error));
-        if (error.stack) {
-            console.log(error.stack);
-            process.exit(1)
-        }
-    })
   }
   console.time(app);
   var begin=Date.now();
