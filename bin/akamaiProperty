@@ -33,11 +33,6 @@ if ((process.versions["node"]).split('.')[0] < 7) {
     process.exit()
 }
 
-process.on('unhandledRejection', (reason, p) => {
-    console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
-    // application specific logging, throwing an error, or other logic here
-  });
-
 function appName() {
     return process.argv[1].replace(/.*\//, "");
 }
@@ -582,8 +577,20 @@ function main () {
         }
       })
       .outputSettings({ maxWidth: 100 })
-      .parseAndExit()
-  }
+      .parse()
+      .then(result => {
+        // let errors bubble up
+        if (result.errors.length) {
+            console.error("ERROR: ", result.errors[0] || JSON.stringify(result.errors[0]));
+            console.output = "";
+        }
+        // if help requested, log it and exit
+        if (result.output) {
+          console.log(result.output)
+          process.exit(result.code)
+        }
+    })
+}
   console.time(app);
   var begin=Date.now();
   
@@ -591,6 +598,4 @@ function main () {
     var end=Date.now();
     var timeSpent=((end-begin)/1000/60).toPrecision(2) +" mins";
     console.log("Command time: " + timeSpent)
-  })                                                 
-            
-
+  })                                               

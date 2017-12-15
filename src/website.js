@@ -523,7 +523,7 @@ class WebSite {
                 }
 
                 if (!prop)
-                    return Promise.reject(Error(`Cannot find property: ${propertyLookup}`));
+                    return Promise.reject(`Cannot find property:  ${propertyLookup}`);
                 return Promise.resolve(prop);
             });
     };
@@ -689,9 +689,7 @@ class WebSite {
             if (cloneFrom) {
                 productId = cloneFrom.productId;
             }
-            console.log(groupId)
-            console.log(contractId)
-
+            
             let propertyObj = {
                 "cloneFrom": cloneFrom,
                 "productId": productId,
@@ -710,11 +708,9 @@ class WebSite {
                 console.timeEnd('... creating');
                 if (response.statusCode >= 200 && response.statusCode < 400) {
                     let propertyResponse = JSON.parse(response.body);
-                    console.log(propertyResponse)
                     response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
                     resolve(response);
                 } else {
-                    console.log("REJECTING")
                     reject(response);
                 }
             });
@@ -780,7 +776,6 @@ class WebSite {
                     console.info(`... updating property (${data.propertyName}) v${version}`);
 
                     let request;
-                    console.log(rules.rules.behaviors)
 
                     if (rules.ruleFormat && rules.ruleFormat != "latest" ) {
                         request = {
