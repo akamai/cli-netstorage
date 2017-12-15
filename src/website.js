@@ -167,7 +167,7 @@ class WebSite {
                     console.info('... your client credentials have no access to this group, skipping {%s : %s}', contractId, groupId);
                     resolve(null);
                 } else {
-                    reject(response);
+                    return Promise.reject(Error(response));
                 }
             });
         });
@@ -229,7 +229,7 @@ class WebSite {
                             cloneFrom.ruleFormat = parsed.versions.items[0]["ruleFormat"]
                             resolve(cloneFrom);
                         } else {
-                            reject(response);
+                            return Promise.reject(Error(response));
                         }
                     });
                 })
@@ -250,7 +250,7 @@ class WebSite {
                             cloneFrom.rules = parsed;
                             resolve(cloneFrom);
                         } else {
-                            reject(response);
+                            return Promise.reject(Error(response));
                         }
                     });
                 })
@@ -271,7 +271,7 @@ class WebSite {
 
             let request = {
                 method: 'GET',
-                path: '/papi/v1/groups',
+                path: '/papi/v1/grosups',
                 followRedirect: false,
                 followAllRedirects: false
             };
@@ -288,7 +288,7 @@ class WebSite {
                     let parsed = JSON.parse(response.body);
                     resolve(parsed);
                 } else {
-                    reject(response);
+                     reject(Error(response.body));
                 }
             });
         });
@@ -389,6 +389,7 @@ class WebSite {
                     console.info('... your credentials do not have permission for this group, skipping  {%s : %s}', contractId, groupId);
                     resolve(null);
                 } else {
+                    console.log("Unable to find a property product suitable for a new property.  Please try a different group.")
                     reject(response);
                 }
                 resolve(productInfo);
@@ -487,23 +488,25 @@ class WebSite {
             return Promise.resolve(propertyLookup);
 
         propertyLookup = propertyLookup.replace(/[^\w.-]/gi, '_');
+        
         return this._init()
             .then(() => {
-                let prop = this._propertyById[propertyLookup] || this._propertyByName[propertyLookup];
-                if (!prop) {
-                    let host = this._propertyByHost[propertyLookup];
-                    if (host)
-                        prop = hostnameEnvironment === LATEST_VERSION.STAGING ? host.staging : host.production;
-                }
-                if (prop) {
-                    return Promise.resolve(prop);
-                }
-                if (!propertyLookup.match("prp_")) {
-                    return this._findProperty(propertyLookup)
-                } else {
-                    return Promise.resolve()
-                }
-            })
+                return new Promise((resolve, reject) => {
+                    let prop = this._propertyById[propertyLookup] || this._propertyByName[propertyLookup];
+                    if (!prop) {
+                        let host = this._propertyByHost[propertyLookup];
+                        if (host)
+                            prop = hostnameEnvironment === LATEST_VERSION.STAGING ? host.staging : host.production;
+                    }
+                    if (prop) {
+                        return resolve(prop);
+                    }
+                    if (!propertyLookup.match("prp_")) {
+                        return this._findProperty(propertyLookup)
+                    } else {
+                        return resolve()
+                    }
+                })
             .then(prop => {
                 if (prop) {
                     return Promise.resolve(prop)
@@ -525,7 +528,8 @@ class WebSite {
                     return Promise.reject(Error(`Cannot find property: ${propertyLookup}`));
                 return Promise.resolve(prop);
             });
-    };
+    });
+}
 
     _retrieveEdgeHostnames(contractId, groupId) {
         return new Promise((resolve, reject) => {
