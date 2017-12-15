@@ -521,7 +521,6 @@ class WebSite {
                         prop = hostnameEnvironment === LATEST_VERSION.STAGING ? host.staging : host.production;
                 }
 
-                
                 if (!prop)
                     return Promise.reject(Error(`Cannot find property: ${propertyLookup}`));
                 return Promise.resolve(prop);
@@ -689,6 +688,8 @@ class WebSite {
             if (cloneFrom) {
                 productId = cloneFrom.productId;
             }
+            console.log(groupId)
+            console.log(contractId)
 
             let propertyObj = {
                 "cloneFrom": cloneFrom,
@@ -708,9 +709,11 @@ class WebSite {
                 console.timeEnd('... creating');
                 if (response.statusCode >= 200 && response.statusCode < 400) {
                     let propertyResponse = JSON.parse(response.body);
+                    console.log(propertyResponse)
                     response = propertyResponse["propertyLink"].split('?')[0].split("/")[4];
                     resolve(response);
                 } else {
+                    console.log("REJECTING")
                     reject(response);
                 }
             });
@@ -776,6 +779,8 @@ class WebSite {
                     console.info(`... updating property (${data.propertyName}) v${version}`);
 
                     let request;
+                    console.log(rules.rules.behaviors)
+
                     if (rules.ruleFormat && rules.ruleFormat != "latest" ) {
                         request = {
                                 method: 'PUT',
@@ -1275,7 +1280,6 @@ class WebSite {
         if (contractId && (!contractId.match("ctr_"))) {
             contractId = "ctr_" + contractId;
         }
-
         return new Promise((resolve, reject) => {
             if (groupId && contractId) {
                 data.contractId = contractId;
@@ -1841,6 +1845,25 @@ class WebSite {
             })
     }
 
+    setCpcode(propertyLookup, version, cpcode) {
+        
+        return this._getProperty(propertyLookup)
+            .then(data => {
+                version = WebSite._getLatestVersion(data, version)
+                return this._getPropertyRules(propertyLookup, version)
+            })
+            .then(rules => {
+                let behaviors = rules.rules.behaviors;
+                rules.rules.behaviors.map(behavior => {
+                    if (behavior.name == "cpCode") {
+                        behavior.options.value.id = cpcode
+                    }
+                    behaviors.push(behavior)
+                })
+                rules.rules.behaviors = behaviors;
+                return this._updatePropertyRules(propertyLookup, version, rules);
+            })
+    }
 
     delHostnames(propertyLookup, version, hostnames) {
         let contractId,
@@ -2158,8 +2181,13 @@ class WebSite {
         }
 
         if (!groupId) {
-            return Promise.reject("GroupId is required.")
+            return Promise.reject("Group ID is required.")
         }
+
+
+        //if (!groupId) {
+        //    return Promise.reject("GroupId is required.")
+       // }
 
         if (!edgeHostname) {
             console.log("EdgeHostname should be included as new edge hostnames take several minutes to appear.")
