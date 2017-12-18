@@ -18,52 +18,51 @@ if (process.env.AKAMAI_TEST_HOST) {
 if (process.env.AKAMAI_TEST_PROPID) {
     propertyId = process.env.AKAMAI_TEST_PROPID;
 }
+let temp_property = "travis-" + Date.now() + ".example.com"
 
 var akamaiweb = new WebSite({path: "~/.edgerc", section: "papi"});
 
 
-describe('Create a new property from scratch', function () {
-    it ('should create a new property, activate, deactivate and delete', function() {
-        akamaiweb.propertyName = "test.mocha.com";
-        options = {};
-        return akamaiweb.createProperty(akamaiweb, options)
-            .then(data => {
-                akamaiweb.propertyId = data.propertyId;
-                return akamaiweb.activate(akamaiweb.propertyId)
-            })
-            .then(data => {
-                return akamaiweb.deactivate(akamaiweb.propertyId)
-            })
-            .then(data => {
-                return akamaiweb.delete(akamaiweb.propertyId)
-            })
-            .catch((error) =>  {
-                assert(error);
-            })
-    })
+describe('Create a new property from clone', function () {
     it ('should clone a new property, activate, deactivate and delete', function() {
-        akamaiweb.propertyName = "test.mocha.com";
-        options = {"srcProperty":"jenkins.base.property"};
-        return akamaiweb.createProperty(akamaiweb, options)
+        options = {"clone":"akamaiapibootcamp.com"}
+        return akamaiweb.createFromExisting(temp_property, options)
             .then(data => {
-                akamaiweb.propertyId = data.propertyId;
-                return akamaiweb.activate(akamaiweb.propertyId)
+                return akamaiweb.activate(temp_property)
             })
             .then(data => {
-                return akamaiweb.deactivate(akamaiweb.propertyId)
-            })
-            .then(data => {
-                return akamaiweb.delete(akamaiweb.propertyId)
+                return akamaiweb.deactivate(temp_property)
             })
             .catch((error) =>  {
                 assert(error);
             })
     })
-
-    it ('should try to create a new property without a propertyName (and fail)', function() {
-        return akamaiweb.createProperty(akamaiweb, {})
-            .catch(error => {
-                assert(error);
-            })
+    it('should retrieve the property rules to a file', function () {
+        return akamaiweb.retrieveToFile(propertyId, 'test/new_rules.json')
+            .then(data => {
+                fs.readFile('test/new_rules.json','utf8', function (err, data) {
+                    if (err) throw err;
+                    obj = JSON.parse(data);
+                    assert(obj['rules']);
+                })
+        })
     })
-})
+    it('should update the property from the rules', function () {
+        return akamaiweb.updateFromFile(temp_property, 'test/new_rules.json')
+            then(data => {
+                return akamaiweb.retrieve(propertyId)
+            })
+            .then(data => {
+                return akamaiweb.activate(temp_property)
+            })
+            .then(data => {
+                return akamaiweb.deactivate(temp_property)
+            })
+            .then(data => {
+                return akamaiweb.delete(temp_property)
+            })
+            .catch(error => {
+                assert(!error)
+            })
+        })
+    })

@@ -19,7 +19,7 @@
 /**
  * Command line tool to interface with the WebSite library for manipulating the CDN activities on Akamai
  *
- * @author Colin Bendell <colinb@akamai.com>
+ * @author Kirsten Hunter <khunter@akamai.com>
  */
 
 var path = require('path');
@@ -148,18 +148,10 @@ function createProperty(app, targetProperty, options) {
                                             options.ruleformat)
             }
         } else {
-            return app.createFromExisting(options.clone, 
-                                            numberVersion(options.srcver), 
-                                            options.nocopy,
-                                            hostnames,
-                                            targetProperty, 
-                                            options.contract, 
-                                            options.group,
-                                            options.origin,
-                                            options.edgehostname,
-                                            options.cpcode,
-                                            options.ruleformat
-                                            )
+            options.srcver = numberVersion(options.srcver)
+            options.hostnames = hostnames
+            return app.createFromExisting(targetProperty, options)
+                                            
         }
     })
     .then(() => {
@@ -170,9 +162,11 @@ function createProperty(app, targetProperty, options) {
         }
     })
     .then(data => {
-        console.log(JSON.stringify(data,'',2));
-        return Promise.resolve();
-    })
+        if (data) {
+            console.log(JSON.stringify(data,'',2));
+         }
+         return Promise.resolve();
+        })
 }
 
 function retrieveProperty(app, targetProperty, options) {
@@ -309,21 +303,20 @@ function main () {
     const chalk = require('chalk')
     return require('sywac')
       .file('--config <config>', { 
-          desc: 'Config file for credentials (default ~/.edgerc)',
+          desc: 'Config file ',
           defaultValue: config,
-          group: "Credentials options:"
+          group: "Command options:"
       })
       .string('--section <section>', { 
-          desc: 'Config section for credentials (default "papi")',
+          desc: 'Config section ',
           defaultValue: section,
-          group: "Credentials options:"
+          group: "Command options:"
         })
        .boolean('--debug <debug>', { 
             desc: 'Turn on debugging.',
             defaultValue: false,
             group: "Command options:"
        })
-  
       .command('groups', {
         desc: 'retrieve account groups',
         run: options => {
@@ -397,7 +390,7 @@ function main () {
               group: 'Source options:'
             })
             .string('--forward <value>', { // could use enumeration if <hostname> was not dynamic ;)
-              desc: 'Forward host header (origin|incoming|<hostname>)',
+              desc: 'Forward host header (origin|incoming|<host>)',
               group: "Hostname options:"
             })
             .string('--ruleformat <format>', {
@@ -428,7 +421,7 @@ function main () {
           setup: sywac => {
             sywac
             .string('--propver <propver>', {
-                desc: 'Property version - LATEST/STAGING/PRODUCTION/<number>'
+                desc: 'Property version - LATEST/STAG/PROD/<number>'
             })
             .stringArray('--addhosts <addhosts>', {
                   desc: 'Comma delimited list of hostnames',
@@ -459,7 +452,7 @@ function main () {
                 group: "Hostname options:"
             })
             .string('--forward <forward>', {
-                desc: 'Forward host header (origin|incoming|<hostname>)',
+                desc: 'Forward host header (origin|incoming|<host>)',
                 group: "Hostname options:"
             })
             .number('--cpcode <cpcode>', {
@@ -473,11 +466,11 @@ function main () {
                 desc: 'Version notes for the property version'
             })
             .string('--move <move>', {
-                desc: 'Group to move the property to (requires User Admin perms)',
+                desc: 'Group to move the property to (User Admin perms)',
                 group: 'Location options:'
             })
             .boolean('--new', {
-                desc: 'Create new property version before modification.'
+                desc: 'Create new property version.'
             })
             .file('--variables <file>', { desc: '<REPLACE_ME>' })
         },
@@ -573,7 +566,7 @@ function main () {
             if (options.hostnames) {
                 return retrieveHostnames(app, options.property)
             } else if (options.variables) {
-                return retrieveProperty(app, options.property, options)
+                return retrieveVariables(app, options.property, options)
             } else {
                 return retrieveProperty(app, options.property, options)
             }
@@ -598,7 +591,10 @@ function main () {
           )
         }
       })
-      .outputSettings({ maxWidth: 100 })
+      .style({
+        group: str => chalk.bold.blue(str === 'Options:' ? 'General options:' : str)
+      })
+      .outputSettings({ maxWidth: 90 })
       .parse()
       .then(result => {
         // let errors bubble up
@@ -608,7 +604,7 @@ function main () {
         }
         // if help requested, log it and exit
         if (result.output) {
-          console.log(result.output)
+          //console.log(result.output)
           process.exit(result.code)
         }
     })
