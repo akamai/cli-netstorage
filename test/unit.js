@@ -55,7 +55,7 @@ describe('Check read functions', function() {
     it('should return the main product for the account', function() {
         return akamaiweb._getMainProduct(groupId, contractId)
         .then(property => {
-            assert.equal(property.productName, "Download_Delivery")
+            assert.equal(property.productName, "SPM")
         })
     });
     it('should get a list of properties with our configName', function() {
@@ -63,7 +63,6 @@ describe('Check read functions', function() {
         .then(list => {
             let propExists = false;
             return list.properties.items.map(item => {
-                console.log(item)
                     if (item.propertyName == configName)
                         propExists = true;
                 })

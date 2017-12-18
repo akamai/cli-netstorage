@@ -388,7 +388,7 @@ class WebSite {
                     console.info('... your credentials do not have permission for this group, skipping  {%s : %s}', contractId, groupId);
                     resolve(null);
                 } else {
-                    console.log("Unable to find a property product suitable for a")
+                    console.log("Unable to find a delivery product in this group/contract.  Please open an issue if you wish to add one.")
                     reject(response);
                 }
                 resolve(productInfo);
