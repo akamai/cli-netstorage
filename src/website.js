@@ -787,7 +787,7 @@ class WebSite {
                             let newRules = JSON.parse(response.body);
                             resolve(newRules);
                         } else {
-                            reject(response);
+                            reject(response.body);
                         }
                     });
                 });
