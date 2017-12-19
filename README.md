@@ -57,7 +57,6 @@ This script wraps all of the functionality from the [library](#library) into a c
 
 ### Create
 ```
-MacBook-Pro:AkamaiOPEN-edgegrid-python khunter$ akamai property help create
 Usage: akamai property create <property> [options]
 
 Arguments:
@@ -104,73 +103,125 @@ Visit http://github.com/akamai/cli-property for detailed documentation
 ```
 
 ### Retrieve
-This function retrieves the specified ruleset, either to STDOUT or the file specified by the --file flag
-
-```bash
-% akamaiProperty retrieve new.property.name
 ```
+Usage: akamai property retrieve <property> [options]
 
-The flags of interest for retrieve are:
-```
-   -h, --help           output usage information
-    --file <file>        Output file (default is STDOUT)
-    --propver <version>  Property version, latest/staging/prod or number
-    --section <section>  Section of the credentials file
+Arguments:
+  <property>                                                           [required] [string]
 
+General options:
+  --format     Rules format only                                                 [boolean]
+  --hostnames  Retrieve hostnames for property                                   [boolean]
+  --variables  Retrieve user variables                                           [boolean]
+  --propver    Retrieve specified version                                        [boolean]
+
+Command options:
+  --config <config>    Config file                [file] [default: /Users/khunter/.edgerc]
+  --section <section>  Config section                             [string] [default: papi]
+  --debug <debug>      Turn on debugging.                                        [boolean]
+  --help               Show help                                [commands: help] [boolean]
+  --version            Show version number                   [commands: version] [boolean]
+
+Copyright (C) Akamai Technologies, Inc
+Visit http://github.com/akamai/cli-property for detailed documentation
 ```
 
 ### Update
 Update the current property version with the rules from a local file, or copy from another property.
 
-```bash
-% akamaiProperty update my.property.com --srcprop this.other.property.com
-% akamaiProperty update my.property.com --file myrules.json
 ```
+Usage: akamai property update <property> [options]
 
-The flags of interest for update are:
-```
-    -h, --help            output usage information
-    --srcprop <property>  Source property to copy rules from
-    --srcver <version>    Version for source property stag/prod/latest/<number>  (default is latest)
-    --file <file>         Source file for property rules
-    --section <section>   Section of the credentials file
+Arguments:
+  <property>                                                           [required] [string]
+
+General options:
+  --srcprop <property>  Source property                                           [string]
+  --srcver <version>    Source version                                            [string]
+  --file <path>         File with JSON rules                           [file] [must exist]
+
+Command options:
+  --config <config>    Config file                [file] [default: /Users/khunter/.edgerc]
+  --section <section>  Config section                             [string] [default: papi]
+  --debug <debug>      Turn on debugging.                                        [boolean]
+  --help               Show help                                [commands: help] [boolean]
+  --version            Show version number                   [commands: version] [boolean]
+
+Copyright (C) Akamai Technologies, Inc
+Visit http://github.com/akamai/cli-property for detailed documentation
 ```
 
 ### Activate
 Activate the specified property version on staging, production or both.
 
-```bash
-% akamaiProperty activate my.property.com --network BOTH
 ```
-Possible options are:
-```bash
-    -h, --help           output usage information
-    --network <network>  Network to activate, PROD/STAG/BOTH
-    --propver <version>  Property version, latest/staging/prod or number
-    --section <section>  Section of the credentials file
-    --email <email>      Email to use for confirmation
+Usage: akamai property activate <property> [options]
+
+General options:
+  --network <network>  Network for activation      [required] [enum] [PROD, STAGING, BOTH]
+  --propver <version>  Source version to activate                                 [string]
+  --email <address>    Email for confirmation                                     [string]
+
+Command options:
+  --config <config>    Config file                [file] [default: /Users/khunter/.edgerc]
+  --section <section>  Config section                             [string] [default: papi]
+  --debug <debug>      Turn on debugging.                                        [boolean]
+  --help               Show help                                [commands: help] [boolean]
+  --version            Show version number                   [commands: version] [boolean]
+
+Copyright (C) Akamai Technologies, Inc
+Visit http://github.com/akamai/cli-property for detailed documentation
 ```
 
 ### Modify
-Modify meta information about the property such as:
-* Origin server
-* Hostnames associated with the property
-* Edge hostnames
-* Group
-
-```bash
-% akamaiProperty modify my.property.com --origin new.origin.hostname
 ```
 
-Possible options are:
-```bash
-    -h, --help                     output usage information
-    --section <section>            Section of the credentials file
-    --addhosts <hostnames>         Comma delimited list of hostnames to add
-    --delhosts <hostnames>         Comma delimited list of hostnames to delete
-    --edgehostname <edgehostname>  Edge hostname to switch the property to
-    --origin <origin>              Switch the property origin server
-    --move <group>                 Move property to a new property group
+Usage: akamai property modify <property> [options]
+
+General options:
+  --propver <propver>        Property version - LATEST/STAG/PROD/<number>         [string]
+  --ruleformat <ruleformat>  Switch property to specified rule format             [string]
+  --notes <notes>            Version notes for the property version               [string]
+  --new                      Create new property version.                        [boolean]
+  --variables <file>         File with user variables. Format should be:
+                             [
+                               {
+                                 "name": "PMUSER_TEST",
+                                 "value": "Foobar",
+                                 "description": "This is my test variable",
+                                 "hidden": false,
+                                 "sensitive": false,
+                                 "action": [
+                                   "delete",
+                                   "update",
+                                   "create"
+                                 ]
+                               }
+                             ]                                           [file]
+
+Hostname options:
+  --addhosts <addhosts>          Comma delimited list of hostnames          [array:string]
+  --delhosts <delhosts>          Comma delimited list of hostnames          [array:string]
+  --edgehostname <edgehostname>  Edge hostname to use                             [string]
+  --origin <origin>              Host for origin                                  [string]
+  --forward <forward>            Forward host header (origin|incoming|<host>)     [string]
+
+SureRoute options:
+  --sureroutemap <sureroutemap>        Map for SureRoute                          [string]
+  --surerouteto <surerouteto>          "To" entry for SureRoute                   [string]
+  --sureroutetohost <sureroutetohost>  Target host entry for SureRoute            [string]
+
+Location options:
+  --cpcode <cpcode>  Use specified cpcode for new property                        [number]
+  --move <move>      Group to move the property to (User Admin perms)             [string]
+
+Command options:
+  --config <config>    Config file                [file] [default: /Users/khunter/.edgerc]
+  --section <section>  Config section                             [string] [default: papi]
+  --debug <debug>      Turn on debugging.                                        [boolean]
+  --help               Show help                                [commands: help] [boolean]
+  --version            Show version number                   [commands: version] [boolean]
+
 ```
 
 ## Gulp
