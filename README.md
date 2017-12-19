@@ -1,13 +1,10 @@
-# AkamaiConfigKit - PREVIEW
+# Akamai CLI for Property Manager
 
-*NOTE:* This is a preview release.  There are various limitations and we're still working on feature completeness.  We will respond to opened issues promptly during business hours.  Caveats can be found at the [bottom](#caveats) of this readme file.
+*NOTE:* This tool is intended to be installed via the Akamai CLI package manager, which can be retrieved from the releases page of the [Akamai CLI](https://github.com/akamai/cli) tool.
 
-## Get Started
-To get started using the library, you will need to set up your system for a local install.  A docker image is coming soon.
-
-### Local Install
+### Local Install, if you choose not to use the akamai package manager
 * Node 7
-* npm install
+* npm install after *every* update
 * Ensure that the 'bin' subdirectory is in your path
 
 ### Credentials
@@ -19,23 +16,39 @@ In order to use this configuration, you need to:
 The Akamai Config Kit is a set of nodejs libraries that wraps Akamai's {OPEN} APIs to help simplify common configuration tasks.  
 
 This kit can be used in different ways:
-* [As a no-fuss command line utility](#updateWebSite) to interact with the library.
+* [As a no-fuss command line utility](#akamaiProperty) to interact with the library.
 * [As a library](#library) you can integrate into your own Node.js application.
 * [As a gulp integration](#gulp) to integrate with your Continuous Integration/Continuous Deployment toolset.
 
+```
+MacBook-Pro:AkamaiOPEN-edgegrid-python khunter$ akamai property
+Usage: akamai property <command> <args> [options]
 
-## Functionality (version 0.0.1)
-The initial version of the ConfigKit provides the following functionality:
-* Create a new version from locally stored rules
-* Copy a configuration between properties
- * Currently does not support advanced metadata
-* Create or clone a new property
- * Accepts cpcode, contract ID and hostnames
-* Delete a property
-* Activate and deactivate property versions to production, staging or both
+Commands:
+  groups                 retrieve account groups
+  formats                get rules formats
+  search <property>      search for a property name
+  create <property>      create a new property
+  modify <property>      Modify specified property
+  activate <property>    activate the property
+  deactivate <property>  deactivate the property
+  delete <property>      delete a property
+  update <property>      update target property
+  retrieve <property>    retrieve rules from target property
+
+Command options:
+  --config <config>    Config file                [file] [default: /Users/khunter/.edgerc]
+  --section <section>  Config section                             [string] [default: papi]
+  --debug <debug>      Turn on debugging.                                        [boolean]
+  --help               Show help                                [commands: help] [boolean]
+  --version            Show version number                   [commands: version] [boolean]
+
+Copyright (C) Akamai Technologies, Inc
+Visit http://github.com/akamai/cli-property for detailed documentation
+```
 
 ## akamaiProperty
-This script wraps all of the functionality from the [library](#library) into a command line utility which can be used to support the following use cases.  All of the functions accept a property ID, the config name or a hostname from the property.
+This script wraps all of the functionality from the [library](#library) into a command line utility which can be used to support the following use cases.  All of the functions expect the config name.
 * [Create property](#create)
 * [Retrieve property rules](#retrieve)
 * [Update a property](#update)
@@ -43,30 +56,53 @@ This script wraps all of the functionality from the [library](#library) into a c
 * [Modify a property](#modify)
 
 ### Create
-Creating a new property requires only a single parameter, the target property.  
+```
+MacBook-Pro:AkamaiOPEN-edgegrid-python khunter$ akamai property help create
+Usage: akamai property create <property> [options]
 
-```bash
-%  akamaiProperty create dev7.mydomain.com << New property from scratch
-%  akamaiProperty create dev7 --clone template1 --hostnames test.hostname.com << clone from another property
+Arguments:
+  <property>                                                           [required] [string]
+
+Source options:
+  --clone <from>      Source property to clone from                               [string]
+  --srcver <version>  Version for source property                                 [string]
+  --file <path>       Source file for new property rules               [file] [must exist]
+  --nocopy            Do not copy cloned hostnames                               [boolean]
+
+Hostname options:
+  --hostnames <list>             Comma delimited list of hostnames for property
+                                 [array:string]
+
+  --origin <origin>              Origin to set for property
+                                 [string]
+
+  --edgehostname <edgehostname>  Edge hostname to use
+                                 [string]
+
+  --forward <value>              Forward host header (origin|incoming|<host>)
+                                 [string]
+
+Location options:
+  --cpcode <cpcode>      Use specified cpcode for new property                    [number]
+  --contract <contract>  Contract for new property                                [string]
+  --group <group>        Group for new property                                   [string]
+
+General options:
+  --ruleformat <format>  Use specified rule format                                [string]
+  --notes <notes>        Version notes for the property version                   [string]
+  --retrieve             Retrieve rules for created property                     [boolean]
+
+Command options:
+  --config <config>    Config file                [file] [default: /Users/khunter/.edgerc]
+  --section <section>  Config section                             [string] [default: papi]
+  --debug <debug>      Turn on debugging.                                        [boolean]
+  --help               Show help                                [commands: help] [boolean]
+  --version            Show version number                   [commands: version] [boolean]
+
+Copyright (C) Akamai Technologies, Inc
+Visit http://github.com/akamai/cli-property for detailed documentation
 ```
 
-The flags of interest for create are:
-
-```
-      -h, --help               output usage information
-    --clone <property>       Source property to clone from
-    --srcver <version>       Version for source property stag/prod/latest/<number> (default is latest)
-    --file <file>            Source file for new property rules
-    --hostnames <hostnames>  Comma delimited list of hostnames for property
-    --origin <origin>        Origin for new property
-    --edgehostname <ehn>     Edge hostname
-    --cpcode <cpcode>        CPCode, requires contract and group
-    --contract <contract>    Contract for the new property
-    --group <group>          Group to place property in
-    --section <section>      Section of the credentials file
-    --nocopy                 Do not copy source property's hostnames
-
-```
 ### Retrieve
 This function retrieves the specified ruleset, either to STDOUT or the file specified by the --file flag
 
