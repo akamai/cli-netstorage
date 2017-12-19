@@ -604,7 +604,7 @@ function main () {
         }
         // if help requested, log it and exit
         if (result.output) {
-          //console.log(result.output)
+          console.log(result.output)
           process.exit(result.code)
         }
     })
