@@ -29,11 +29,18 @@ describe('Modify property', function () {
                    "origin":"test.origin.com"};
         return akamaiweb.setOrigin(propertyName, options.version, options.origin, options.forward)
         .catch(error => {
-            assert(JSON.parse(error.body)["status"] == 403);
+            console.log(error)
+            assert(JSON.parse(error)["title"] == "Property version already activated");
+        })
+    })
+    it ('should create a new property version', function() {
+        return akamaiweb.createNewPropertyVersion(propertyName)
+        .then(() => {
+            assert(true)
         })
     })
     it ('should modify origin', function() {
-        let options = {"origin":`${timeInMs}.origin.com`};
+        let options = {"origin":`fancynew.origin.com`};
         return akamaiweb.setOrigin(propertyName, 0, options.origin, null)
         .then(() => {
             return akamaiweb.retrieve(propertyName)
@@ -51,7 +58,7 @@ describe('Modify property', function () {
     })
 
     it ('should add and delete hosts', function() {
-        let host = `${timeInMs}.origin.com`
+        let host = `fancynew.akamaiapibootcamp.com`
         return akamaiweb.addHostnames(propertyName, 0, host)
         .then(() => {
             return akamaiweb.retrieve(propertyName, 0, true)
@@ -72,9 +79,15 @@ describe('Modify property', function () {
             let hostnames = rules.hostnames.items
             let contained = 0
             hostnames.map(entry => {
-                if (entry.cnameFrom == host) contained=1
+                if (entry.cnameFrom == host) {
+                    console.log(entry)
+                    contained=1
+                }
             })
             assert(contained == 0)
+        })
+        .catch((error) => {
+            console.log(error)
         })
     })
 

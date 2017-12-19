@@ -1586,11 +1586,10 @@ class WebSite {
         let property = propertyLookup;
 
         return this._getProperty(propertyLookup)
-            .then(localProp => {
-                property = localProp;
-                let propertyName = localProp.propertyName;
+            .then(property => {
+                let propertyName = property.propertyName;
                 console.info(`Creating new version for ${propertyName}`);
-                const version = WebSite._getLatestVersion(property);
+                const version = WebSite._getLatestVersion(property, 0);
                 property.latestVersion += 1;
                 return this._copyPropertyVersion(property, version);
         })
