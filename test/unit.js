@@ -52,12 +52,6 @@ describe('Check read functions', function() {
             assert(hostnameList.hostnames.items);
         })
     });
-    it('should return the main product for the account', function() {
-        return akamaiweb._getMainProduct(groupId, contractId)
-        .then(property => {
-            assert.equal(property.productName, "SPM")
-        })
-    });
     it('should get a list of properties with our configName', function() {
         return akamaiweb._getPropertyList(contractId, groupId)
         .then(list => {
