@@ -296,13 +296,12 @@ class WebSite {
     };
 
     //TODO: this will only be called for LATEST, CURRENT_PROD and CURRENT_STAGE. How do we handle collecting hostnames of different versions?
-    _getHostnameList(propertyId, versionLookup=0, newConfig = false) {
+    _getHostnameList(propertyId, versionLookup=0, newConfig = false, edgeHostnameId=null) {
         let property;
-        if (newConfig) {
+        if (newConfig || edgeHostnameId) {
             return Promise.resolve();
         }
 
-        
         return this._getProperty(propertyId)
             .then(property => {
                 let version = WebSite._getLatestVersion(property, versionLookup)
@@ -1175,9 +1174,9 @@ class WebSite {
             hostnames = []
         }
 
-        return this._getHostnameList(configName)
+        return this._getHostnameList(configName,version,false, edgeHostnameId)
             .then(hostnamelist => {
-                if (hostnamelist.hostnames.items.length > 0) {
+                if (!edgeHostnameId && hostnamelist.hostnames.items.length > 0) {
                     hostnamelist.hostnames.items.map(host => {
                         hostnames.push(host.cnameFrom)
                         if (!edgeHostnameId) {
@@ -1193,7 +1192,7 @@ class WebSite {
             })
             .then(() => {
                 return new Promise((resolve, reject) => {
-                    
+                    let seenHosts = []  
                     console.info('Updating property hostnames');
                     console.time('... updating hostname');
                     if (deleteHosts) {
@@ -1211,8 +1210,10 @@ class WebSite {
                     } else {
                         hostsToProcess = hostnames;
                     }
+
+                    let hostSet = new Set(hostsToProcess)
                     
-                    hostsToProcess.map(hostname => {
+                    hostSet.forEach(hostname => {
                         let assignHostnameObj;
                         if (edgeHostnameId && edgeHostnameId.includes("ehn_")) {
                             assignHostnameObj = {
@@ -1227,9 +1228,10 @@ class WebSite {
                                 "cnameFrom": hostname
                             }
                         }
-
-                        console.log("Adding hostname " + assignHostnameObj["cnameFrom"]);
-                        newHostnameArray.push(assignHostnameObj);
+                        if (newHostnameArray.indexOf(assignHostnameObj) == -1) {
+                            console.log("Adding hostname " + assignHostnameObj["cnameFrom"]);
+                            newHostnameArray.push(assignHostnameObj);
+                        }
                     })
 
                     let request = {
