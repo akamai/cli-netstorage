@@ -191,7 +191,6 @@ class WebSite {
                 let latestHosts = cloneFromProperty.latestHosts;
 
                 let hosts = productionHosts || stagingHosts || latestHosts;
-                console.log(cloneFromProperty);
                 if (hosts) {
                     edgeHostnameId = hosts[0]["edgeHostnameId"];
                     if (!edgeHostnameId) {
