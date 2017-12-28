@@ -178,7 +178,8 @@ class WebSite {
         let contractId,
             groupId,
             productId,
-            edgeHostnameId;
+            edgeHostnameId, 
+            hosts;
 
         return this._getProperty(srcProperty, srcVersion)
             .then(cloneFromProperty => {
@@ -190,7 +191,7 @@ class WebSite {
                 let latestHosts = cloneFromProperty.latestHosts;
 
                 let hosts = productionHosts || stagingHosts || latestHosts;
-
+                console.log(cloneFromProperty);
                 if (hosts) {
                     edgeHostnameId = hosts[0]["edgeHostnameId"];
                     if (!edgeHostnameId) {
@@ -204,6 +205,7 @@ class WebSite {
                     contractId: contractId,
                     edgeHostnameId: edgeHostnameId
                 };
+                
                 return WebSite._getLatestVersion(cloneFromProperty, srcVersion)
             })
             .then(version => {
@@ -2365,18 +2367,15 @@ class WebSite {
                         secure = true;
                     }
                     edgeHostnameId = edgeHostname;
-                } else if (data.edgeHostnameId) {
-                    edgeHostnameId = data.edgeHostnameId;
                 } else {
                     newEdgeHostname = 1;
                 }
                 return this._getEHNId(data.propertyId, data.version, groupId, contractId)
             })
+               
             .then(clone_ehn =>{
-                if (clone_ehn.hostnames.items) {
-                    if (!edgeHostnameId) {
-                        edgeHostnameId = clone_ehn.hostnames.items[0].cnameTo
-                    }
+                if ((clone_ehn.hostnames.items) && (!edgeHostnameId)) {
+                        edgeHostnameId = clone_ehn.hostnames.items[0].cnameTo || clone_ehn.hostnames.items[0].edgeHostnameId;
                 }
                 return Promise.resolve(edgeHostnameId)
             })
