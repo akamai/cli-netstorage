@@ -1,13 +1,13 @@
 {
   "requirements": {
-    "node": "7.0.0"
+    "node": "8.0.0"
   },
   "commands": [
     {
       "name": "property",
       "version": "1.0.0",
       "description": "Manage configurations for Akamai properties",
-      "bin": "https://github.com/akamai/cli-property/releases/download/{{.Version}}/akamai-{{.Name}}-{{.Version}}-{{.OS}}{{.Arch}}{{.BinSuffix}}"
+      "bin": "https://github.com/akamai/cli-property/releases/download/{{.Version}}/akamai-{{.Name}}-{{.Version}}-{{.OS}}-{{.Arch}}{{.BinSuffix}}"
     }
   ]
 }
