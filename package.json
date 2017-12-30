@@ -19,21 +19,18 @@
   ],
   "dependencies": {
     "chalk": "^2.3.0",
+    "deepmerge": "^2.0.1",
     "edgegrid": "*",
     "md5": "^2.2.1",
+    "merge": "^1.2.0",
     "mocha": "^3.2.0",
+    "mz": "^2.7.0",
     "nexe": "^2.0.0-rc.22",
     "options": "0.0.6",
     "pkg": "^4.3.0-beta.5",
     "request": "^2.74.0",
     "safe-buffer": "^5.1.1",
     "sywac": "^1.2.0",
-    "untildify": "*",
-    "yargonaut": "^1.1.2",
-    "yargs": "^10.0.3"
-  },
-  "devDependencies": {
-    "gulp": "^3.9.1",
-    "through2": "^2.0.1"
+    "untildify": "*"
   }
 }
