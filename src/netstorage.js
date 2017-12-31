@@ -45,7 +45,6 @@ function readConfigFile(filename, section) {
     return new Promise(function(resolve, reject) {
         fs.readFile(filename, section, function (error, result) {
             if (error) {
-                // It's probably just empty
                 resolve()
             } else {
                 let configObject = ini.parse(result.toString())
@@ -147,12 +146,16 @@ class NetStorage {
         return this.parseFileCpCode(options)
         .then(options => {
             return new Promise ((resolve, reject) => {
+                if (!options.timestamp) {
+                    options.timestamp=moment().utc().unix();
+                }
+                let path=this.buildPath([options.cpcode, options.file])
                 
                 console.info("Updating modification time for file")
                 let request = {
-                    action: "version=1&action=mtime&mtime=" + moment().utc().unix(),
+                    action: "version=1&action=mtime&mtime=" + options.timestamp,
                     method: "POST",
-                    path: "/" + options.cpcode + "/" + options.file,
+                    path: path,
                 }
                 resolve(request);
             })
@@ -161,6 +164,92 @@ class NetStorage {
             return this.makeRequest(request)
         })
     }
+    buildPath(components) {
+        if (components == []) {
+            return;
+        }
+        let comparray = [""]
+        components.map(element => {
+            if (element != null) {
+                console.log(element)
+                comparray.push(element)
+            }
+        })
+        return comparray.join('/').toString();
+    }
+
+    buildQuery(object, components) {
+        let comparray = [];
+        components.map(element => {
+            if (object[element] != null) {
+                console.log(object[element])
+                comparray.push(element + "=" + object[element])
+            }
+        })
+        if (comparray.length == 0) {return}
+        comparray.unshift("")
+        return comparray.join('&').toString();
+    }
+
+
+    mkdir(options) {
+        return this.parseFileCpCode(options)
+        .then(options => {
+            return new Promise ((resolve, reject) => {
+                let path = this.buildPath([options.cpcode, options.path, options.directory]);
+            
+                console.info("Creating directory")
+                let request = {
+                    action: "version=1&action=mkdir",
+                    method: "PUT",
+                    path: path,
+                }
+                resolve(request);
+            })
+        })
+        .then(request => {
+            return this.makeRequest(request)
+        })
+    }
+
+    list(options) {
+        return this.parseFileCpCode(options)
+        .then(options => {
+            return new Promise ((resolve, reject) => {
+                let path=this.buildPath([options.cpcode, options.directory])
+                console.info("Getting directory listing")
+                let request = {
+                    action: "version=1&action=dir&format=xml",
+                    path: path,
+                }
+                resolve(request);
+            })
+        })
+        .then(request => {
+            return this.makeRequest(request)
+        })
+    }
+
+    dir(options) {
+        return this.parseFileCpCode(options)
+        .then(options => {
+            return new Promise ((resolve, reject) => {
+                let path=this.buildPath([options.cpcode, options.directory])
+                let query=this.buildQuery(options, ["prefix","start","end","max_entries","encoding"],"&")
+                console.info("Getting directory listing")
+                let request = {
+                    action: "version=1&action=dir&format=xml" + query,
+                    path: path,
+                }
+                resolve(request);
+            })
+        })
+        .then(request => {
+            return this.makeRequest(request)
+        })
+    }
+
+
     parseFileCpCode(options){
         return new Promise ((resolve, reject) => {
             
