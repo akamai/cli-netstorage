@@ -59,6 +59,19 @@ function readConfigFile(filename, section) {
     })
 }
 
+
+function readUploadFile(filename, section) {
+    return new Promise(function(resolve, reject) {
+        fs.readFile(filename, function (error, result) {
+            if (error) {
+                resolve()
+            } else {
+                resolve(result);
+            }
+          })
+    })
+}
+
 function writeConfigFile(filename, contents) {
     return new Promise(function(resolve, reject) {
         fs.writeFile(filename, contents, function (error, result) {
@@ -70,6 +83,19 @@ function writeConfigFile(filename, contents) {
           })
     })
 }
+
+function writeDownloadFile(filename, contents) {
+    return new Promise(function(resolve, reject) {
+        fs.writeFile(filename, contents, function (error, result) {
+            if (error) {
+                reject(error)
+            } else {
+              resolve(result);
+            }
+          })
+    })
+}
+
 
 //export default class WebSite {
 class NetStorage {
@@ -141,6 +167,9 @@ class NetStorage {
         .then(request => {
             return this.makeRequest(request)
         })
+        .then(response => {
+            console.log(response.body)
+        })
     }
     mtime(options) {
         return this.parseFileCpCode(options)
@@ -163,6 +192,9 @@ class NetStorage {
         .then(request => {
             return this.makeRequest(request)
         })
+        .then(response => {
+            console.log(response.body)
+        })
     }
     buildPath(components) {
         if (components == []) {
@@ -171,7 +203,6 @@ class NetStorage {
         let comparray = [""]
         components.map(element => {
             if (element != null) {
-                console.log(element)
                 comparray.push(element)
             }
         })
@@ -182,13 +213,58 @@ class NetStorage {
         let comparray = [];
         components.map(element => {
             if (object[element] != null) {
-                console.log(object[element])
                 comparray.push(element + "=" + object[element])
             }
         })
         if (comparray.length == 0) {return}
         comparray.unshift("")
         return comparray.join('&').toString();
+    }
+
+    upload(options) {
+        console.info("Uploading file")
+
+        return this.parseFileCpCode(options)
+        .then(options => {
+            return readUploadFile(options.file)
+        })
+        .then(body => {
+            let path = this.buildPath([options.cpcode, options.path, options.file])
+        
+            let request = {
+                    action: "version=1&action=upload",
+                    method: "PUT",
+                    path: path,
+                    body: body
+            }
+            return this.makeRequest(request)
+            .then(response => {
+                console.log(response.body)
+            })
+        }).catch(error => {
+            console.log("ERROR from upload: " + error)
+        })
+    }
+
+    download(options) {
+        console.info("Downloading file")
+
+        return this.parseFileCpCode(options)
+        .then(options => {
+            let path = this.buildPath([options.cpcode, options.path, options.file])
+        
+            let request = {
+                action: "version=1&action=download",
+                method: "GET",
+                path: path
+        }
+            return this.makeRequest(request)
+    }).then(response => {
+        if (!options.outfile) {options.outfile=options.file}
+        return writeDownloadFile(options.outfile, response.body)
+        }).catch(error => {
+            console.log("ERROR from download: " + error)
+        })
     }
 
 
@@ -209,6 +285,9 @@ class NetStorage {
         })
         .then(request => {
             return this.makeRequest(request)
+        }) 
+        .then(response => {
+            console.log(response.body)
         })
     }
 
@@ -217,9 +296,11 @@ class NetStorage {
         .then(options => {
             return new Promise ((resolve, reject) => {
                 let path=this.buildPath([options.cpcode, options.directory])
+                let query=this.buildQuery(options, ["end","max_entries","encoding"],"&")
+                
                 console.info("Getting directory listing")
                 let request = {
-                    action: "version=1&action=dir&format=xml",
+                    action: "version=1&action=list&format=xml",
                     path: path,
                 }
                 resolve(request);
@@ -227,6 +308,9 @@ class NetStorage {
         })
         .then(request => {
             return this.makeRequest(request)
+        })
+        .then(response => {
+            console.log(response.body)
         })
     }
 
@@ -246,6 +330,9 @@ class NetStorage {
         })
         .then(request => {
             return this.makeRequest(request)
+        })
+        .then(response => {
+            console.log(response.body)
         })
     }
 
@@ -275,30 +362,54 @@ class NetStorage {
         .then(options => {
         
             return new Promise ((resolve, reject) => {
-                
+                let path=this.buildPath([options.cpcode, options.directory, options.file])
                 console.info("Getting stat for file")
                 let request = {
                     action: "version=1&action=stat&format=xml",
-                    path: "/" + options.cpcode + "/" + options.file
+                    path: path
                 }
                 resolve(request)
             })
             .then(request => {
                 return this.makeRequest(request)
             })
+            .then(response => {
+                console.log(response.body)
+            })
+        })
+    }
+    delete(options) {
+        return this.parseFileCpCode(options)
+        .then(options => {
+        
+            return new Promise ((resolve, reject) => {
+                let path=this.buildPath([options.cpcode, options.directory, options.file])
+                console.info("Deleting " + path)
+                let request = {
+                    method:"PUT",
+                    action: "version=1&action=delete",
+                    path: path,
+                    body: ""
+                }
+                resolve(request)
+            })
+            .then(request => {
+                return this.makeRequest(request)
+            })
+            .then(response => {
+                console.log(response.body)
+            })
         })
     }
     makeRequest(request) {
         return new Promise ((resolve, reject) => {
-            console.log(request)
             this._nsClient.auth(request)
             this._nsClient.send((data, response) => {
-                console.log(response.statusCode);
                 if (response.statusCode != 200) {
                     reject("Unable to complete action.  Status code " + response.statusCode)
+                } else {
+                    resolve(response)
                 }
-                console.log(response.body)
-                resolve()
             })
         })
     }

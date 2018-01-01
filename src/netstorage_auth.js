@@ -49,12 +49,6 @@ NetStorageAuth.prototype.auth = function(req) {
     body: ''
   });
 
-  // Convert body object to properly formatted string
-  if (req.body) {
-    if (typeof(req.body) == 'object') {
-      req.body = JSON.stringify(req.body);
-    }
-  }
   this.request = auth.generateAuth(
     req, 
     this.config.key,
