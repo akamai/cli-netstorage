@@ -98,7 +98,12 @@ module.exports = {
   },
 
   readConfigFile(filename, section) {
-    let result = fs.readFileSync(filename)
+    let result;
+    try {
+      result = fs.readFileSync(filename)
+    } catch(error) {
+      throw new Error ("\n\n \tNo configuration file found.  \n\tRun akamai netstorage setup to configure credentials\n\n" )
+    }
     let configObject = ini.parse(result.toString())
     return (configObject[section])
   }, 

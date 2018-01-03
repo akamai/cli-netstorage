@@ -64,7 +64,7 @@ function readUploadFile(filename, section) {
     return new Promise(function(resolve, reject) {
         fs.readFile(filename, function (error, result) {
             if (error) {
-                resolve()
+                reject(error)
             } else {
                 resolve(result);
             }
@@ -100,16 +100,19 @@ function writeDownloadFile(filename, contents) {
 //export default class WebSite {
 class NetStorage {
 
-    constructor(auth = { path: "~/.akamai-cli/.netstorage/auth", section: "default", debug: false, default: true}) {
+    constructor(auth = { config: "~/.akamai-cli/.netstorage/auth", section: "default", debug: false, default: true}) {
 
         if (auth.key && auth.id && auth.group && auth.host)
             this._nsClient = new NetStorageAuth(auth.key, auth.id, auth.group, auth.host, auth.debug);
         else
             this._nsClient = new NetStorageAuth({
-                path: untildify(auth.path),
+                path: untildify(auth.config),
                 section: auth.section,
                 debug: auth.debug
             });
+            if (!this._nsClient.config.host && !auth.setup) {
+                throw new Error("Configuration has not been set up.  Please run akamai netstorage setup.")
+            }
     }
         
     
@@ -169,6 +172,7 @@ class NetStorage {
         })
         .then(response => {
             console.log(response.body)
+            Promise.resolve(response.body)
         })
     }
     mtime(options) {
@@ -194,33 +198,32 @@ class NetStorage {
         })
         .then(response => {
             console.log(response.body)
+            Promise.resolve(response.body)
         })
     }
-    buildPath(components) {
-        if (components == []) {
-            return;
-        }
-        let comparray = [""]
-        components.map(element => {
-            if (element != null) {
-                comparray.push(element)
-            }
+   stat(options) {
+        return this.parseFileCpCode(options)
+        .then(options => {
+        
+            return new Promise ((resolve, reject) => {
+                let path=this.buildPath([options.cpcode, options.directory, options.file])
+                console.info("Getting stat for file")
+                let request = {
+                    action: "version=1&action=stat&format=xml",
+                    path: path
+                }
+                resolve(request)
+            })
+            .then(request => {
+                return this.makeRequest(request)
+            })
+            .then(response => {
+                console.log(response.body)
+                Promise.resolve(response.body)
+            })
         })
-        return comparray.join('/').toString();
     }
-
-    buildQuery(object, components) {
-        let comparray = [];
-        components.map(element => {
-            if (object[element] != null) {
-                comparray.push(element + "=" + object[element])
-            }
-        })
-        if (comparray.length == 0) {return}
-        comparray.unshift("")
-        return comparray.join('&').toString();
-    }
-
+    
     upload(options) {
         console.info("Uploading file")
 
@@ -229,7 +232,7 @@ class NetStorage {
             return readUploadFile(options.file)
         })
         .then(body => {
-            let path = this.buildPath([options.cpcode, options.path, options.file])
+            let path = this.buildPath([options.cpcode, options.directory, options.file])
         
             let request = {
                     action: "version=1&action=upload",
@@ -240,6 +243,7 @@ class NetStorage {
             return this.makeRequest(request)
             .then(response => {
                 console.log(response.body)
+                Promise.resolve(response.body)
             })
         }).catch(error => {
             console.log("ERROR from upload: " + error)
@@ -267,6 +271,61 @@ class NetStorage {
         })
     }
 
+    delete(options) {
+        return this.parseFileCpCode(options)
+        .then(options => {
+        
+            return new Promise ((resolve, reject) => {
+                let path=this.buildPath([options.cpcode, options.directory, options.file])
+                console.info("Deleting " + path)
+                let request = {
+                    method:"PUT",
+                    action: "version=1&action=delete",
+                    path: path,
+                    body: ""
+                }
+                resolve(request)
+            })
+            .then(request => {
+                return this.makeRequest(request)
+            })
+            .then(response => {
+                console.log(response.body)
+                Promise.resolve(response.body)
+            })
+        })
+    }
+
+    rename(options) {
+        return this.parseFileCpCode(options)
+        .then(options => {
+        
+            return new Promise ((resolve, reject) => {
+                let path=this.buildPath([options.cpcode, options.file])
+                console.info("Moving " + path)
+                let newpath = this.buildPath([options.cpcode, options.location])
+
+                let request = {
+                    method:"POST",
+                    action: "version=1&action=rename&destination=" + newpath,
+                    path: path,
+                    body: ""
+                }
+                resolve(request)
+            })
+            .then(request => {
+                console.log(request);
+                return this.makeRequest(request)
+            })
+            .then(response => {
+                console.log(response.body)
+                Promise.resolve(response.body)
+            })
+        })
+    }
+
+
+
 
     mkdir(options) {
         return this.parseFileCpCode(options)
@@ -288,6 +347,59 @@ class NetStorage {
         }) 
         .then(response => {
             console.log(response.body)
+            Promise.resolve(response.body)
+        })
+    }
+
+    quickDelete(options) {
+        return this.parseFileCpCode(options)
+        .then(options => {
+        
+            return new Promise ((resolve, reject) => {
+                let path=this.buildPath([options.cpcode, options.directory])
+                console.info("Quick deleting " + path)
+                let request = {
+                    method:"POST",
+                    action: "version=1&action=quick-delete&quick-delete=imreallyreallysure",
+                    path: path,
+                    body: ""
+                }
+                resolve(request)
+            })
+            .then(request => {
+                console.log(request)
+                return this.makeRequest(request)
+            })
+            .then(response => {
+                console.log(response.body)
+                Promise.resolve(response.body)
+            })
+        })
+    }
+
+    rmdir(options) {
+        return this.parseFileCpCode(options)
+        .then(options => {
+        
+            return new Promise ((resolve, reject) => {
+                let path=this.buildPath([options.cpcode, options.directory])
+                console.info("Deleting " + path)
+                let request = {
+                    method:"PUT",
+                    action: "version=1&action=rmdir",
+                    path: path,
+                    body: ""
+                }
+                resolve(request)
+            })
+            .then(request => {
+                console.log(request)
+                return this.makeRequest(request)
+            })
+            .then(response => {
+                console.log(response.body)
+                Promise.resolve(response.body)
+            })
         })
     }
 
@@ -311,6 +423,7 @@ class NetStorage {
         })
         .then(response => {
             console.log(response.body)
+            Promise.resolve(response.body)
         })
     }
 
@@ -333,23 +446,60 @@ class NetStorage {
         })
         .then(response => {
             console.log(response.body)
+            return(response.body)
         })
     }
 
+/////////////////////////////////////////////////////
+// Helper methods
+/////////////////////////////////////////////////////
 
-    parseFileCpCode(options){
+// Build a path from components, skip empty values
+// To avoid the issue NS has with // in paths
+    buildPath(components) {
+        if (components == []) {
+            return;
+        }
+        let comparray = [""]
+        components.map(element => {
+            if (element) {
+                comparray.push(element)
+            }
+        })
+        return comparray.join('/').toString();
+    }
+
+// Build action query string from variables
+    buildQuery(object, components) {
+        let comparray = [];
+        components.map(element => {
+            if (object[element] != null) {
+                comparray.push(element + "=" + object[element])
+            }
+        })
+        if (comparray.length == 0) {return}
+        comparray.unshift("")
+        return comparray.join('&').toString();
+    }
+
+// Get the CPCode from flag, from environment or from the file path
+// in the command
+     parseFileCpCode(options){
         return new Promise ((resolve, reject) => {
+            options.cpcode = options.cpcode || this._nsClient.config.cpcode
             
             if (!options.cpcode && options.file) {
                 var re = /\/(\d+)\/(.*)$/i;
                 var match = options.file.match(re);
+                if (!match && options.directory) {
+                    match = options.directory.match(re);
+                }
                 if (match && match[1]) {
                     options.cpcode = match[1];
                     options.file = match[2];
                     return resolve (options);
                 }
             }
-            options.cpcode = options.cpcode || this._nsClient.config.cpcode
             if (!options.cpcode) {      
                 return reject("No CPCode found in environment or config file.")
             }
@@ -357,50 +507,7 @@ class NetStorage {
         })
     }
 
-    stat(options) {
-        return this.parseFileCpCode(options)
-        .then(options => {
-        
-            return new Promise ((resolve, reject) => {
-                let path=this.buildPath([options.cpcode, options.directory, options.file])
-                console.info("Getting stat for file")
-                let request = {
-                    action: "version=1&action=stat&format=xml",
-                    path: path
-                }
-                resolve(request)
-            })
-            .then(request => {
-                return this.makeRequest(request)
-            })
-            .then(response => {
-                console.log(response.body)
-            })
-        })
-    }
-    delete(options) {
-        return this.parseFileCpCode(options)
-        .then(options => {
-        
-            return new Promise ((resolve, reject) => {
-                let path=this.buildPath([options.cpcode, options.directory, options.file])
-                console.info("Deleting " + path)
-                let request = {
-                    method:"PUT",
-                    action: "version=1&action=delete",
-                    path: path,
-                    body: ""
-                }
-                resolve(request)
-            })
-            .then(request => {
-                return this.makeRequest(request)
-            })
-            .then(response => {
-                console.log(response.body)
-            })
-        })
-    }
+
     makeRequest(request) {
         return new Promise ((resolve, reject) => {
             this._nsClient.auth(request)

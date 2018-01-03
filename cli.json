@@ -1,13 +1,13 @@
 {
   "requirements": {
-    "node": "8.0.0"
+    "node": "7.0.0"
   },
   "commands": [
     {
-      "name": "property",
-      "version": "1.0.0",
-      "description": "Manage configurations for Akamai properties",
-      "bin": "https://github.com/akamai/cli-property/releases/download/{{.Version}}/akamai-{{.Name}}-{{.Version}}-{{.OS}}-{{.Arch}}{{.BinSuffix}}"
+      "name": "netstorage",
+      "version": "0.0.1",
+      "description": "Interface for Akamai NetStorage",
+      "bin": "https://github.com/akamai/cli-netstorage/releases/download/{{.Version}}/akamai-{{.Name}}-{{.Version}}-{{.OS}}-{{.Arch}}{{.BinSuffix}}"
     }
   ]
 }

@@ -1,16 +1,16 @@
 {
-  "name": "akamaicliproperty",
+  "name": "akamaiclinetstorage",
   "version": "0.1.1",
-  "description": "A wrapping development kit to interface common tasks with akamai's {OPEN} API.",
-  "repository": "https://github.com/akamai/cli-property",
+  "description": "A CLI to interface with Akamai's NetStorage platform.",
+  "repository": "https://github.com/akamai/cli-netstorage",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=7.0.0"
   },
   "scripts": {
-    "start": "node bin/akamaiProperty",
+    "start": "node bin/akamaiNetStorage",
     "test": "mocha test --timeout 0",
-    "build": "pkg bin/akamaiProperty --target node8-linux-x86,node8-linux-x64,node8-win-x86,node8-win-x64,node8-macos-x64 --output akamai-property-1.0.0"
+    "build": "pkg bin/akamaiProperty --target node8-linux-x86,node8-linux-x64,node8-win-x86,node8-win-x64,node8-macos-x64 --output akamai-netstorage-1.0.0"
   },
   "main": "./index.js",
   "files": [
@@ -19,13 +19,10 @@
   ],
   "dependencies": {
     "chalk": "^2.3.0",
-    "deepmerge": "^2.0.1",
-    "edgegrid": "*",
     "md5": "^2.2.1",
     "merge": "^1.2.0",
     "mocha": "^3.2.0",
     "mz": "^2.7.0",
-    "nexe": "^2.0.0-rc.22",
     "options": "0.0.6",
     "pkg": "^4.3.0-beta.5",
     "request": "^2.74.0",
