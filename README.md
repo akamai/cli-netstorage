@@ -2,18 +2,24 @@
 
 *NOTE:* This tool is intended to be installed via the Akamai CLI package manager, which can be retrieved from the releases page of the [Akamai CLI](https://github.com/akamai/cli) tool.
 
-This is under active development and not yet ready for use.  Please open issues if you have questions or requests.
-
-### Local Install, if you choose not to use the akamai package manager
-* Node 7
-* npm install after *every* update
-* Ensure that the 'bin' subdirectory is in your path
-* Or 'npm install' to get the cli installer
+This is under active development but ready for exploring and testing.  Please open issues if you have questions or requests.
 
 ### Credentials
-In order to use this configuration, you need to:
-* Set up your Netstorage API Credentials as described below (coming soon)  
-* Run 'akamai ns setup' to set credentials for your environment
+* Various values associated with the Storage Group and Upload Account are required for use in calls made to the API. Once the Upload Account has fully propagated (after enabling the HTTP API), you can view it in the NetStorage Groups UI to gather this information. Select the Upload Account entity.
+* Locate the Upload Account in which you've enabled the NetStorage HTTP API, and click it to open Detail View. (You can type the name of the target account in the Filter field to limit results in this table.)
+* Click the Edit button.
+
+Make note of the following values:
+* The "*Key*" Value - This is displayed in the NetStorage HTTP API tab.
+* The "*Id*" in the Upload Account Details content panel. 
+* The Storage Group Name (*group*) - This is revealed in the second column of the table in the Upload Directory Association content panel.
+
+Select the Storage Groups entity.
+* Input the Storage Group Name you noted in the Filter field.
+* Click its entry in the table to open Detail View.
+* In the Storage Group Details, make note of the NetStorage HTTP API entry for the *host* entry
+
+Once you have gathered all the values, run 'akamai netstorage setup' to save them to your system.
 
 ## Overview
 The Akamai Netstorage CLI is a utility for interacting with Akamai's NetStorage platform from the command line.  
