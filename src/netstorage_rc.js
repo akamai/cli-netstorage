@@ -31,7 +31,7 @@ function readEnv(section) {
   
   if (Object.keys(envConf).length > 0) {
     console.log("Using configuration from environment variables")
-    return validatedConfig(envConf);
+    return envConf;
   }
   return;
 }
