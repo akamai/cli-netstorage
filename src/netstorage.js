@@ -119,14 +119,23 @@ class NetStorage {
     setup(options) {
         let questions = []
         let list = ["key","id","group","host","cpcode"]
+
+        let newList = {"key": "The key field is displayed in the NetStorage HTTP API tab under Upload Accounts",
+                        "id": "On the Upload Account Details page, this is the ID",
+                       "group":"On the Upload Directory Association screen, this is in the second column",
+                        "host": "In the Storage Group Details, you will find this value under NetStorage HTTP API.  \nExample: test111-nsu.akamaihd.net",
+                        "cpcode":"Default CPCode to use for your CLI commands. This is optional."
+                    }
+
         let currentConfig
         return new Promise((resolve, reject) => {
-            for (let field of list) {
+            console.log("You will need to use the credential information from Luna.")
+            for (let field of Object.keys(newList)) {
                 if (!options[field]) {
                     let question = { 
                         type: "input",
                         name: field,
-                        message: "Please input the following information: " + field +": ",
+                        message: "\n" + newList[field] + "\nPlease input the following information: " + field +": ",
                     }
                     questions.push(question)
                 }
