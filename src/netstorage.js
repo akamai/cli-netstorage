@@ -100,8 +100,8 @@ function writeDownloadFile(filename, contents) {
 //export default class WebSite {
 class NetStorage {
 
-    constructor(auth = { config: "~/.akamai-cli/.netstorage/auth", section: "default", debug: false, default: true}) {
-
+    constructor(auth = { config: "~/.akamai-cli/.netstorage/auth", section: "default", debug: false, default: true, setup:false}) {
+        if (auth.setup) { return }
         if (auth.key && auth.id && auth.group && auth.host)
             this._nsClient = new NetStorageAuth(auth.key, auth.id, auth.group, auth.host, auth.debug);
         else
