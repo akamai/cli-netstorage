@@ -10,8 +10,12 @@ This is under active development but ready for exploring and testing.  Please op
 * Click the Edit button.
 
 Make note of the following values:
-* The "*Key*" Value - This is displayed in the NetStorage HTTP API tab.
-* The "*Id*" in the Upload Account Details content panel. 
+* The "*Key*" Value - 
+** Under "Upload Accounts" select the account
+** Click the "edit" icon in the upper right
+** Under "Access methods" click the Netstorage HTTP CMS API tab
+** The key is in the resulting table
+* The "*Id*" in the Upload Account Details content panel.  
 * The Storage Group Name (*group*) - This is revealed in the second column of the table in the Upload Directory Association content panel.
 
 Select the Storage Groups entity.
