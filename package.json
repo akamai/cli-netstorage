@@ -1,6 +1,6 @@
 {
   "name": "akamaiclinetstorage",
-  "version": "0.1.1",
+  "version": "1.0.2",
   "description": "A CLI to interface with Akamai's NetStorage platform.",
   "repository": "https://github.com/akamai/cli-netstorage",
   "license": "Apache-2.0",

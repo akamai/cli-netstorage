@@ -2,7 +2,7 @@
 let fs = require('fs');
 
 let source = 'bin/akamaiNetStorage';
-let target = 'akamai-netstorage-1.0.1';
+let target = 'akamai-netstorage-1.0.2';
 
 var exec = require('child-process-promise').exec;
 
