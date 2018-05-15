@@ -13,7 +13,7 @@
 // limitations under the License.
 
 var log4js = require('log4js'),
-    logger = log4js.getLogger();
+  logger = log4js.getLogger();
 
 if (!process.env.LOG4JS_CONFIG) {
   logger.level = log4js.levels.ERROR;

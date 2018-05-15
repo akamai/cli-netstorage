@@ -43,7 +43,7 @@ module.exports = {
       }
 
       // Strip trailing ampersand
-      postDataNew = postDataNew.replace(/&+$/, "");
+      postDataNew = postDataNew.replace(/&+$/, '');
 
       preparedBody = postDataNew;
       request.body = preparedBody; // Is this required or being used?
@@ -51,7 +51,7 @@ module.exports = {
 
     logger.info('Body is \"' + preparedBody + '\"');
     logger.debug('PREPARED BODY LENGTH', preparedBody.length);
-    
+
     if (request.method === 'POST' && preparedBody.length > 0) {
       logger.info('Signing content: \"' + preparedBody + '\"');
 
@@ -72,11 +72,11 @@ module.exports = {
   },
 
   dataToSign: function(authData, path, action, timestamp) {
-      dataToSign = [
-        authData,
-        path+"\n",
-        "x-akamai-acs-action:"+action+"\n"
-      ];
+    dataToSign = [
+      authData,
+      path + '\n',
+      'x-akamai-acs-action:' + action + '\n',
+    ];
 
     dataToSign = dataToSign.join('').toString();
 
@@ -100,18 +100,17 @@ module.exports = {
   readConfigFile(filename, section) {
     let result;
     try {
-      result = fs.readFileSync(filename)
-    } catch(error) {
-      throw new Error ("\n\n \tNo configuration file found.  \n\tRun akamai netstorage setup to configure credentials\n\n" )
+      result = fs.readFileSync(filename);
+    } catch (error) {
+      throw new Error('\n\n \tNo configuration file found.  \n\tRun akamai netstorage setup to configure credentials\n\n');
     }
-    let configObject = ini.parse(result.toString())
-    return (configObject[section])
-  }, 
-
+    let configObject = ini.parse(result.toString());
+    return (configObject[section]);
+  },
 
   isRedirect: function(statusCode) {
     return [
-      300, 301, 302, 303, 307
+      300, 301, 302, 303, 307,
     ].indexOf(statusCode) !== -1;
   },
 
@@ -125,7 +124,7 @@ module.exports = {
     var encrypt = crypto.createHmac('sha256', key);
 
     encrypt.update(data);
-    
+
     return encrypt.digest('base64');
   },
 
@@ -147,5 +146,5 @@ module.exports = {
 
   signRequest: function(authData, key, path, action, timestamp) {
     return this.base64HmacSha256(this.dataToSign(authData, path, action, timestamp), key);
-  }
+  },
 };

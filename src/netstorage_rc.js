@@ -18,32 +18,32 @@ helpers = require('./helpers');
 function readEnv(section) {
   // If any are set, we're committed
   var envConf = {};
-  var envPrefix = "AKAMAI_NS_" + section.toUpperCase()
-  var tokens = 
-    ['key', 'id','group','host'];
+  var envPrefix = 'AKAMAI_NS_' + section.toUpperCase();
+  var tokens =
+    ['key', 'id', 'group', 'host'];
 
-  tokens.forEach(function(token){
-    var envcheck = envPrefix + "_" + token.toUpperCase()
+  tokens.forEach(function(token) {
+    var envcheck = envPrefix + '_' + token.toUpperCase();
     if (process.env[envcheck]) {
       envConf[token] = process.env[envcheck];
     }
-  })
-  
+  });
+
   if (Object.keys(envConf).length > 0) {
-    console.log("Using configuration from environment variables")
+    console.log('Using configuration from environment variables');
     return envConf;
   }
   return;
 }
 
 module.exports = function(path, conf) {
-  var confSection = conf || 'default'
+  var confSection = conf || 'default';
   var envConf = readEnv(confSection);
   if (envConf && Object.keys(envConf).length > 0) {
     return envConf;
   }
 
-  var config = helpers.readConfigFile(path, confSection)
+  var config = helpers.readConfigFile(path, confSection);
 
   if (!config) {
     throw new Error('An error occurred parsing the .netstorage/auth file. You probably specified an invalid section name.');

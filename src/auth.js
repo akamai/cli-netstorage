@@ -26,15 +26,15 @@ function makeAuthHeader(key, authData, path, action, timestamp) {
 }
 
 function makeAuthData(request, key, id, group, timestamp, nonce) {
-  var authData = ["5","0.0.0.0","0.0.0.0", timestamp, nonce, id].join(', ')
-  
-  return authData
+  var authData = ['5', '0.0.0.0', '0.0.0.0', timestamp, nonce, id].join(', ');
+
+  return authData;
 }
 
 function makeURL(host, path, queryStringObj) {
-  var parsed = url.parse("http://" + host + path, true);
+  var parsed = url.parse('http://' + host + path, true);
   if (queryStringObj) parsed.query = queryStringObj;
-  return url.format( parsed);
+  return url.format(parsed);
 }
 
 module.exports = {
@@ -48,9 +48,9 @@ module.exports = {
 
     request.url = makeURL(host, path);
     authData = makeAuthData(request, key, id, group, timestamp, nonce);
-    request.headers["X-Akamai-ACS-Auth-Data"] = authData;
-    request.headers["X-Akamai-ACS-Auth-Sign"] = makeAuthHeader(key, authData, path, action, timestamp);
-    request.headers["X-Akamai-ACS-Action"] = action
+    request.headers['X-Akamai-ACS-Auth-Data'] = authData;
+    request.headers['X-Akamai-ACS-Auth-Sign'] = makeAuthHeader(key, authData, path, action, timestamp);
+    request.headers['X-Akamai-ACS-Action'] = action;
     return request;
-  }
+  },
 };

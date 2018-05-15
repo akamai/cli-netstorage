@@ -43,14 +43,14 @@ NetStorageAuth.prototype.auth = function(req) {
     url: this.config.host + req.path,
     method: 'GET',
     headers: {
-      'Content-Type': "application/json"
+      'Content-Type': 'application/json',
     },
     followRedirect: false,
-    body: ''
+    body: '',
   });
 
   this.request = auth.generateAuth(
-    req, 
+    req,
     this.config.key,
     this.config.id,
     this.config.group,
@@ -62,8 +62,7 @@ NetStorageAuth.prototype.auth = function(req) {
 };
 
 NetStorageAuth.prototype.send = function(callback) {
-  request(this.request, function(error, response, body) { 
-   
+  request(this.request, function(error, response, body) {
     if (error) {
       callback(error);
       return;
@@ -106,13 +105,13 @@ NetStorageAuth.prototype._setConfigFromStrings = function(key, id, group, host) 
     key: key,
     id: id,
     group: group,
-    host: host
+    host: host,
   };
 };
 
 function validatedArgs(args) {
   var expected = [
-      'key', 'id', 'group', 'host'
+      'key', 'id', 'group', 'host',
     ],
     valid = true;
 
