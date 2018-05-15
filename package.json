@@ -34,5 +34,9 @@
     "safe-buffer": "^5.1.1",
     "sywac": "^1.2.0",
     "untildify": "*"
+  },
+  "devDependencies": {
+    "eslint": "^4.19.1",
+    "eslint-config-loopback": "^10.0.0"
   }
 }
