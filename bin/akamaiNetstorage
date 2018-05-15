@@ -42,8 +42,8 @@ let app = 'akamai netstorage';
 
 let config = untildify('~/.akamai-cli/.netstorage/auth');
 let debug = false;
-let targetProperty;
-let searchString;
+let targetProperty,
+  searchString;
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
