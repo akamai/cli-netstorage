@@ -1,3 +1,4 @@
+'use strict';
 var assert = require('assert');
 var NetStorage = require('../index').NetStorage;
 var path = require('path');

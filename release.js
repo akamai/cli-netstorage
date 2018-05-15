@@ -1,8 +1,4 @@
-// build.js
-// Very simple build script to run angular build
-// Needed because all the cross platform things I tried didn't work
-
-// No command line arguments, we're just going to use the env vars
+'use strict';
 let fs = require('fs');
 
 let source = 'bin/akamaiNetStorage';
