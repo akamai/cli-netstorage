@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 'use strict';
-var fs = require('fs');
-helpers = require('./helpers');
+const helpers = require('./helpers');
 
 function readEnv(section) {
   // If any are set, we're committed
