@@ -6,7 +6,7 @@ var fs = require('fs');
 
 var netstorage = new NetStorage();
 
-let temp_directory = 'circle-' + Date.now();
+let tempDirectory = 'circle-' + Date.now();
 
 describe('Retrieve directory listing', function() {
   it('should retrieve the directory listing', function() {
@@ -43,7 +43,7 @@ describe('Retrieve disk usage', function() {
 
 describe('Should create, upload, list, delete and rmdir', function() {
   it('should create a new directory', function() {
-    return netstorage.mkdir({directory: temp_directory})
+    return netstorage.mkdir({directory: tempDirectory})
       .then(response => {
         assert(response);
       })
@@ -53,7 +53,7 @@ describe('Should create, upload, list, delete and rmdir', function() {
   });
 
   it('should upload a file to the directory', function() {
-    return netstorage.upload({file: 'test/nstest.js', directory: temp_directory})
+    return netstorage.upload({file: 'test/nstest.js', directory: tempDirectory})
       .then(response => {
         assert(response);
       })
@@ -62,7 +62,7 @@ describe('Should create, upload, list, delete and rmdir', function() {
       });
   });
   it('should do a directory listing on the directory', function() {
-    return netstorage.dir({directory: temp_directory})
+    return netstorage.dir({directory: tempDirectory})
       .then(response => {
         assert(response);
       })
@@ -71,7 +71,7 @@ describe('Should create, upload, list, delete and rmdir', function() {
       });
   });
   it('should delete the file from the directory', function() {
-    return netstorage.delete({file: temp_directory + '/test/nstest.js'})
+    return netstorage.delete({file: tempDirectory + '/test/nstest.js'})
       .then(response => {
         assert(response);
       })
@@ -80,7 +80,7 @@ describe('Should create, upload, list, delete and rmdir', function() {
       });
   });
   it('should remove the directory', function() {
-    return netstorage.delete({directory: temp_directory})
+    return netstorage.delete({directory: tempDirectory})
       .then(response => {
         console.log(response);
       })
