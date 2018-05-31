@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 'use strict';
-var crypto = require('crypto'),
-  moment = require('moment'),
-  url = require('url'),
-  ini = require('ini'),
-  fs = require('fs'),
-  logger = require('./logger');
+const crypto = require('crypto');
+const moment = require('moment');
+const ini = require('ini');
+const fs = require('fs');
+const logger = require('./logger');
 
 module.exports = {
   createTimestamp: function() {
@@ -29,12 +28,12 @@ module.exports = {
   },
 
   contentHash: function(request, maxBody) {
-    var contentHash = '',
-      preparedBody = request.body || '';
+    let contentHash = '';
+    let preparedBody = request.body || '';
 
     if (typeof preparedBody === 'object') {
-      var postDataNew = '',
-        key;
+      let postDataNew = '';
+      let key;
 
       logger.info('Body content is type Object, transforming to POST data');
 
@@ -72,7 +71,7 @@ module.exports = {
   },
 
   dataToSign: function(authData, path, action, timestamp) {
-    dataToSign = [
+    let dataToSign = [
       authData,
       path + '\n',
       'x-akamai-acs-action:' + action + '\n',
@@ -134,8 +133,8 @@ module.exports = {
    * @return {String}         String containing a tab delimited set of headers.
    */
   canonicalizeHeaders: function(headers) {
-    var formattedHeaders = [],
-      key;
+    let formattedHeaders = [];
+    let key;
 
     for (key in headers) {
       formattedHeaders.push(key.toLowerCase() + ':' + headers[key].trim().replace(/\s+/g, ' '));
