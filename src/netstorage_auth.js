@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 'use strict';
-var request = require('request'),
-  url = require('url'),
-  auth = require('./auth'),
-  netstorage_rc = require('./netstorage_rc'),
-  helpers = require('./helpers'),
-  logger = require('./logger');
+const request = require('request');
+const url = require('url');
+const auth = require('./auth');
+const netStorageRC = require('./netstorage_rc');
+const helpers = require('./helpers');
+const logger = require('./logger');
 
 var NetStorageAuth = function(key, id, group, host, debug) {
   request.debug = process.env.EG_VERBOSE || false;
@@ -110,10 +110,10 @@ NetStorageAuth.prototype._setConfigFromStrings = function(key, id, group, host) 
 };
 
 function validatedArgs(args) {
-  var expected = [
-      'key', 'id', 'group', 'host',
-    ],
-    valid = true;
+  const expected = [
+    'key', 'id', 'group', 'host',
+  ];
+  let valid = true;
 
   expected.forEach(function(arg, i) {
     if (!args[i]) {
@@ -143,7 +143,7 @@ NetStorageAuth.prototype._setConfigFromObj = function(obj) {
     throw new Error('No netstorage auth path');
   }
 
-  this.config = netstorage_rc(obj.path, obj.section);
+  this.config = netStorageRC(obj.path, obj.section);
 };
 
 module.exports = NetStorageAuth;
