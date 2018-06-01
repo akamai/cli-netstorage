@@ -13,16 +13,14 @@
 // limitations under the License.
 'use strict';
 
-let untildify = require('untildify');
-let inquirer = require('inquirer');
-let md5 = require('md5');
-let fs = require('fs');
-let tmpDir = require('os').tmpdir();
-let ini = require('ini');
-let merge = require('merge');
-let path = require('path');
-let NetStorageAuth = require('../src/netstorage_auth');
-let moment = require('moment');
+const untildify = require('untildify');
+const inquirer = require('inquirer');
+const fs = require('fs');
+const ini = require('ini');
+const merge = require('merge');
+const path = require('path');
+const NetStorageAuth = require('../src/netstorage_auth');
+const moment = require('moment');
 
 function sleep(time) {
   return new Promise((resolve) => setTimeout(resolve, time));
