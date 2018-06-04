@@ -22,10 +22,8 @@
  * @author Kirsten Hunter <khunter@akamai.com>
  */
 
-var path = require('path');
-let untildify = require('untildify');
-let NetStorageAuth = require('../index').NetStorageAuth;
-let NetStorage = require('../index').NetStorage;
+const untildify = require('untildify');
+const NetStorage = require('../index').NetStorage;
 
 if ((process.versions['node']).split('.')[0] < 7) {
   console.log('The Akamai CLI for NetStorage requires Node 7 or later.');
