@@ -296,6 +296,30 @@ class NetStorage {
       });
   }
 
+  symlink(options) {
+    return this.parseFileCpCode(options)
+      .then(options => {
+        return new Promise((resolve, reject) => {
+          let path = this.buildPath([options.cpcode, options.file]);
+          let target = this.buildPath([options.cpcode, options.target]);
+
+          let request = {
+            method: 'POST',
+            action: 'version=1&action=symlink&target=' + target,
+            path: path,
+            body: '',
+          };
+          resolve(request);
+        })
+          .then(request => {
+            return this.makeRequest(request);
+          })
+          .then(response => {
+            Promise.resolve(response.body);
+          });
+      });
+  }
+
   rename(options) {
     return this.parseFileCpCode(options)
       .then(options => {
