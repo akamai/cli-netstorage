@@ -22,10 +22,6 @@ const path = require('path');
 const NetStorageAuth = require('../src/netstorage_auth');
 const moment = require('moment');
 
-function sleep(time) {
-  return new Promise((resolve) => setTimeout(resolve, time));
-}
-
 function createConfigDir(config) {
   return new Promise(function(resolve, reject) {
     let createDir = path.dirname(config);
@@ -92,7 +88,6 @@ function writeDownloadFile(filename, contents) {
   });
 }
 
-// export default class WebSite {
 class NetStorage {
   constructor(auth = {config: '~/.akamai-cli/.netstorage/auth', section: 'default', debug: false, default: true, setup: false}) {
     if (auth.setup) { return; }
