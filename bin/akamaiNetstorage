@@ -30,9 +30,6 @@ if ((process.versions['node']).split('.')[0] < 7) {
   process.exit();
 }
 
-function appName() {
-  return process.argv[1].replace(/.*\//, '');
-}
 let cpcode = process.env.AKAMAI_NS_DEFAULT_CPCODE ? process.env.AKAMAI_NS_DEFAULT_CPCODE : '';
 
 let app = 'akamai netstorage';
