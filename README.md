@@ -2,6 +2,8 @@
 
 *NOTE:* This tool is intended to be installed via the Akamai CLI package manager, which can be retrieved from the releases page of the [Akamai CLI](https://github.com/akamai/cli) tool.
 
+*NOTE:* This tool is only supported for use with ObjectStore, not with the older FileStore system.  Any use of the tool to work with FileStore directories is unsupported.
+
 This is under active development but ready for exploring and testing.  Please open issues if you have questions or requests.
 
 ### Credentials
