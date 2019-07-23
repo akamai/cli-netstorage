@@ -340,7 +340,7 @@ class NetStorage {
             return new Promise ((resolve, reject) => {
                 let path=this.buildPath([options.cpcode, options.file])
                 console.info("Creating Symlink for " + path)
-                let newpath = this.buildPath([options.cpcode, options.location])
+                let newpath = this.buildPath([options.cpcode, options.target])
 
                 let request = {
                     method:"POST",
