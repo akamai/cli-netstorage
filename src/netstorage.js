@@ -333,7 +333,33 @@ class NetStorage {
         })
     }
 
+    symlink(options) {
+        return this.parseFileCpCode(options)
+        .then(options => {
+        
+            return new Promise ((resolve, reject) => {
+                let path=this.buildPath([options.cpcode, options.file])
+                console.info("Creating Symlink for " + path)
+                let newpath = this.buildPath([options.cpcode, options.location])
 
+                let request = {
+                    method:"POST",
+                    action: "version=1&action=symlink&target=" + newpath,
+                    path: path,
+                    body: ""
+                }
+                resolve(request)
+            })
+            .then(request => {
+                console.log(request);
+                return this.makeRequest(request)
+            })
+            .then(response => {
+                console.log(response.body)
+                Promise.resolve(response.body)
+            })
+        })
+    }
 
 
     mkdir(options) {
