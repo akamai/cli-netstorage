@@ -51,7 +51,7 @@ Commands:
 
 Command options:
   --config <config>    Config file
-                       [file] [default: /Users/khunter/.akamai-cli/.netstorage/auth]
+                       [file] [default: ~/.akamai-cli/.netstorage/auth]
 
   --section <section>  Section for config file
                        [string] [default: default]
