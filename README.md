@@ -36,19 +36,17 @@ Usage: akamai netstorage <command> <args> [options]
 Commands:
   setup                     Setup authentication for Netstorage
   du                        disk usage stats
-  mdkir <directory>         create a new directory
+  mkdir <directory>         create a new directory
   rmdir <directory>         delete a directory
   dir <directory>           view a directory structure
   quick-delete <directory>  recursively delete a directory
-  rmdir <directory>         delete a directory
-  ls <directory>            view a directory listing
-  rmdir <directory>         delete a directory
-  put <file>                upload a file
-  get <file>                download a file
-  rm <file>                 remove a file
-  mv <file>                 move a file
-  link <file>               create a symlink
-  touch <file>              update modification time for a file
+  list <directory>          view a directory listing
+  upload <file>             upload a file
+  download <file>           download a file
+  delete <file>             delete a file
+  rename <file> <location>  rename/move a file
+  symlink <file> <target>   create a symlink
+  mtime <file>              update modification time for a file
   stat <file>               see file information
 
 Command options:
