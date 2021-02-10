@@ -11,9 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-var log4js = require('log4js'),
-    logger = log4js.getLogger();
+'use strict';
+const log4js = require('log4js');
+const logger = log4js.getLogger();
 
 if (!process.env.LOG4JS_CONFIG) {
   logger.level = log4js.levels.ERROR;

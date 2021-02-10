@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-"use strict";
+'use strict';
 
 /**
  * Command line tool to interface with the WebSite library for manipulating the CDN activities on Akamai
@@ -22,350 +22,410 @@
  * @author Kirsten Hunter <khunter@akamai.com>
  */
 
-var path = require('path');
-let untildify = require('untildify');
-let NetStorageAuth = require('../index').NetStorageAuth;
-let NetStorage = require('../index').NetStorage;
+const untildify = require('untildify');
+const NetStorage = require('../index').NetStorage;
 
-if ((process.versions["node"]).split('.')[0] < 7) {
-    console.log("The Akamai CLI for NetStorage requires Node 7 or later.")
-    process.exit()
+if ((process.versions['node']).split('.')[0] < 7) {
+  console.error('The Akamai CLI for NetStorage requires Node 7 or later.');
+  process.exit();
 }
 
-function appName() {
-    return process.argv[1].replace(/.*\//, "");
-}
-let cpcode = process.env.AKAMAI_NS_DEFAULT_CPCODE ? process.env.AKAMAI_NS_DEFAULT_CPCODE : ""
-// I could probably put a check of the config file here but it's a lot of work for just
+let cpcode = process.env.AKAMAI_NS_DEFAULT_CPCODE ? process.env.AKAMAI_NS_DEFAULT_CPCODE : '';
 
-let app = "akamai netstorage";
+let app = 'akamai netstorage';
 
-let config = untildify("~/.akamai-cli/.netstorage/auth");
+let config = untildify('~/.akamai-cli/.netstorage/auth');
 let debug = false;
-let targetProperty;
-let searchString;
+let targetProperty,
+  searchString;
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+/**
+ * Set up the authentication for NetStorage
+ * Assume they have all the pieces needed
+ * Store them in creds file in the .akamai_cli directory
+ * 
+ * @param app 
+ * @param options 
+ */
 function setup(app, options) {
-    return app.setup(options)
-    // We need to set up the authentication for NetStorage
-    // Assume they have all the pieces needed
-    // Store them in creds file in the .akamai_cli directory
+  return app.setup(options);
 }
 
+/**
+ * Returns disk usage for the NetStorage cpcode
+ * 
+ * @param app 
+ * @param options 
+ */
 function diskusage(app, options) {
-  return app.diskusage(options)
-  // Return disk usage for the NetStorage cpcode
+  return app.diskusage(options);
 }
 
+/**
+ * Returns status for the specified file
+ * 
+ * @param app 
+ * @param options 
+ */
 function stat(app, options) {
-  return app.stat(options)
-  // Return status for the specified file
+  return app.stat(options);
 }
 
+/**
+ * Update the modification timestamp for the selected file
+ * using options.timestamp as the new value if it exists
+ * or the current timestamp if it does not.
+ * 
+ * @param app 
+ * @param options 
+ */
 function mtime(app, options) {
-  return app.mtime(options)
-  // Update timestamp for the selected file
+  return app.mtime(options);
 }
 
+/**
+ * Show directory structure
+ * 
+ * @param app 
+ * @param options 
+ */
 function dir(app, options) {
-  return app.dir(options)
-  // Show directory structure
+  return app.dir(options);
 }
 
+/**
+ * List items in directory
+ * 
+ * @param app 
+ * @param options 
+ */
 function list(app, options) {
-  return app.list(options)
-  // Show directory structure
+  return app.list(options);
 }
 
+/**
+ * Delete a file
+ * 
+ * @param app 
+ * @param options 
+ */
 function del(app, options) {
-  return app.delete(options)
-  // List items in directory
+  return app.delete(options);
 }
 
+/**
+ * Create a new directory
+ * 
+ * @param app 
+ * @param options 
+ */
 function mkdir(app, options) {
-  return app.mkdir(options)
-  // Create a new directory
+  return app.mkdir(options);
 }
 
+/**
+ * Delete a directory
+ * 
+ * @param app 
+ * @param options 
+ */
 function rmdir(app, options) {
-  return app.rmdir(options)
-  // Create a new directory
+  return app.rmdir(options);
 }
 
+/**
+ * Delete a directory and all its contents, recursively
+ * 
+ * @param app 
+ * @param options 
+ */
 function quickdelete(app, options) {
-  return app.quickDelete(options)
-  // Create a new directory
+  return app.quickDelete(options);
 }
 
-
+/**
+ * Upload a file
+ * 
+ * @param app 
+ * @param options 
+ */
 function upload(app, options) {
-  return app.upload(options)
-  // Upload a file
+  return app.upload(options);
 }
 
+/**
+ * Download a file
+ * 
+ * @param app 
+ * @param options 
+ */
 function download(app, options) {
-  return app.download(options)
-  // Download a file
+  return app.download(options);
 }
 
+/**
+ * Create a symlink
+ * 
+ * @param app 
+ * @param options 
+ */
 function symlink(app, options) {
-  return app.symlink(options)
-  // Rename a file
+  return app.symlink(options);
 }
 
+/**
+ * Rename a file
+ * 
+ * @param app 
+ * @param options 
+ */
 function rename(app, options) {
-  return app.rename(options)
-  // Rename a file
+  return app.rename(options);
 }
 
-function main () {
-    process.argv[1] = 'akamai netstorage'
-    const chalk = require('chalk')
-    return require('sywac')
-    .file('--config <config>', { 
-        desc: 'Config file',
-        defaultValue: untildify("~/.akamai-cli/.netstorage/auth"),
-        hints: ``,
-        group: "Command options:"
+function main() {
+  process.argv[1] = 'akamai netstorage';
+  const chalk = require('chalk');
+  return require('sywac')
+    .file('--config <config>', {
+      desc: 'Config file',
+      defaultValue: config,
+      group: 'Command options:',
     })
-      .string('--section <section>', { 
-        desc: 'Section for config file',
-        defaultValue: "default",
-        group: "Command options:"
-      })
+    .string('--section <section>', {
+      desc: 'Section for config file',
+      defaultValue: 'default',
+      group: 'Command options:',
+    })
 
-      .string('--cpcode <cpcode>', { 
-        desc: 'CPCode',
-        defaultValue: cpcode,
-        group: "Command options:"
-      })
+    .string('--cpcode <cpcode>', {
+      desc: 'CPCode',
+      defaultValue: cpcode,
+      group: 'Command options:',
+    })
 
-     .command('setup', {
-        desc: 'Setup authentication for Netstorage',
-        group: 'System commands:',
-        run: options => {
-          options["setup"] = true
-            let app = new NetStorage(options);
-            return setup(app, options);
-          }
-      })
-      .command('du', {
-        desc: 'disk usage stats',
-        group: 'System commands:',
-        run: options => {
-            let app = new NetStorage(options);
-            return diskusage(app, options)
-        }
-      })
+    .command('setup', {
+      desc: 'Setup authentication for Netstorage',
+      group: 'System commands:',
+      run: options => {
+        options['setup'] = true;
+        let app = new NetStorage(options);
+        return setup(app, options);
+      },
+    })
+    .command('du', {
+      desc: 'disk usage stats',
+      group: 'System commands:',
+      run: options => {
+        let app = new NetStorage(options);
+        return diskusage(app, options);
+      },
+    })
 
-      .command('mkdir <directory>', {
-        desc: 'create a new directory',
-        group: 'Directory commands:',
-        setup: sywac => {
-          sywac
+    .command('mkdir <directory>', {
+      desc: 'create a new directory',
+      group: 'Directory commands:',
+      setup: sywac => {
+        sywac
           .string('--path <path>', {
-              desc: 'Path for new directory'
-          })
-        },
-         run: options => {
-          let app = new NetStorage(options);
-          return mkdir(app, options)
-        }
-      })
-      .command('rmdir <directory>', {
-        group: 'Directory commands:',
-        desc: 'delete an empty directory',
-        run: options => {
-          let app = new NetStorage(options);
-          return rmdir(app, options)
-        }
-      })
-      .command('dir [directory]', {
-        desc: 'view a directory structure',
-        group: 'Directory commands:',
-        defaultValue: "",
-        setup: sywac => {
-          sywac
+            desc: 'Path for new directory',
+          });
+      },
+      run: options => {
+        let app = new NetStorage(options);
+        return mkdir(app, options);
+      },
+    })
+    .command('rmdir <directory>', {
+      group: 'Directory commands:',
+      desc: 'delete an empty directory',
+      run: options => {
+        let app = new NetStorage(options);
+        return rmdir(app, options);
+      },
+    })
+    .command('dir [directory]', {
+      desc: 'view a directory structure',
+      group: 'Directory commands:',
+      defaultValue: '',
+      setup: sywac => {
+        sywac
           .string('--prefix <prefix>', {
-              desc: 'List files beginning with this prefix only'
+            desc: 'List files beginning with this prefix only',
           })
           .string('--start <start>', {
-            desc: 'Start listing at this value'
+            desc: 'Start listing at this value',
           })
           .string('--end <end>', {
-            desc: 'Stop listing files at this value'
+            desc: 'Stop listing files at this value',
           })
           .string('--max_entries <max_entries>', {
-            desc: 'List only this number of items'
+            desc: 'List only this number of items',
           })
           .string('--encoding <encoding>', {
-            desc: 'Use this XML encoding'
-          })
-        },
-        
-        run: options => {
-          let app = new NetStorage(options);
-          return dir(app, options)
-        }
-      })
-      .command('quick-delete <directory>', {
-        desc: 'recursively delete a directory',
-        group: 'Directory commands:',
-        hints: 'Disabled by default',
-        run: options => {
-          let app = new NetStorage(options);
-          return quickdelete(app, options)
-        }
-      })
+            desc: 'Use this XML encoding',
+          });
+      },
 
-      .command('list <directory>', {
-        desc: 'view a directory listing',
-        group: 'Directory commands:',
-        default: "",
-        setup: sywac => {
-          sywac
+      run: options => {
+        let app = new NetStorage(options);
+        return dir(app, options);
+      },
+    })
+    .command('quick-delete <directory>', {
+      desc: 'recursively delete a directory',
+      group: 'Directory commands:',
+      hints: 'Disabled by default',
+      run: options => {
+        let app = new NetStorage(options);
+        return quickdelete(app, options);
+      },
+    })
+
+    .command('list <directory>', {
+      desc: 'view a directory listing',
+      group: 'Directory commands:',
+      default: '',
+      setup: sywac => {
+        sywac
           .string('--end <end>', {
-            desc: 'Stop listing files at this value'
+            desc: 'Stop listing files at this value',
           })
           .string('--max_entries <max_entries>', {
-            desc: 'List only this number of items'
+            desc: 'List only this number of items',
           })
           .string('--encoding <encoding>', {
-            desc: 'Use this XML encoding'
-          })
-        },
+            desc: 'Use this XML encoding',
+          });
+      },
 
-        run: options => {
-          let app = new NetStorage(options);
-          return list(app, options)
-        }
-      })
+      run: options => {
+        let app = new NetStorage(options);
+        return list(app, options);
+      },
+    })
 
-      .command('upload <file>', {
-        group: 'File commands:',
-        desc: 'upload a file',
-        setup: sywac => {
-          sywac
+    .command('upload <file>', {
+      group: 'File commands:',
+      desc: 'upload a file',
+      setup: sywac => {
+        sywac
           .string('--directory <directory>', {
-              desc: 'Directory for the file upload',
-              default: ""
-          })
-        },
-        run: options => {
-          let app = new NetStorage(options);
-          return upload(app, options)
-        }
-      })
+            desc: 'Directory for the file upload',
+            default: '',
+          });
+      },
+      run: options => {
+        let app = new NetStorage(options);
+        return upload(app, options);
+      },
+    })
 
-
-      .command('download <file>', {
-        group: 'File commands:',
-        desc: 'download a file',
-        setup: sywac => {
-          sywac
+    .command('download <file>', {
+      group: 'File commands:',
+      desc: 'download a file',
+      setup: sywac => {
+        sywac
           .string('--directory <directory>', {
-              desc: 'Directory for the file download',
-              default: ""
+            desc: 'Directory for the file download',
+            default: '',
           })
           .string('--outfile <outfile>', {
-            desc: 'Local file for the download'
-        })
-        },
+            desc: 'Local file for the download',
+          });
+      },
 
-        run: options => {
-          let app = new NetStorage(options);
-          return download(app, options)
-        }
-      })
-
-      .command('delete <file>', {
-        group: 'File commands:',
-        desc: 'remove a file',
-        alias: 'rm',
-        run: options => {
-          let app = new NetStorage(options);
-          return del(app, options)
-        }
-      })
-
-
-      .command('rename <file> <location>', {
-        group: 'File commands:',
-        desc: 'rename/move a file',
-        run: options => {
-          let app = new NetStorage(options);
-          return rename(app, options)
-        }
-      })
-
-
-      .command('symlink <file> <target>', {
-        group: 'File commands:',
-        desc: 'create a symlink',
-        run: options => {
-          let app = new NetStorage(options);
-          return symlink(app, options)
-        }
-      })
-
-
-      .command('mtime <file>', {
-        desc: 'update modification time for a file',
-        group: 'File commands:',
-        setup: sywac => {
-          sywac
-          .string('--timestamp <timestamp>', {
-              desc: 'Timestamp to use for the command'
-          })
-        },
-        run: options => {
-          let app = new NetStorage(options);
-          return mtime(app, options)
-        }
-      })
-
-
-      .command('stat <file>', {
-        group: 'File commands:',
-        desc: 'see file information',
-        run: options => {
-          let app = new NetStorage(options);
-            return stat(app, options)
-        }
-      })
- 
-      .showHelpByDefault()
-      .help('--help', { group: "Command options:"})
-      .version('--version', { group: "Command options:"})
-      .epilogue('Copyright (C) Akamai Technologies, Inc\nVisit http://github.com/akamai/cli-netstorage for detailed documentation\n')
-      .style({
-        // you can style several other things too
-        // and even style things differently when validation fails for them
-        // see http://sywac.io/docs/sync-config.html#style
-        group: str => chalk.blue.bold(str),
-      })
-      .style({
-        group: str => chalk.bold.blue(str === 'Options:' ? 'General options:' : str)
-      })
-      .outputSettings({ maxWidth: 90 })
-      .parse()
-      .then(result => {
-        // let errors bubble up
-        if (result.errors.length) {
-            console.error(chalk.red.bold("\nERROR: \n\t"), result.output || JSON.stringify(result.output[0]));
-            console.output = "";
-        } else if (result.output) {
-          console.log(result.output)
-          process.exit(result.code)
-        }
+      run: options => {
+        let app = new NetStorage(options);
+        return download(app, options);
+      },
     })
+
+    .command('delete <file>', {
+      group: 'File commands:',
+      desc: 'remove a file',
+      alias: 'rm',
+      run: options => {
+        let app = new NetStorage(options);
+        return del(app, options);
+      },
+    })
+
+    .command('rename <file> <location>', {
+      group: 'File commands:',
+      desc: 'rename/move a file',
+      run: options => {
+        let app = new NetStorage(options);
+        return rename(app, options);
+      },
+    })
+
+    .command('symlink <file> <target>', {
+      group: 'File commands:',
+      desc: 'create a symlink',
+      run: options => {
+        let app = new NetStorage(options);
+        return symlink(app, options);
+      },
+    })
+
+    .command('mtime <file>', {
+      desc: 'update modification time for a file',
+      group: 'File commands:',
+      setup: sywac => {
+        sywac
+          .string('--timestamp <timestamp>', {
+            desc: 'Timestamp to use for the command',
+          });
+      },
+      run: options => {
+        let app = new NetStorage(options);
+        return mtime(app, options);
+      },
+    })
+
+    .command('stat <file>', {
+      group: 'File commands:',
+      desc: 'see file information',
+      run: options => {
+        let app = new NetStorage(options);
+        return stat(app, options);
+      },
+    })
+
+    .showHelpByDefault()
+    .help('--help', {group: 'Command options:'})
+    .version('--version', {group: 'Command options:'})
+    .epilogue('Copyright (C) Akamai Technologies, Inc\nVisit http://github.com/akamai/cli-netstorage for detailed documentation\n')
+    .style({
+      // you can style several other things too
+      // and even style things differently when validation fails for them
+      // see http://sywac.io/docs/sync-config.html#style
+      group: str => chalk.blue.bold(str),
+    })
+    .style({
+      group: str => chalk.bold.blue(str === 'Options:' ? 'General options:' : str),
+      hints: str => chalk.bold.blue(str === 'Options:' ? 'General options:' : str),
+    })
+    .outputSettings({maxWidth: 90})
+    .parse()
+    .then(result => {
+      // let errors bubble up
+      if (result.errors.length) {
+        console.error(chalk.red.bold('\nERROR: \n\t'), result.output || JSON.stringify(result.output[0]));
+        console.output = '';
+      } else if (result.output) {
+        console.log(result.output);
+        process.exit(result.code);
+      }
+    });
 }
-  console.time(app);
-  var begin=Date.now();
-  
-  main().then(options => {
-    var end=Date.now();
-    var timeSpent=((end-begin)/1000/60).toPrecision(2) +" mins";
-  })                                               
+console.time(app);
+var begin = Date.now();
+
+main().then(options => {
+  var end = Date.now();
+  var timeSpent = ((end - begin) / 1000 / 60).toPrecision(2) + ' mins';
+});

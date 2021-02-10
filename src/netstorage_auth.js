@@ -11,13 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-var request = require('request'),
-  url = require('url'),
-  auth = require('./auth'),
-  netstorage_rc = require('./netstorage_rc'),
-  helpers = require('./helpers'),
-  logger = require('./logger');
+'use strict';
+const request = require('request');
+const url = require('url');
+const auth = require('./auth');
+const netStorageRC = require('./netstorage_rc');
+const helpers = require('./helpers');
+const logger = require('./logger');
 
 var NetStorageAuth = function(key, id, group, host, debug) {
   request.debug = process.env.EG_VERBOSE || false;
@@ -43,14 +43,14 @@ NetStorageAuth.prototype.auth = function(req) {
     url: this.config.host + req.path,
     method: 'GET',
     headers: {
-      'Content-Type': "application/json"
+      'Content-Type': 'application/json',
     },
     followRedirect: false,
-    body: ''
+    body: '',
   });
 
   this.request = auth.generateAuth(
-    req, 
+    req,
     this.config.key,
     this.config.id,
     this.config.group,
@@ -62,8 +62,7 @@ NetStorageAuth.prototype.auth = function(req) {
 };
 
 NetStorageAuth.prototype.send = function(callback) {
-  request(this.request, function(error, response, body) { 
-   
+  request(this.request, function(error, response, body) {
     if (error) {
       callback(error);
       return;
@@ -106,15 +105,15 @@ NetStorageAuth.prototype._setConfigFromStrings = function(key, id, group, host) 
     key: key,
     id: id,
     group: group,
-    host: host
+    host: host,
   };
 };
 
 function validatedArgs(args) {
-  var expected = [
-      'key', 'id', 'group', 'host'
-    ],
-    valid = true;
+  const expected = [
+    'key', 'id', 'group', 'host',
+  ];
+  let valid = true;
 
   expected.forEach(function(arg, i) {
     if (!args[i]) {
@@ -144,7 +143,7 @@ NetStorageAuth.prototype._setConfigFromObj = function(obj) {
     throw new Error('No netstorage auth path');
   }
 
-  this.config = netstorage_rc(obj.path, obj.section);
+  this.config = netStorageRC(obj.path, obj.section);
 };
 
 module.exports = NetStorageAuth;
