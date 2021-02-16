@@ -238,21 +238,17 @@ class NetStorage {
 
         return this.parseFileCpCode(options)
         .then(options => {
-            return readUploadFile(options.file)
-        })
-        .then(body => {
             let path = this.buildPath([options.cpcode, options.directory, options.file])
-        
-            let request = {
+	    var file = fs.createReadStream(options.file)
+	    let request = {
                     action: "version=1&action=upload",
                     method: "PUT",
                     path: path,
-                    body: body
-            }
-            return this.makeRequest(request)
-            .then(response => {
-                console.log(response.body)
-                Promise.resolve(response.body)
+                    body: file
+                }
+	    return this.makeRequest(request)
+	    .then(response => {
+                        Promise.resolve(response.body)
             })
         }).catch(error => {
             console.log("ERROR from upload: " + error)
