@@ -126,8 +126,7 @@ function main () {
     return require('sywac')
     .file('--config <config>', { 
         desc: 'Config file',
-        defaultValue: untildify("~/.akamai-cli/.netstorage/auth"),
-        hints: ``,
+        defaultValue: config,
         group: "Command options:"
     })
       .string('--section <section>', { 
@@ -347,7 +346,8 @@ function main () {
         group: str => chalk.blue.bold(str),
       })
       .style({
-        group: str => chalk.bold.blue(str === 'Options:' ? 'General options:' : str)
+        group: str => chalk.bold.blue(str === 'Options:' ? 'General options:' : str),
+        hints: str => chalk.bold.blue(str === 'Options:' ? 'General options:' : str)
       })
       .outputSettings({ maxWidth: 90 })
       .parse()
