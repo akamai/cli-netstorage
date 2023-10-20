@@ -1,4 +1,6 @@
-# PREVIEW: Akamai CLI for Netstorage
+Akamai CLI for Netstorage
+
+*NOTE REGARDING MAINTAINING THIS PACKAGE:* The CLI-NetStorage package is currently no longer officially maintained by Akamai's engineering teams. The package still works but there will be no ongoing maintenance or features added. This package will receive occasional vulnerability scanning to upgrade third-party libraries to newer versions with minimal testing. Use at your own risk. We recommend the use of the NetStorage Usage API instead: https://techdocs.akamai.com/netstorage-usage/reference/api - Last Update: October 2023.
 
 *NOTE:* This tool is intended to be installed via the Akamai CLI package manager, which can be retrieved from the releases page of the [Akamai CLI](https://github.com/akamai/cli) tool.
 
