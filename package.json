@@ -33,6 +33,6 @@
     "request": "^2.74.0",
     "safe-buffer": "^5.1.1",
     "sywac": "^1.2.0",
-    "untildify": "*"
+    "untildify": "^4.0.0"
   }
 }
