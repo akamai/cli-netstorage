@@ -6,8 +6,6 @@ Akamai CLI for Netstorage
 
 *NOTE:* This tool is only supported for use with ObjectStore, not with the older FileStore system.  Any use of the tool to work with FileStore directories is unsupported.
 
-This is under active development but ready for exploring and testing.  Please open issues if you have questions or requests.
-
 ### Credentials
 * Various values associated with the Storage Group and Upload Account are required for use in calls made to the API. Once the Upload Account has fully propagated (after enabling the HTTP API), you can view it in the NetStorage Groups UI to gather this information. Select the Upload Account entity.
 * Locate the Upload Account in which you've enabled the NetStorage HTTP API, and click it to open Detail View. (You can type the name of the target account in the Filter field to limit results in this table.)
