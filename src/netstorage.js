@@ -543,7 +543,9 @@ class NetStorage {
         return new Promise ((resolve, reject) => {
             this._nsClient.auth(request)
             this._nsClient.send((data, response) => {
-                if (response.statusCode != 200) {
+                if (!response){
+		    reject("Unable to complete action. " + data);
+		}else if(response.statusCode != 200) {
                     reject("Unable to complete action.  Status code " + response.statusCode)
                 } else {
                     resolve(response)
