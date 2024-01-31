@@ -545,7 +545,7 @@ class NetStorage {
             this._nsClient.send((data, response) => {
                 if (!response) {
 		    reject("Unable to complete action. " + data);
-		} else if(response.statusCode != 200) {
+		} else if (response.statusCode != 200) {
                     reject("Unable to complete action.  Status code " + response.statusCode)
                 } else {
                     resolve(response)
